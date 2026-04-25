@@ -1,34 +1,46 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ManualStationEntry } from "@/components/station/manual-station-entry";
+import { getCurrentSession } from "@/lib/auth/server-session";
 import { i18n } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: i18n.scan.title,
 };
 
-export default function ScanInstructionsPage() {
+export default async function ScanInstructionsPage() {
+  const session = await getCurrentSession();
+
   return (
-    <main className="flex min-h-dvh items-center px-4 py-6 sm:px-6">
-      <section className="mx-auto w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-control sm:p-6">
-        <div className="mb-5 grid h-14 w-14 grid-cols-2 gap-1 rounded-xl bg-[var(--primary-soft)] p-3">
-          <span className="rounded-sm bg-[var(--primary-strong)]" />
-          <span className="rounded-sm bg-[var(--primary-strong)] opacity-65" />
-          <span className="rounded-sm bg-[var(--primary-strong)] opacity-65" />
-          <span className="rounded-sm border-2 border-[var(--primary-strong)]" />
+    <main className="flex min-h-dvh items-center bg-slate-50 px-4 py-12 text-right sm:px-6" dir="rtl">
+      <section className="mx-auto w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+        <div className="mb-5 grid h-14 w-14 grid-cols-2 gap-1 rounded-xl bg-teal-50 p-3">
+          <span className="rounded-sm bg-teal-700" />
+          <span className="rounded-sm bg-teal-700 opacity-70" />
+          <span className="rounded-sm bg-teal-700 opacity-70" />
+          <span className="rounded-sm border-2 border-teal-700" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[var(--foreground)]">{i18n.scan.title}</h1>
-        <p className="mt-3 text-base leading-7 text-[var(--muted)]">{i18n.scan.subtitle}</p>
-        <p className="mt-3 rounded-lg bg-[var(--surface-subtle)] px-4 py-3 text-sm font-bold text-[var(--foreground)]">
-          {i18n.scan.phaseNotice}
+        <h1 className="text-2xl font-bold text-slate-900">{i18n.scan.title}</h1>
+        <p className="mt-3 text-base leading-7 text-slate-600">
+          وجّه كاميرا الهاتف إلى رمز QR المثبت على محطة الطعوم. سيفتح الرابط نموذج الفحص الخاص بالمحطة لتسجيل الحالة
+          والملاحظات.
         </p>
+        <p className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm font-medium leading-6 text-slate-700">
+          إذا لم يعمل المسح، أدخل رقم المحطة يدويًا في الحقل التالي.
+        </p>
+
         <div className="mt-6">
+          <ManualStationEntry />
+        </div>
+
+        {!session ? (
           <Link
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-3 text-base font-bold text-white shadow-control transition hover:bg-[var(--primary-strong)]"
+            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-700 transition-colors hover:bg-slate-50"
             href="/login"
           >
             {i18n.scan.loginCta}
           </Link>
-        </div>
+        ) : null}
       </section>
     </main>
   );

@@ -29,6 +29,10 @@ function redirectToUnauthorized(request: NextRequest): NextResponse {
 }
 
 function roleCanAccess(pathname: string, role: UserRole): boolean {
+  if (pathname.startsWith("/station")) {
+    return role === "technician" || role === "manager";
+  }
+
   if (pathname.startsWith("/dashboard/manager")) {
     return role === "manager";
   }

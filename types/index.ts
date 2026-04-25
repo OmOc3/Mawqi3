@@ -19,6 +19,11 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface ReportPhotoPaths {
+  after?: string;
+  before?: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;
@@ -32,10 +37,14 @@ export interface Station {
   stationId: string;
   label: string;
   location: string;
+  zone?: string;
   coordinates?: Coordinates;
+  qrCodeValue: string;
   isActive: boolean;
   createdAt: FirestoreTimestamp;
   createdBy: string;
+  updatedAt?: FirestoreTimestamp;
+  updatedBy?: string;
   lastVisitedAt?: FirestoreTimestamp;
   totalReports: number;
 }
@@ -48,9 +57,25 @@ export interface Report {
   technicianName: string;
   status: StatusOption[];
   notes?: string;
+  photoPaths?: ReportPhotoPaths;
   submittedAt: FirestoreTimestamp;
+  reviewStatus: "pending" | "reviewed" | "rejected";
   editedAt?: FirestoreTimestamp;
   editedBy?: string;
+  reviewedAt?: FirestoreTimestamp;
+  reviewedBy?: string;
+  reviewNotes?: string;
+}
+
+export interface AuditLog {
+  logId: string;
+  actorUid: string;
+  actorRole: UserRole;
+  action: string;
+  entityType: string;
+  entityId: string;
+  createdAt: FirestoreTimestamp;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ApiErrorResponse {
