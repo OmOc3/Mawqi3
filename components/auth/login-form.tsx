@@ -37,6 +37,22 @@ function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   return isRecord(value) && typeof value.message === "string" && typeof value.code === "string";
 }
 
+function formatApiErrorMessage(payload: ApiErrorResponse): string {
+  if (payload.code === "AUTH_LOGIN_FAILED" || payload.code.startsWith("AUTH_CONFIG_")) {
+    return `${payload.message} (${payload.code})`;
+  }
+
+  if (
+    payload.code === "AUTH_FIREBASE_PROJECT_MISMATCH" ||
+    payload.code === "AUTH_FIRESTORE_UNAVAILABLE" ||
+    payload.code === "AUTH_USER_PROFILE_INVALID"
+  ) {
+    return `${payload.message} (${payload.code})`;
+  }
+
+  return payload.message;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -65,7 +81,7 @@ export function LoginForm() {
       const payload = (await response.json()) as unknown;
 
       if (!response.ok) {
-        setFormError(isApiErrorResponse(payload) ? payload.message : i18n.auth.genericLoginError);
+        setFormError(isApiErrorResponse(payload) ? formatApiErrorMessage(payload) : i18n.auth.genericLoginError);
         return;
       }
 

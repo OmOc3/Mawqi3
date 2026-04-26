@@ -8,7 +8,7 @@ import { setAuthCookies } from "@/lib/auth/session";
 import { getActiveAppUser } from "@/lib/auth/user-profile";
 import { adminAuth } from "@/lib/firebase-admin";
 import { i18n } from "@/lib/i18n";
-import { isRecord } from "@/lib/utils";
+import { getErrorMessage, isRecord } from "@/lib/utils";
 import { loginFormSchema } from "@/lib/validation/auth";
 import type { ApiErrorResponse, LoginSuccessResponse } from "@/types";
 
@@ -23,6 +23,15 @@ interface FirebasePasswordResult {
   ok: boolean;
   data?: FirebasePasswordSuccess;
 }
+
+type LoginFailureCode =
+  | "AUTH_CONFIG_FIREBASE_API_KEY"
+  | "AUTH_CONFIG_FIREBASE_ADMIN"
+  | "AUTH_CONFIG_ROLE_SECRET"
+  | "AUTH_FIREBASE_PROJECT_MISMATCH"
+  | "AUTH_FIRESTORE_UNAVAILABLE"
+  | "AUTH_USER_PROFILE_INVALID"
+  | "AUTH_LOGIN_FAILED";
 
 function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -88,6 +97,47 @@ function unauthorizedResponse(): NextResponse<ApiErrorResponse> {
     },
     { status: 401 },
   );
+}
+
+function classifyLoginFailure(error: unknown): LoginFailureCode {
+  const message = getErrorMessage(error);
+  const normalized = message.toLowerCase();
+
+  if (message.includes("NEXT_PUBLIC_FIREBASE_API_KEY")) {
+    return "AUTH_CONFIG_FIREBASE_API_KEY";
+  }
+
+  if (message.includes("ROLE_COOKIE_SECRET") || message.includes("AUTH_SESSION_SECRET")) {
+    return "AUTH_CONFIG_ROLE_SECRET";
+  }
+
+  if (
+    message.includes("FIREBASE_ADMIN_") ||
+    normalized.includes("private key") ||
+    normalized.includes("pem") ||
+    normalized.includes("credential")
+  ) {
+    return "AUTH_CONFIG_FIREBASE_ADMIN";
+  }
+
+  if (normalized.includes("incorrect aud") || normalized.includes("incorrect project")) {
+    return "AUTH_FIREBASE_PROJECT_MISMATCH";
+  }
+
+  if (message.includes("Invalid user profile document")) {
+    return "AUTH_USER_PROFILE_INVALID";
+  }
+
+  if (
+    normalized.includes("firestore") ||
+    normalized.includes("database") ||
+    normalized.includes("permission_denied") ||
+    normalized.includes("not_found")
+  ) {
+    return "AUTH_FIRESTORE_UNAVAILABLE";
+  }
+
+  return "AUTH_LOGIN_FAILED";
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorResponse | LoginSuccessResponse>> {
@@ -168,15 +218,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
 
     return response;
   } catch (error: unknown) {
+    const code = classifyLoginFailure(error);
+
     console.error(
       "Failed to complete login.",
-      error instanceof Error ? { message: error.message, name: error.name } : { message: "Unknown error" },
+      error instanceof Error ? { code, message: error.message, name: error.name } : { code, message: "Unknown error" },
     );
 
     return NextResponse.json(
       {
         message: i18n.errors.unexpected,
-        code: "AUTH_LOGIN_FAILED",
+        code,
       },
       { status: 500 },
     );
