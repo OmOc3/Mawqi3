@@ -5,7 +5,7 @@ import { i18n } from "@/lib/i18n";
 
 const themeScript = `
 (() => {
-  const storageKey = "bedoo-theme";
+  const storageKey = "mawqi3-theme";
   const root = document.documentElement;
   const savedTheme = window.localStorage.getItem(storageKey);
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -17,10 +17,10 @@ const themeScript = `
 
 export const metadata: Metadata = {
   title: {
-    default: `${i18n.appTitle} | ${i18n.appName}`,
+    default: `${i18n.appNameArabic} | ${i18n.appTitle}`,
     template: `%s | ${i18n.appName}`,
   },
-  description: i18n.appTitle,
+  description: `${i18n.en.appName} manages bait stations, QR inspections, field reports, and review workflows. ${i18n.appNameArabic} لإدارة المحطات وتقارير الفحص الميدانية.`,
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html dir="rtl" lang="ar" suppressHydrationWarning>
+    <html data-default-locale="ar" dir="rtl" lang="ar" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -1,4 +1,4 @@
-# PRODUCT.md — Bedoo بيدو
+# PRODUCT.md — Mawqi3 موقعي
 
 ## Register
 
@@ -6,7 +6,7 @@ product
 
 ## Product Purpose
 
-Bedoo is an Arabic-first field operations system for pest control companies managing bait stations. It turns QR station visits, technician reports, manager reviews, and operational follow-up into one auditable workflow.
+Mawqi3 is an Arabic-first field operations system for pest control companies managing bait stations. It turns QR station visits, technician reports, manager reviews, and operational follow-up into one auditable workflow.
 
 ## Users
 

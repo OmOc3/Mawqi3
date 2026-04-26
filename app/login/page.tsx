@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
+import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { i18n } from "@/lib/i18n";
@@ -24,6 +25,7 @@ export default function LoginPage() {
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-control sm:p-6">
           <LoginForm />
         </div>
+        <CopyrightFooter className="px-0" />
       </section>
     </main>
   );

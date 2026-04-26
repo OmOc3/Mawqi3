@@ -1,0 +1,481 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { I18nManager } from 'react-native';
+
+import {
+  statusOptionLabels as syncStatusOptionLabels,
+  statusOptionLabelsEnglish as syncStatusOptionLabelsEnglish,
+} from '@/lib/sync/status-options';
+
+export const languages = ['ar', 'en'] as const;
+export type Language = (typeof languages)[number];
+export type TextDirection = 'ltr' | 'rtl';
+
+export const defaultLanguage: Language = 'ar';
+export const languageStorageKey = 'mawqi3-language';
+
+export const languageDirections: Record<Language, TextDirection> = {
+  ar: 'rtl',
+  en: 'ltr',
+};
+
+export const languageDateLocales: Record<Language, string> = {
+  ar: 'ar-EG',
+  en: 'en-US',
+};
+
+const arabicStrings = {
+  statusOptionLabels: syncStatusOptionLabels,
+  roleLabels: {
+    technician: 'فني',
+    supervisor: 'مشرف',
+    manager: 'مدير',
+  },
+  i18n: {
+    appName: 'Mawqi3',
+    appNameArabic: 'موقعي',
+    appTitle: 'إدارة محطات الطعوم',
+    brandTagline: 'تشغيل ميداني واضح لمحطات الطعوم وفرق الفحص',
+    brand: {
+      name: 'Mawqi3',
+      nameArabic: 'موقعي',
+      tagline: 'Clear field operations for bait stations and inspection teams',
+      taglineArabic: 'تشغيل ميداني واضح لمحطات الطعوم وفرق الفحص',
+    },
+    actions: {
+      back: 'رجوع',
+      backToLogin: 'العودة لتسجيل الدخول',
+      cancel: 'إلغاء',
+      clear: 'مسح',
+      close: 'إغلاق',
+      confirm: 'تأكيد',
+      continue: 'متابعة',
+      delete: 'حذف',
+      done: 'تم',
+      edit: 'تعديل',
+      login: 'تسجيل الدخول',
+      logout: 'تسجيل الخروج',
+      loading: 'جار التحميل...',
+      openReport: 'فتح نموذج التقرير',
+      openScan: 'فتح المسح',
+      retry: 'إعادة المحاولة',
+      save: 'حفظ',
+      saveDraft: 'حفظ المسودة',
+      saving: 'جار الحفظ...',
+      submitReport: 'إرسال التقرير',
+      submitting: 'جار الإرسال...',
+      syncNow: 'مزامنة الآن',
+    },
+    auth: {
+      email: 'البريد الإلكتروني',
+      emailPlaceholder: 'name@company.com',
+      genericLoginError: 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.',
+      inactiveAccount: 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.',
+      invalidEmail: 'أدخل بريدًا إلكترونيًا صحيحًا.',
+      loginTitle: 'تسجيل دخول الفريق',
+      loginSubtitle: 'استخدم حساب الشركة للمتابعة.',
+      missingProfile: 'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.',
+      password: 'كلمة المرور',
+      passwordPlaceholder: '••••••••',
+      passwordRequired: 'كلمة المرور مطلوبة.',
+      rateLimited: 'تم إيقاف المحاولات مؤقتًا. حاول لاحقًا.',
+      sessionExpired: 'انتهت الجلسة. سجل الدخول مرة أخرى.',
+      signingIn: 'جار تسجيل الدخول...',
+      logoutError: 'تعذر تسجيل الخروج. حاول مرة أخرى.',
+      webLoginCta: 'فتح تسجيل الدخول على الويب',
+    },
+    dashboard: {
+      managerTitle: 'لوحة المدير',
+      supervisorTitle: 'لوحة المشرف',
+      phaseBadge: 'المرحلة الأولى',
+      protectedRoute: 'مسار محمي',
+      authReady: 'تم تفعيل الدخول الآمن',
+      securityReady: 'الصلاحيات تعمل حسب الدور',
+      placeholderBody: 'هذه الصفحة جاهزة للتحقق من الصلاحيات وسيتم استكمال أدواتها في المراحل التالية.',
+    },
+    insights: {
+      title: 'موجز ذكي',
+      subtitle: 'قراءة سريعة لأهم المخاطر التشغيلية والفرص استنادًا إلى بيانات المحطات والتقارير.',
+      generate: 'توليد الموجز',
+      generating: 'جار توليد الموجز...',
+      generatedAt: 'آخر تحديث',
+      alerts: 'تنبيهات',
+      recommendations: 'إجراءات مقترحة',
+      unavailable: 'تعذر توليد الموجز الآن.',
+      sourceGemini: 'مدعوم بواسطة Gemini',
+      sourceFallback: 'ملخص محلي احتياطي',
+      missingKey: 'المفتاح GEMINI_API_KEY غير مضبوط، لذلك تم عرض ملخص محلي بدل Gemini.',
+    },
+    errors: {
+      accessDenied: 'ليست لديك صلاحية للوصول إلى هذه الصفحة.',
+      accessDeniedTitle: 'وصول غير مصرح',
+      unexpected: 'حدث خطأ غير متوقع. حاول مرة أخرى.',
+    },
+    scan: {
+      title: 'مسح رمز المحطة',
+      subtitle: 'افتح رابط المحطة من رمز QR للانتقال إلى نموذج الفحص.',
+      loginCta: 'تسجيل دخول الفني',
+      phaseNotice: 'سيتم تفعيل نموذج الفحص في المرحلة الثالثة.',
+      cameraPermissionBody: 'فعّل الكاميرا لمسح QR مباشرة من التطبيق.',
+      enableCamera: 'تفعيل الكاميرا',
+      invalidQr: 'تم مسح QR، لكنه لا يطابق رابط محطة Mawqi3.',
+      manualStationLabel: 'رقم المحطة',
+      manualStationPlaceholder: 'stationId',
+      manualSubtitle: 'أدخل رقم المحطة يدويًا إذا لم يتوفر QR.',
+      webScanCta: 'صفحة المسح على الويب',
+    },
+    theme: {
+      dark: 'الوضع الداكن',
+      light: 'الوضع الفاتح',
+      system: 'النظام',
+    },
+    validation: {
+      invalidUrl: 'أدخل رابطًا صحيحًا.',
+      notesTooLong: 'الملاحظات يجب ألا تتجاوز 500 حرف.',
+      passwordRequired: 'كلمة المرور مطلوبة.',
+      requiredEmail: 'البريد الإلكتروني مطلوب.',
+      stationIdRequired: 'أدخل رقم المحطة.',
+      statusRequired: 'اختر حالة واحدة على الأقل.',
+    },
+    tabs: {
+      home: 'الرئيسية',
+      scan: 'المسح',
+      drafts: 'المسودات',
+      history: 'السجل',
+      settings: 'الإعدادات',
+    },
+    home: {
+      brandSubtitle: 'رفيق الفني اليومي لمحطات الطعوم',
+      title: 'متابعة الزيارات الميدانية',
+      subtitle: 'افتح نموذج التقرير من QR المحطة أو أدخل رقم المحطة يدويًا عند الحاجة.',
+      syncTitle: 'مزامنة المسودات',
+      routeLabel: 'المسار',
+      routeReady: 'جاهز',
+      reviewLabel: 'المراجعات',
+      reviewReady: 'فورية',
+      shortcutsTitle: 'اختصارات التشغيل',
+      draftsCta: 'المسودات',
+    },
+    drafts: {
+      title: 'مسودة تقرير',
+      subtitle: 'مسودات محلية قبل فتح التقرير',
+      stationPlaceholder: 'رقم المحطة',
+      notesPlaceholder: 'ملاحظات',
+      savedAt: 'تاريخ الحفظ',
+      openReport: 'فتح التقرير',
+      deleteDraft: 'حذف',
+      emptyTitle: 'لا توجد مسودات',
+      emptyBody: 'ستظهر هنا التقارير المحفوظة بدون اتصال أو قبل إرسالها.',
+      clearAllTitle: 'مسح كل المسودات؟',
+      clearAllBody: 'سيتم حذف كل المسودات المحلية من هذا الجهاز.',
+    },
+    report: {
+      title: 'تقرير محطة',
+      subtitle: 'سجل حالة المحطة واحفظ التقرير حتى عند انقطاع الاتصال.',
+      stationLabel: 'محطة',
+      statusTitle: 'حالة الفحص',
+      notesLabel: 'ملاحظات',
+      notesPlaceholder: 'أضف ملاحظات قصيرة عن الزيارة',
+      saveOffline: 'حفظ كمسودة',
+      submit: 'إرسال التقرير',
+      queued: 'تم حفظ التقرير في قائمة المزامنة.',
+      submitted: 'تم إرسال التقرير.',
+      syncPending: 'بانتظار المزامنة',
+      synced: 'تمت المزامنة',
+    },
+    history: {
+      title: 'سجل التقارير',
+      subtitle: 'آخر التقارير المحفوظة أو المرسلة من هذا الجهاز.',
+      emptyTitle: 'لا يوجد سجل بعد',
+      emptyBody: 'بعد حفظ أو إرسال تقرير سيظهر هنا حسب التاريخ.',
+      submittedReports: 'التقارير المرسلة',
+      draftReports: 'مسودات بانتظار المزامنة',
+    },
+    settings: {
+      title: 'الإعدادات',
+      subtitle: 'إعدادات التطبيق الميداني',
+      legalTitle: 'الملفات القانونية',
+      languageTitle: 'اللغة',
+      languageArabic: 'العربية',
+      languageEnglish: 'English',
+      languageRestartHint: 'قد يحتاج تغيير اتجاه الواجهة إلى إعادة فتح التطبيق.',
+      themeTitle: 'المظهر',
+      themeCurrent: 'الوضع الحالي',
+      themeLight: 'فاتح',
+      themeDark: 'داكن',
+      themeSystem: 'النظام',
+      webAppTitle: 'بوابة الويب',
+      webAppUrlLabel: 'رابط بوابة الويب',
+      webAppUrlPlaceholder: 'https://example.com',
+      supervisorPortal: 'المشرف',
+      managerPortal: 'المدير',
+      versionTitle: 'إصدار التطبيق',
+      clearDrafts: 'مسح كل المسودات',
+      clearDraftsConfirmTitle: 'مسح كل المسودات؟',
+      clearDraftsConfirmBody: 'لا يمكن التراجع عن هذه العملية.',
+      securityTitle: 'الأمان',
+      securityBody: 'لا يتم تخزين مفاتيح Firebase Admin أو Gemini داخل تطبيق الموبايل. كل العمليات الحساسة تظل على خادم Mawqi3.',
+    },
+    legal: {
+      allRightsReserved: 'جميع الحقوق محفوظة',
+      copyright: 'حقوق النشر',
+      privacy: 'الخصوصية',
+      terms: 'الشروط',
+    },
+    offline: {
+      banner: 'أنت غير متصل. سيتم حفظ التقارير محليًا حتى عودة الاتصال.',
+      syncQueued: 'التقرير محفوظ للمزامنة لاحقًا.',
+      syncOnline: 'عاد الاتصال. يمكنك مزامنة المسودات.',
+    },
+  },
+} as const;
+
+type DeepStringRecord<T> = {
+  readonly [Key in keyof T]: T[Key] extends string ? string : DeepStringRecord<T[Key]>;
+};
+
+export type LocaleStrings = DeepStringRecord<typeof arabicStrings>;
+
+const englishStrings: LocaleStrings = {
+  statusOptionLabels: syncStatusOptionLabelsEnglish,
+  roleLabels: {
+    technician: 'Technician',
+    supervisor: 'Supervisor',
+    manager: 'Manager',
+  },
+  i18n: {
+    appName: 'Mawqi3',
+    appNameArabic: 'موقعي',
+    appTitle: 'Bait Station Management',
+    brandTagline: 'Clear field operations for bait stations and inspection teams',
+    brand: {
+      name: 'Mawqi3',
+      nameArabic: 'موقعي',
+      tagline: 'Clear field operations for bait stations and inspection teams',
+      taglineArabic: 'تشغيل ميداني واضح لمحطات الطعوم وفرق الفحص',
+    },
+    actions: {
+      back: 'Back',
+      backToLogin: 'Back to login',
+      cancel: 'Cancel',
+      clear: 'Clear',
+      close: 'Close',
+      confirm: 'Confirm',
+      continue: 'Continue',
+      delete: 'Delete',
+      done: 'Done',
+      edit: 'Edit',
+      login: 'Log in',
+      logout: 'Log out',
+      loading: 'Loading...',
+      openReport: 'Open report form',
+      openScan: 'Open scanner',
+      retry: 'Try again',
+      save: 'Save',
+      saveDraft: 'Save draft',
+      saving: 'Saving...',
+      submitReport: 'Submit report',
+      submitting: 'Submitting...',
+      syncNow: 'Sync now',
+    },
+    auth: {
+      email: 'Email',
+      emailPlaceholder: 'name@company.com',
+      genericLoginError: 'Could not sign in. Check your details and try again.',
+      inactiveAccount: 'Could not sign in. Check your details and try again.',
+      invalidEmail: 'Enter a valid email address.',
+      loginTitle: 'Team sign in',
+      loginSubtitle: 'Use your company account to continue.',
+      missingProfile: 'Could not sign in. Check your details and try again.',
+      password: 'Password',
+      passwordPlaceholder: '••••••••',
+      passwordRequired: 'Password is required.',
+      rateLimited: 'Too many attempts. Try again later.',
+      sessionExpired: 'Your session expired. Sign in again.',
+      signingIn: 'Signing in...',
+      logoutError: 'Could not log out. Try again.',
+      webLoginCta: 'Open web sign in',
+    },
+    dashboard: {
+      managerTitle: 'Manager dashboard',
+      supervisorTitle: 'Supervisor dashboard',
+      phaseBadge: 'Phase one',
+      protectedRoute: 'Protected route',
+      authReady: 'Secure sign in is enabled',
+      securityReady: 'Role permissions are active',
+      placeholderBody: 'This page is ready for permission checks and will be completed in the next phases.',
+    },
+    insights: {
+      title: 'Smart brief',
+      subtitle: 'A quick read on operational risks and opportunities based on station and report data.',
+      generate: 'Generate brief',
+      generating: 'Generating brief...',
+      generatedAt: 'Last updated',
+      alerts: 'Alerts',
+      recommendations: 'Recommended actions',
+      unavailable: 'Could not generate the brief right now.',
+      sourceGemini: 'Powered by Gemini',
+      sourceFallback: 'Local fallback summary',
+      missingKey: 'GEMINI_API_KEY is not configured, so a local summary was shown instead of Gemini.',
+    },
+    errors: {
+      accessDenied: 'You do not have permission to access this page.',
+      accessDeniedTitle: 'Unauthorized access',
+      unexpected: 'Something went wrong. Try again.',
+    },
+    scan: {
+      title: 'Scan station code',
+      subtitle: 'Open the station link from the QR code to continue to the inspection form.',
+      loginCta: 'Technician sign in',
+      phaseNotice: 'The inspection form will be enabled in phase three.',
+      cameraPermissionBody: 'Enable the camera to scan QR codes directly in the app.',
+      enableCamera: 'Enable camera',
+      invalidQr: 'A QR code was scanned, but it is not a Mawqi3 station link.',
+      manualStationLabel: 'Station ID',
+      manualStationPlaceholder: 'stationId',
+      manualSubtitle: 'Enter the station ID manually if the QR code is unavailable.',
+      webScanCta: 'Web scan page',
+    },
+    theme: {
+      dark: 'Dark mode',
+      light: 'Light mode',
+      system: 'System',
+    },
+    validation: {
+      invalidUrl: 'Enter a valid URL.',
+      notesTooLong: 'Notes must be 500 characters or fewer.',
+      passwordRequired: 'Password is required.',
+      requiredEmail: 'Email is required.',
+      stationIdRequired: 'Enter the station ID.',
+      statusRequired: 'Choose at least one status.',
+    },
+    tabs: {
+      home: 'Home',
+      scan: 'Scan',
+      drafts: 'Drafts',
+      history: 'History',
+      settings: 'Settings',
+    },
+    home: {
+      brandSubtitle: 'A daily field companion for bait stations',
+      title: 'Track field visits',
+      subtitle: 'Open the report form from a station QR code, or enter the station ID manually when needed.',
+      syncTitle: 'Draft sync',
+      routeLabel: 'Route',
+      routeReady: 'Ready',
+      reviewLabel: 'Reviews',
+      reviewReady: 'Live',
+      shortcutsTitle: 'Operations shortcuts',
+      draftsCta: 'Drafts',
+    },
+    drafts: {
+      title: 'Report draft',
+      subtitle: 'Local drafts before opening the report',
+      stationPlaceholder: 'Station ID',
+      notesPlaceholder: 'Notes',
+      savedAt: 'Saved at',
+      openReport: 'Open report',
+      deleteDraft: 'Delete',
+      emptyTitle: 'No drafts',
+      emptyBody: 'Reports saved offline or before submission will appear here.',
+      clearAllTitle: 'Clear all drafts?',
+      clearAllBody: 'All local drafts on this device will be deleted.',
+    },
+    report: {
+      title: 'Station report',
+      subtitle: 'Record station condition and keep the report saved even when offline.',
+      stationLabel: 'Station',
+      statusTitle: 'Inspection status',
+      notesLabel: 'Notes',
+      notesPlaceholder: 'Add short notes about the visit',
+      saveOffline: 'Save as draft',
+      submit: 'Submit report',
+      queued: 'The report was saved to the sync queue.',
+      submitted: 'The report was submitted.',
+      syncPending: 'Waiting to sync',
+      synced: 'Synced',
+    },
+    history: {
+      title: 'Report history',
+      subtitle: 'Recent reports saved or submitted from this device.',
+      emptyTitle: 'No history yet',
+      emptyBody: 'Saved or submitted reports will appear here by date.',
+      submittedReports: 'Submitted reports',
+      draftReports: 'Drafts waiting to sync',
+    },
+    settings: {
+      title: 'Settings',
+      subtitle: 'Field app settings',
+      legalTitle: 'Legal',
+      languageTitle: 'Language',
+      languageArabic: 'العربية',
+      languageEnglish: 'English',
+      languageRestartHint: 'Changing interface direction may require reopening the app.',
+      themeTitle: 'Appearance',
+      themeCurrent: 'Current mode',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeSystem: 'System',
+      webAppTitle: 'Web portal',
+      webAppUrlLabel: 'Web portal URL',
+      webAppUrlPlaceholder: 'https://example.com',
+      supervisorPortal: 'Supervisor',
+      managerPortal: 'Manager',
+      versionTitle: 'App version',
+      clearDrafts: 'Clear all drafts',
+      clearDraftsConfirmTitle: 'Clear all drafts?',
+      clearDraftsConfirmBody: 'This cannot be undone.',
+      securityTitle: 'Security',
+      securityBody: 'Firebase Admin and Gemini keys are never stored in the mobile app. Sensitive operations remain on the Mawqi3 server.',
+    },
+    legal: {
+      allRightsReserved: 'All rights reserved',
+      copyright: 'Copyright',
+      privacy: 'Privacy Policy',
+      terms: 'Terms of Use',
+    },
+    offline: {
+      banner: 'You are offline. Reports will be saved locally until the connection returns.',
+      syncQueued: 'Report saved for later sync.',
+      syncOnline: 'Connection restored. You can sync drafts.',
+    },
+  },
+};
+
+export const localeStrings = {
+  ar: arabicStrings,
+  en: englishStrings,
+} as const satisfies Record<Language, LocaleStrings>;
+
+export const i18n = localeStrings.ar.i18n;
+
+export function isLanguage(value: unknown): value is Language {
+  return typeof value === 'string' && languages.includes(value as Language);
+}
+
+export function getTextDirection(language: Language): TextDirection {
+  return languageDirections[language];
+}
+
+export function getLocaleStrings(language: Language): LocaleStrings {
+  return localeStrings[language];
+}
+
+export async function loadPersistedLanguage(): Promise<Language> {
+  const storedLanguage = await AsyncStorage.getItem(languageStorageKey);
+
+  return isLanguage(storedLanguage) ? storedLanguage : defaultLanguage;
+}
+
+export async function persistLanguage(language: Language): Promise<void> {
+  await AsyncStorage.setItem(languageStorageKey, language);
+}
+
+export function applyLanguageDirection(language: Language): boolean {
+  const shouldUseRtl = getTextDirection(language) === 'rtl';
+  const needsRestart = I18nManager.isRTL !== shouldUseRtl;
+
+  I18nManager.allowRTL(shouldUseRtl);
+  I18nManager.forceRTL(shouldUseRtl);
+
+  return needsRestart;
+}

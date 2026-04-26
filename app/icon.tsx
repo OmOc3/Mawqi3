@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { MAWQI3_MARK_PATH } from "@/components/layout/logo";
 
 export const contentType = "image/png";
 export const size = {
@@ -9,35 +10,10 @@ export const size = {
 export default function Icon() {
   return new ImageResponse(
     (
-      <div
-        style={{
-          alignItems: "center",
-          background: "#020617",
-          borderRadius: 56,
-          color: "#f8fafc",
-          display: "flex",
-          fontFamily: "sans-serif",
-          fontSize: 128,
-          fontWeight: 800,
-          height: "100%",
-          justifyContent: "center",
-          position: "relative",
-          width: "100%",
-        }}
-      >
-        <div
-          style={{
-            background: "#0f766e",
-            borderRadius: 9999,
-            height: 42,
-            position: "absolute",
-            right: 42,
-            top: 42,
-            width: 42,
-          }}
-        />
-        B
-      </div>
+      <svg height="256" viewBox="0 0 100 100" width="256" xmlns="http://www.w3.org/2000/svg">
+        <rect fill="#f8fafc" height="100" rx="22" width="100" />
+        <path d={MAWQI3_MARK_PATH} fill="#0f766e" fillRule="evenodd" />
+      </svg>
     ),
     size,
   );

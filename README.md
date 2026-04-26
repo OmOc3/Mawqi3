@@ -1,6 +1,6 @@
-# Bedoo — إدارة محطات الطعوم
+# Mawqi3 — إدارة محطات الطعوم
 
-Bedoo is an Arabic RTL bait station management system for pest control companies. It helps field technicians submit station inspection reports by QR code, while supervisors and managers review operations from role-protected dashboards.
+Mawqi3 is an Arabic RTL bait station management system for pest control companies. It helps field technicians submit station inspection reports by QR code, while supervisors and managers review operations from role-protected dashboards.
 
 Brand identity rules live in `BRAND.md`.
 
@@ -66,7 +66,7 @@ Copy `.env.example` to `.env.local` and fill the values. Do not commit real secr
 - `ROLE_COOKIE_SECRET`
 - `SESSION_MAX_AGE_SECONDS`
 - `GEMINI_API_KEY`
-- `EXPO_PUBLIC_BEDOO_WEB_BASE_URL`
+- `EXPO_PUBLIC_MAWQI3_WEB_BASE_URL`
 
 ## Run Locally
 

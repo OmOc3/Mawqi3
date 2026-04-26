@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { i18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "bedoo-theme";
+const STORAGE_KEY = "mawqi3-theme";
 
 function applyTheme(theme: "dark" | "light") {
   const root = document.documentElement;

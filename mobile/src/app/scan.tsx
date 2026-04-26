@@ -1,12 +1,15 @@
-import { useState } from 'react';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandHeader, Card, PrimaryButton, ScreenShell, SecondaryButton } from '@/components/bedoo-ui';
+import { BrandHeader, Card, PrimaryButton, ScreenShell, SecondaryButton } from '@/components/mawqi3-ui';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Spacing, WebBaseUrl } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 import { useTheme } from '@/hooks/use-theme';
+import { getApiBaseUrl } from '@/lib/sync/api-client';
 
 function normalizeStationId(value: string): string {
   return value.trim().replace(/^\/+|\/+$/g, '');
@@ -18,16 +21,33 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [lastScannedValue, setLastScannedValue] = useState<string | null>(null);
   const theme = useTheme();
+  const { strings } = useLanguage();
+  const t = strings.scan;
+  const [webAppUrl, setWebAppUrl] = useState(WebBaseUrl);
   const normalizedStationId = normalizeStationId(stationId);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void getApiBaseUrl().then((value) => {
+      if (isMounted) {
+        setWebAppUrl(value);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function openReport() {
     if (!normalizedStationId) {
-      setError('أدخل رقم المحطة أولًا.');
+      setError(strings.validation.stationIdRequired);
       return;
     }
 
     setError(null);
-    Linking.openURL(`${WebBaseUrl}/station/${encodeURIComponent(normalizedStationId)}/report`);
+    router.push({ pathname: '/report/[stationId]', params: { stationId: normalizedStationId } });
   }
 
   function handleBarcodeScanned(result: BarcodeScanningResult) {
@@ -39,24 +59,24 @@ export default function ScanScreen() {
     const match = result.data.match(/\/station\/([^/]+)\/report/);
 
     if (match?.[1]) {
-      setStationId(decodeURIComponent(match[1]));
+      const scannedStationId = decodeURIComponent(match[1]);
+      setStationId(scannedStationId);
+      router.push({ pathname: '/report/[stationId]', params: { stationId: scannedStationId } });
       return;
     }
 
-    setError('تم مسح QR، لكنه لا يطابق رابط محطة Bedoo.');
+    setError(t.invalidQr);
   }
 
   return (
     <ScreenShell>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <BrandHeader subtitle="مسح QR أو إدخال رقم المحطة" />
+          <BrandHeader subtitle={t.subtitle} />
 
           <Card>
-            <ThemedText type="title">مسح محطة</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              استخدم كاميرا الهاتف لمسح QR الموجود على المحطة. إذا لم يفتح الرابط تلقائيًا، أدخل رقم المحطة يدويًا.
-            </ThemedText>
+            <ThemedText type="title">{t.title}</ThemedText>
+            <ThemedText themeColor="textSecondary">{t.manualSubtitle}</ThemedText>
             <View style={[styles.cameraFrame, { borderColor: theme.border, backgroundColor: theme.background }]}>
               {permission?.granted ? (
                 <>
@@ -71,21 +91,21 @@ export default function ScanScreen() {
               ) : (
                 <View style={styles.permissionBox}>
                   <ThemedText type="small" themeColor="textSecondary">
-                    فعّل الكاميرا لمسح QR مباشرة من التطبيق.
+                    {t.cameraPermissionBody}
                   </ThemedText>
-                  <PrimaryButton onPress={requestPermission}>تفعيل الكاميرا</PrimaryButton>
+                  <PrimaryButton onPress={requestPermission}>{t.enableCamera}</PrimaryButton>
                 </View>
               )}
             </View>
           </Card>
 
           <Card>
-            <ThemedText type="smallBold">رقم المحطة</ThemedText>
+            <ThemedText type="smallBold">{t.manualStationLabel}</ThemedText>
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={setStationId}
-              placeholder="stationId"
+              placeholder={t.manualStationPlaceholder}
               placeholderTextColor={theme.textSecondary}
               style={[
                 styles.input,
@@ -98,16 +118,12 @@ export default function ScanScreen() {
               value={stationId}
             />
             {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
-            <PrimaryButton onPress={openReport}>فتح نموذج التقرير</PrimaryButton>
+            <PrimaryButton onPress={openReport}>{strings.actions.openReport}</PrimaryButton>
           </Card>
 
           <View style={styles.actions}>
-            <SecondaryButton onPress={() => Linking.openURL(`${WebBaseUrl}/scan`)}>
-              صفحة المسح على الويب
-            </SecondaryButton>
-            <SecondaryButton onPress={() => Linking.openURL(`${WebBaseUrl}/login`)}>
-              تسجيل الدخول
-            </SecondaryButton>
+            <SecondaryButton onPress={() => Linking.openURL(`${webAppUrl}/scan`)}>{t.webScanCta}</SecondaryButton>
+            <SecondaryButton onPress={() => Linking.openURL(`${webAppUrl}/login`)}>{strings.actions.login}</SecondaryButton>
           </View>
         </ScrollView>
       </SafeAreaView>

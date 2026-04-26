@@ -60,27 +60,27 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const users = [
   {
-    displayName: "مدير بيدو",
-    email: "manager@bedoo.example.com",
-    password: "BedooManager123!",
+    displayName: "مدير موقعي",
+    email: "manager@mawqi3.example.com",
+    password: "Mawqi3Manager123!",
     role: "manager",
   },
   {
-    displayName: "مشرف بيدو",
-    email: "supervisor@bedoo.example.com",
-    password: "BedooSupervisor123!",
+    displayName: "مشرف موقعي",
+    email: "supervisor@mawqi3.example.com",
+    password: "Mawqi3Supervisor123!",
     role: "supervisor",
   },
   {
-    displayName: "فني بيدو 1",
-    email: "technician1@bedoo.example.com",
-    password: "BedooTech123!",
+    displayName: "فني موقعي 1",
+    email: "technician1@mawqi3.example.com",
+    password: "Mawqi3Tech123!",
     role: "technician",
   },
   {
-    displayName: "فني بيدو 2",
-    email: "technician2@bedoo.example.com",
-    password: "BedooTech123!",
+    displayName: "فني موقعي 2",
+    email: "technician2@mawqi3.example.com",
+    password: "Mawqi3Tech123!",
     role: "technician",
   },
 ];

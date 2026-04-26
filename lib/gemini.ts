@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BRAND } from "@/lib/brand";
 import { isRecord } from "@/lib/utils";
 import type { AiInsightsResult } from "@/types";
 
@@ -115,7 +116,7 @@ export async function generateGeminiInsights({
         parts: [
           {
             text:
-              "أنت محلل عمليات عربي لنظام Bedoo. أعد فقط JSON صالحًا بدون markdown أو شرح إضافي. المفاتيح المطلوبة فقط: summary, alerts, recommendations.",
+              `أنت محلل عمليات عربي لنظام ${BRAND.name}. أعد فقط JSON صالحًا بدون markdown أو شرح إضافي. المفاتيح المطلوبة فقط: summary, alerts, recommendations.`,
           },
         ],
       },

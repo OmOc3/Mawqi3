@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Bedoo — إدارة محطات الطعوم",
-    short_name: "Bedoo",
-    description: "إدارة محطات الطعوم وتقارير الفحص الميدانية",
+    name: "Mawqi3 — موقعي",
+    short_name: "Mawqi3",
+    description:
+      "Mawqi3 manages bait stations, QR inspections, field reports, and review workflows. موقعي لإدارة المحطات وتقارير الفحص الميدانية.",
     lang: "ar",
     dir: "rtl",
     start_url: "/scan",

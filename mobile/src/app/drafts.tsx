@@ -1,24 +1,31 @@
-import { useCallback, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
-import { BrandHeader, Card, PrimaryButton, ScreenShell, SecondaryButton } from '@/components/bedoo-ui';
+import { BrandHeader, Card, PrimaryButton, ScreenShell, SecondaryButton } from '@/components/mawqi3-ui';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, Spacing, WebBaseUrl } from '@/constants/theme';
+import { BottomTabInset, Spacing } from '@/constants/theme';
 import { StatusOptions } from '@/constants/status-options';
+import { useLanguage } from '@/contexts/language-context';
 import { deleteDraft, getDrafts, saveDraft, type DraftReport } from '@/lib/drafts';
 import { useTheme } from '@/hooks/use-theme';
-
-const statusLabelByValue = new Map(StatusOptions.map((option) => [option.value, option.label]));
+import type { StatusOption } from '@/lib/sync/types';
 
 export default function DraftsScreen() {
   const [drafts, setDrafts] = useState<DraftReport[]>([]);
   const [notes, setNotes] = useState('');
   const [stationId, setStationId] = useState('');
-  const [status, setStatus] = useState<string[]>([]);
+  const [status, setStatus] = useState<StatusOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
+  const { language, strings } = useLanguage();
+  const t = strings.drafts;
+  const statusLabelKey: 'labelArabic' | 'labelEnglish' = language === 'ar' ? 'labelArabic' : 'labelEnglish';
+  const statusLabelByValue = useMemo<ReadonlyMap<string, string>>(
+    () => new Map(StatusOptions.map((option) => [option.value, option[statusLabelKey]])),
+    [statusLabelKey],
+  );
 
   const refreshDrafts = useCallback(async () => {
     setDrafts(await getDrafts());
@@ -34,12 +41,12 @@ export default function DraftsScreen() {
     const cleanStationId = stationId.trim();
 
     if (!cleanStationId) {
-      setError('أدخل رقم المحطة.');
+      setError(strings.validation.stationIdRequired);
       return;
     }
 
     if (status.length === 0) {
-      setError('اختر حالة واحدة على الأقل.');
+      setError(strings.validation.statusRequired);
       return;
     }
 
@@ -56,7 +63,7 @@ export default function DraftsScreen() {
     await refreshDrafts();
   }
 
-  function toggleStatus(value: string) {
+  function toggleStatus(value: StatusOption) {
     setStatus((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
   }
 
@@ -64,15 +71,15 @@ export default function DraftsScreen() {
     <ScreenShell>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <BrandHeader subtitle="مسودات محلية قبل فتح التقرير" />
+          <BrandHeader subtitle={t.subtitle} />
 
           <Card>
-            <ThemedText type="title">مسودة تقرير</ThemedText>
+            <ThemedText type="title">{t.title}</ThemedText>
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={setStationId}
-              placeholder="رقم المحطة"
+              placeholder={t.stationPlaceholder}
               placeholderTextColor={theme.textSecondary}
               style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
               value={stationId}
@@ -80,27 +87,30 @@ export default function DraftsScreen() {
             <View style={styles.statusGrid}>
               {StatusOptions.map((option) => (
                 <SecondaryButton key={option.value} selected={status.includes(option.value)} onPress={() => toggleStatus(option.value)}>
-                  {option.label}
+                  {option[statusLabelKey]}
                 </SecondaryButton>
               ))}
             </View>
             <TextInput
               multiline
               onChangeText={setNotes}
-              placeholder="ملاحظات"
+              placeholder={t.notesPlaceholder}
               placeholderTextColor={theme.textSecondary}
               style={[styles.notes, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
               textAlignVertical="top"
               value={notes}
             />
             {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
-            <PrimaryButton onPress={createDraft}>حفظ المسودة</PrimaryButton>
+            <PrimaryButton onPress={createDraft}>{strings.actions.saveDraft}</PrimaryButton>
           </Card>
 
           {drafts.map((draft) => (
             <Card key={draft.id}>
-              <ThemedText type="smallBold">محطة {draft.stationId}</ThemedText>
+              <ThemedText type="smallBold">
+                {strings.report.stationLabel} {draft.stationId}
+              </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
+                {t.savedAt}:{' '}
                 {new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(draft.createdAt))}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
@@ -108,10 +118,11 @@ export default function DraftsScreen() {
               </ThemedText>
               {draft.notes ? <ThemedText>{draft.notes}</ThemedText> : null}
               <View style={styles.actions}>
-                <SecondaryButton onPress={() => Linking.openURL(`${WebBaseUrl}/station/${encodeURIComponent(draft.stationId)}/report`)}>
-                  فتح التقرير
+                <SecondaryButton
+                  onPress={() => router.push({ pathname: '/report/[stationId]', params: { stationId: draft.stationId } })}>
+                  {t.openReport}
                 </SecondaryButton>
-                <SecondaryButton onPress={() => removeDraft(draft.id)}>حذف</SecondaryButton>
+                <SecondaryButton onPress={() => removeDraft(draft.id)}>{t.deleteDraft}</SecondaryButton>
               </View>
             </Card>
           ))}

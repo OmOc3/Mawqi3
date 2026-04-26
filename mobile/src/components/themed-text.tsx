@@ -1,6 +1,7 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { Fonts, ThemeColor, Typography } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -10,11 +11,12 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  const { isRtl } = useLanguage();
 
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'text'] },
+        { color: theme[themeColor ?? 'text'], textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
@@ -32,37 +34,44 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 
 const styles = StyleSheet.create({
   small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
+    fontFamily: Fonts.sansMedium,
+    fontSize: Typography.fontSize.sm,
+    lineHeight: Typography.fontSize.sm * Typography.lineHeight.normal,
+    fontWeight: Typography.fontWeight.medium,
   },
   smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
+    fontFamily: Fonts.sansBold,
+    fontSize: Typography.fontSize.sm,
+    lineHeight: Typography.fontSize.sm * Typography.lineHeight.normal,
+    fontWeight: Typography.fontWeight.bold,
   },
   default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
+    fontFamily: Fonts.sans,
+    fontSize: Typography.fontSize.base,
+    lineHeight: Typography.fontSize.base * Typography.lineHeight.normal,
+    fontWeight: Typography.fontWeight.regular,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 800,
-    lineHeight: 36,
+    fontFamily: Fonts.sansHeavy,
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.heavy,
+    lineHeight: Typography.fontSize.xl * Typography.lineHeight.tight,
   },
   subtitle: {
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: 800,
+    fontFamily: Fonts.sansHeavy,
+    fontSize: Typography.fontSize.xxl,
+    lineHeight: Typography.fontSize.xxl * Typography.lineHeight.tight,
+    fontWeight: Typography.fontWeight.heavy,
   },
   link: {
-    lineHeight: 30,
-    fontSize: 14,
+    fontFamily: Fonts.sansMedium,
+    lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
+    fontSize: Typography.fontSize.sm,
   },
   linkPrimary: {
-    lineHeight: 30,
-    fontSize: 14,
+    fontFamily: Fonts.sansMedium,
+    lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
+    fontSize: Typography.fontSize.sm,
     color: '#3c87f7',
   },
   code: {

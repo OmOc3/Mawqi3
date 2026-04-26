@@ -1,5 +1,6 @@
 import { i18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { LogoMarkSvg } from "@/components/layout/logo";
 
 interface BrandProps {
   className?: string;
@@ -11,18 +12,15 @@ export function BrandMark({ className, inverse = false }: Omit<BrandProps, "comp
   return (
     <div
       className={cn(
-        "brand-grid grid h-12 w-12 place-items-center rounded-2xl border text-lg font-extrabold shadow-control",
+        "grid h-12 w-12 place-items-center rounded-2xl border shadow-control",
         inverse
-          ? "border-slate-700 bg-slate-900 text-teal-300"
+          ? "border-slate-700 bg-slate-900 text-white"
           : "border-teal-100 bg-teal-50 text-teal-700 dark:border-slate-700 dark:bg-slate-900 dark:text-teal-300",
         className,
       )}
       aria-hidden="true"
     >
-      <span className="relative block">
-        B
-        <span className="absolute -start-1.5 -top-1.5 h-2.5 w-2.5 rounded-full bg-teal-500" />
-      </span>
+      <LogoMarkSvg className="h-9 w-9" title={i18n.appName} />
     </div>
   );
 }

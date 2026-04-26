@@ -8,7 +8,7 @@
     "android": "EXPO_NO_TELEMETRY=1 expo start --android",
     "ios": "EXPO_NO_TELEMETRY=1 expo start --ios",
     "web": "EXPO_NO_TELEMETRY=1 expo start --web",
-    "lint": "EXPO_NO_TELEMETRY=1 expo lint"
+    "lint": "EXPO_NO_TELEMETRY=1 expo lint --no-cache"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

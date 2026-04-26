@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ManualStationEntry } from "@/components/station/manual-station-entry";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -14,7 +15,7 @@ export default async function ScanInstructionsPage() {
   const session = await getCurrentSession();
 
   return (
-    <main className="flex min-h-dvh items-center bg-slate-50 px-4 py-12 text-right sm:px-6" dir="rtl">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 px-4 py-8 text-right sm:px-6" dir="rtl">
       <section className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-control sm:p-6">
         <div className="mb-6 flex items-start justify-between gap-3">
           <BrandLockup />
@@ -48,6 +49,7 @@ export default async function ScanInstructionsPage() {
           </Link>
         ) : null}
       </section>
+      <CopyrightFooter className="max-w-md px-0" />
     </main>
   );
 }

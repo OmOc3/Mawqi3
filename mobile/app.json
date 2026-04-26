@@ -1,18 +1,23 @@
 {
   "expo": {
-    "name": "Bedoo Field",
-    "slug": "bedoo-field",
+    "name": "Mawqi3",
+    "slug": "mawqi3",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "bedoo",
+    "scheme": "mawqi3",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f766e"
+    },
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#020617",
+        "backgroundColor": "#0f766e",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,13 +33,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "يحتاج Bedoo إلى الكاميرا لمسح رمز QR الخاص بالمحطة."
+          "cameraPermission": "يحتاج Mawqi3 إلى الكاميرا لمسح رمز QR الخاص بالمحطة."
         }
       ],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#020617",
+          "backgroundColor": "#0f766e",
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76

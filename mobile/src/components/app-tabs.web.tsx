@@ -12,25 +12,29 @@ import { Pressable, View, StyleSheet } from 'react-native';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Brand, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useLanguage } from '@/contexts/language-context';
 
 export default function AppTabs() {
+  const { direction, strings } = useLanguage();
+  const tabs = strings.tabs;
+
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
-        <CustomTabList>
+        <CustomTabList direction={direction}>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>الرئيسية</TabButton>
+            <TabButton>{tabs.home}</TabButton>
           </TabTrigger>
           <TabTrigger name="scan" href="/scan" asChild>
-            <TabButton>المسح</TabButton>
+            <TabButton>{tabs.scan}</TabButton>
           </TabTrigger>
           <TabTrigger name="drafts" href="/drafts" asChild>
-            <TabButton>المسودات</TabButton>
+            <TabButton>{tabs.drafts}</TabButton>
           </TabTrigger>
           <TabTrigger name="settings" href="/settings" asChild>
-            <TabButton>الإعدادات</TabButton>
+            <TabButton>{tabs.settings}</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -52,12 +56,16 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   );
 }
 
-export function CustomTabList(props: TabListProps) {
+export function CustomTabList({ direction, ...props }: TabListProps & { direction: 'ltr' | 'rtl' }) {
+  const { strings } = useLanguage();
+
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.innerContainer, { flexDirection: direction === 'rtl' ? 'row' : 'row-reverse' }]}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          {Brand.appNameArabic}
+          {strings.appNameArabic}
         </ThemedText>
 
         {props.children}

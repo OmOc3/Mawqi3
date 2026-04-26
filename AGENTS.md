@@ -1,4 +1,4 @@
-# AGENTS.md — Bedoo بيدو
+# AGENTS.md — Mawqi3 موقعي
 
 > هذا الملف موجه للـ AI coding agents (Codex, Claude Code, إلخ).
 > اقرأه كاملاً قبل تعديل أي ملف.
@@ -9,7 +9,7 @@
 
 | Key | Value |
 |-----|-------|
-| Name | Bedoo — إدارة محطات الطعوم |
+| Name | Mawqi3 — إدارة محطات الطعوم |
 | Purpose | Arabic RTL bait station management system for pest control field teams |
 | Language | TypeScript (strict) — Arabic UI strings |
 | Direction | RTL throughout (`dir="rtl"`) |
