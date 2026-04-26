@@ -5,6 +5,7 @@ import {
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS,
   LOGIN_RATE_LIMIT_WINDOW_MS,
 } from "@/lib/auth/constants";
+import { getAuthSecret } from "@/lib/auth/secrets";
 import { adminDb } from "@/lib/firebase-admin";
 
 interface AuthRateLimitRecord {
@@ -37,22 +38,12 @@ const rateLimitConverter: FirestoreDataConverter<AuthRateLimitRecord> = {
   },
 };
 
-function getRateLimitSecret(): string {
-  const secret = process.env.AUTH_SESSION_SECRET;
-
-  if (!secret || secret.length < 32) {
-    throw new Error("AUTH_SESSION_SECRET must be at least 32 characters.");
-  }
-
-  return secret;
-}
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
 function createRateLimitKey(email: string, ipAddress: string): string {
-  return createHmac("sha256", getRateLimitSecret())
+  return createHmac("sha256", getAuthSecret())
     .update(`${normalizeEmail(email)}|${ipAddress}`)
     .digest("hex");
 }

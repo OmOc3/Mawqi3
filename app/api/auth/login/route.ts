@@ -167,7 +167,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
     setAuthCookies(response, sessionCookie, roleCookie);
 
     return response;
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    console.error(
+      "Failed to complete login.",
+      error instanceof Error ? { message: error.message, name: error.name } : { message: "Unknown error" },
+    );
+
     return NextResponse.json(
       {
         message: i18n.errors.unexpected,

@@ -25,6 +25,19 @@ function getAdminEnv(key: AdminEnvKey): string {
   return value;
 }
 
+function normalizePrivateKey(privateKey: string): string {
+  const normalized = privateKey.replace(/\\n/g, "\n");
+
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    return normalized.slice(1, -1);
+  }
+
+  return normalized;
+}
+
 export function adminApp(): App {
   assertServerOnly();
 
@@ -36,7 +49,7 @@ export function adminApp(): App {
     credential: cert({
       projectId: getAdminEnv("FIREBASE_ADMIN_PROJECT_ID"),
       clientEmail: getAdminEnv("FIREBASE_ADMIN_CLIENT_EMAIL"),
-      privateKey: getAdminEnv("FIREBASE_ADMIN_PRIVATE_KEY").replace(/\\n/g, "\n"),
+      privateKey: normalizePrivateKey(getAdminEnv("FIREBASE_ADMIN_PRIVATE_KEY")),
     }),
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });

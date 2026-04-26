@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types";
+import { getAuthSecret } from "@/lib/auth/secrets";
 
 export interface SignedRolePayload {
   uid: string;
@@ -7,16 +8,6 @@ export interface SignedRolePayload {
 }
 
 const validRoles = new Set<UserRole>(["technician", "supervisor", "manager"]);
-
-function getAuthSecret(): string {
-  const secret = process.env.AUTH_SESSION_SECRET;
-
-  if (!secret || secret.length < 32) {
-    throw new Error("AUTH_SESSION_SECRET must be at least 32 characters.");
-  }
-
-  return secret;
-}
 
 function bytesToHex(bytes: ArrayBuffer): string {
   return Array.from(new Uint8Array(bytes))
