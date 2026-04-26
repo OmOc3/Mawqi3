@@ -1,14 +1,18 @@
 import { router } from 'expo-router';
-import { Linking, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandHeader, Card, ScreenShell, SecondaryButton } from '@/components/mawqi3-ui';
+import { BrandHeader, Card, InputField, ScreenShell, SecondaryButton, useToast } from '@/components/mawqi3-ui';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Brand, Spacing, WebBaseUrl } from '@/constants/theme';
+import { useKeepAwakeMode } from '@/contexts/keep-awake-context';
 import { useLanguage } from '@/contexts/language-context';
+import { useTextScale } from '@/contexts/text-scale-context';
 import { type ThemeMode, useThemeMode } from '@/contexts/theme-context';
+import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { getApiBaseUrl, setApiBaseUrl } from '@/lib/sync/api-client';
+import { signOut } from '@/lib/auth';
 import { type Language } from '@/lib/i18n';
 
 const modes: ThemeMode[] = ['system', 'light', 'dark'];
@@ -33,11 +37,14 @@ const directionRow = {
 } as const;
 
 export default function SettingsScreen() {
-  const { mode, resolvedTheme, setMode, theme } = useThemeMode();
-  const { direction, isRtl, language, needsRestart, setLanguage, strings } = useLanguage();
+  const { mode, resolvedTheme, setMode } = useThemeMode();
+  const { keepAwakeEnabled, setKeepAwakeEnabled } = useKeepAwakeMode();
+  const { largeTextEnabled, setLargeTextEnabled } = useTextScale();
+  const { direction, language, needsRestart, setLanguage, strings } = useLanguage();
   const t = strings.settings;
   const legal = strings.legal;
   const [webAppUrl, setWebAppUrlState] = useState(WebBaseUrl);
+  const { showToast } = useToast();
 
   useEffect(() => {
     let isMounted = true;
@@ -61,12 +68,25 @@ export default function SettingsScreen() {
     }
 
     await setApiBaseUrl(cleanUrl);
+    showToast(strings.actions.save, 'success');
+  }
+
+  async function logout(): Promise<void> {
+    try {
+      await signOut();
+      showToast(t.logoutDone, 'success');
+      await successHaptic();
+      router.replace('/login');
+    } catch {
+      showToast(strings.auth.logoutError, 'error');
+      await errorHaptic();
+    }
   }
 
   return (
     <ScreenShell>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
           <BrandHeader subtitle={t.subtitle} />
 
           <Card>
@@ -100,24 +120,39 @@ export default function SettingsScreen() {
           </Card>
 
           <Card>
+            <ThemedText type="title">{t.largeTextTitle}</ThemedText>
+            <ThemedText themeColor="textSecondary">{t.largeTextBody}</ThemedText>
+            <View style={[styles.modeRow, { flexDirection: directionRow[direction] }]}> 
+              <SecondaryButton selected={largeTextEnabled} onPress={() => setLargeTextEnabled(true)}>
+                {t.enabled}
+              </SecondaryButton>
+              <SecondaryButton selected={!largeTextEnabled} onPress={() => setLargeTextEnabled(false)}>
+                {t.disabled}
+              </SecondaryButton>
+            </View>
+          </Card>
+
+          <Card>
+            <ThemedText type="title">{t.keepAwakeTitle}</ThemedText>
+            <ThemedText themeColor="textSecondary">{t.keepAwakeBody}</ThemedText>
+            <View style={[styles.modeRow, { flexDirection: directionRow[direction] }]}> 
+              <SecondaryButton selected={keepAwakeEnabled} onPress={() => setKeepAwakeEnabled(true)}>
+                {t.enabled}
+              </SecondaryButton>
+              <SecondaryButton selected={!keepAwakeEnabled} onPress={() => setKeepAwakeEnabled(false)}>
+                {t.disabled}
+              </SecondaryButton>
+            </View>
+          </Card>
+
+          <Card>
             <ThemedText type="smallBold">{t.webAppTitle}</ThemedText>
-            <ThemedText type="smallBold">{t.webAppUrlLabel}</ThemedText>
-            <TextInput
+            <InputField
               autoCapitalize="none"
               autoCorrect={false}
+              label={t.webAppUrlLabel}
               onChangeText={setWebAppUrlState}
               placeholder={t.webAppUrlPlaceholder}
-              placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.background,
-                  borderColor: theme.border,
-                  color: theme.text,
-                  textAlign: isRtl ? 'right' : 'left',
-                  writingDirection: direction,
-                },
-              ]}
               value={webAppUrl}
             />
             <View style={[styles.actions, { flexDirection: directionRow[direction] }]}>
@@ -134,6 +169,12 @@ export default function SettingsScreen() {
           <Card>
             <ThemedText type="smallBold">{t.securityTitle}</ThemedText>
             <ThemedText themeColor="textSecondary">{t.securityBody}</ThemedText>
+          </Card>
+
+          <Card variant="danger">
+            <ThemedText type="smallBold">{t.logoutTitle}</ThemedText>
+            <ThemedText themeColor="textSecondary">{t.logoutBody}</ThemedText>
+            <SecondaryButton onPress={() => void logout()}>{t.logoutCta}</SecondaryButton>
           </Card>
 
           <Card>
@@ -160,13 +201,6 @@ const styles = StyleSheet.create({
   modeRow: {
     flexDirection: 'row-reverse',
     gap: Spacing.two,
-  },
-  input: {
-    borderRadius: 14,
-    borderWidth: 1,
-    fontSize: 16,
-    minHeight: 52,
-    paddingHorizontal: Spacing.three,
   },
   safeArea: {
     flex: 1,

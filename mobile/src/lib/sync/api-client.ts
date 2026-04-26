@@ -113,11 +113,18 @@ async function sendRequest<TBody>(
     body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${baseUrl}${normalizePath(path)}`, {
-    body,
-    headers,
-    method,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}${normalizePath(path)}`, {
+      body,
+      headers,
+      method,
+    });
+  } catch {
+    throw new ApiClientError("تعذر الوصول إلى الخادم. تحقق من الاتصال وحاول مرة أخرى.", 0, "NETWORK_ERROR");
+  }
+
   const responseBody = await readResponseBody(response);
 
   return { body: responseBody, response };

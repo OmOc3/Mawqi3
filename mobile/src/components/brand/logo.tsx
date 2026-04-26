@@ -1,175 +1,81 @@
-import { StyleSheet, Text, View } from 'react-native';
+import Svg, { G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
-import { Fonts, Spacing } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 
 export type LogoProps = {
-  variant: 'mark' | 'full' | 'full-en';
-  color?: 'primary' | 'white' | 'dark';
   size?: number;
+  theme: 'light' | 'dark';
+  variant: 'mark' | 'full';
 };
 
-const logoColors: Record<NonNullable<LogoProps['color']>, string> = {
-  primary: '#0f766e',
-  white: '#ffffff',
-  dark: '#020617',
-};
+const palettes = {
+  light: {
+    accent: '#14b8a6',
+    mark: '#0f766e',
+    text: '#0f172a',
+  },
+  dark: {
+    accent: '#5eead4',
+    mark: '#2dd4bf',
+    text: '#f8fafc',
+  },
+} as const;
 
-function LogoMark({ color, size }: { color: string; size: number }) {
-  const strokeWidth = Math.max(2.25, size * 0.06);
-  const innerStrokeWidth = Math.max(2, size * 0.052);
-
+function LogoMarkPaths({ accent, mark }: { accent: string; mark: string }) {
   return (
-    <View style={[styles.mark, { height: size, width: size }]}>
-      <View
-        style={[
-          styles.pinLoop,
-          {
-            borderColor: color,
-            borderRadius: size * 0.27,
-            borderWidth: strokeWidth,
-            height: size * 0.66,
-            left: size * 0.17,
-            top: size * 0.08,
-            width: size * 0.66,
-          },
-        ]}
+    <G>
+      <Path
+        d="M50 6C29.4 6 14 21.4 14 41.1c0 22.8 24.3 40.5 33 46.2a5.6 5.6 0 0 0 6 0c8.7-5.7 33-23.4 33-46.2C86 21.4 70.6 6 50 6Zm0 12c13.8 0 24 9.8 24 23.1 0 13.1-11.7 25.4-19.4 31.8a7.2 7.2 0 0 1-9.2 0C37.7 66.5 26 54.2 26 41.1 26 27.8 36.2 18 50 18Z"
+        fill={mark}
       />
-      <View
-        style={[
-          styles.pinPoint,
-          {
-            borderBottomColor: color,
-            borderBottomWidth: strokeWidth,
-            borderRightColor: color,
-            borderRightWidth: strokeWidth,
-            borderRadius: size * 0.06,
-            height: size * 0.3,
-            left: size * 0.35,
-            top: size * 0.58,
-            width: size * 0.3,
-          },
-        ]}
+      <Path
+        d="M28 60h14.1V42.6c0-5 3.4-8.2 7.9-8.2s7.9 3.2 7.9 8.2V60H72V42.6C72 30.4 62.8 22 50 22S28 30.4 28 42.6V60Zm18.1-15.2h7.8v8h-7.8v-8Z"
+        fill={accent}
       />
-      <View
-        style={[
-          styles.meemBase,
-          {
-            backgroundColor: color,
-            height: innerStrokeWidth,
-            left: size * 0.27,
-            top: size * 0.58,
-            width: size * 0.46,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.meemStem,
-          {
-            backgroundColor: color,
-            height: size * 0.18,
-            left: size * 0.27,
-            top: size * 0.42,
-            width: innerStrokeWidth,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.meemStem,
-          {
-            backgroundColor: color,
-            height: size * 0.18,
-            left: size * 0.7,
-            top: size * 0.42,
-            width: innerStrokeWidth,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.meemSquare,
-          {
-            backgroundColor: color,
-            borderRadius: size * 0.02,
-            height: size * 0.12,
-            left: size * 0.44,
-            top: size * 0.45,
-            width: size * 0.12,
-          },
-        ]}
-      />
-    </View>
+    </G>
   );
 }
 
-export function Logo({ color = 'primary', size = 48, variant }: LogoProps) {
-  const resolvedColor = logoColors[color];
+export function Logo({ size = 48, theme, variant }: LogoProps) {
+  const palette = palettes[theme];
 
   if (variant === 'mark') {
-    return <LogoMark color={resolvedColor} size={size} />;
+    return (
+      <Svg accessibilityLabel="Mawqi3" height={size} role="img" viewBox="0 0 100 100" width={size}>
+        <LogoMarkPaths accent={palette.accent} mark={palette.mark} />
+      </Svg>
+    );
   }
 
-  const isEnglish = variant === 'full-en';
-  const wordmarkSize = size * 0.62;
+  const width = size * 3.35;
 
   return (
-    <View style={[styles.lockup, { gap: Spacing.two, minHeight: size }]}>
-      <LogoMark color={resolvedColor} size={size} />
-      {isEnglish ? (
-        <Text style={[styles.wordmark, styles.wordmarkLatin, { color: resolvedColor, fontSize: wordmarkSize, lineHeight: size }]}>
-          Mawqi3
-        </Text>
-      ) : (
-        <Text style={[styles.wordmark, styles.wordmarkArabic, { color: resolvedColor, fontSize: wordmarkSize, lineHeight: size }]}>
-          موقعي
-        </Text>
-      )}
-    </View>
+    <Svg accessibilityLabel="Mawqi3" height={size} role="img" viewBox="0 0 335 100" width={width}>
+      <Rect fill="transparent" height="100" rx="24" width="335" />
+      <G transform="translate(235 0)">
+        <LogoMarkPaths accent={palette.accent} mark={palette.mark} />
+      </G>
+      <SvgText
+        fill={palette.text}
+        fontFamily={Fonts.sansHeavy}
+        fontSize="42"
+        fontWeight="800"
+        textAnchor="end"
+        x="220"
+        y="48">
+        موقعي
+      </SvgText>
+      <SvgText
+        fill={palette.mark}
+        fontFamily={Fonts.sansMedium}
+        fontSize="18"
+        fontWeight="700"
+        letterSpacing="1.4"
+        textAnchor="end"
+        x="220"
+        y="74">
+        MAWQI3 FIELD
+      </SvgText>
+    </Svg>
   );
 }
-
-const styles = StyleSheet.create({
-  lockup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  mark: {
-    position: 'relative',
-  },
-  meemBase: {
-    borderRadius: 999,
-    position: 'absolute',
-  },
-  meemSquare: {
-    position: 'absolute',
-  },
-  meemStem: {
-    borderRadius: 999,
-    position: 'absolute',
-  },
-  pinLoop: {
-    position: 'absolute',
-  },
-  pinPoint: {
-    position: 'absolute',
-    transform: [{ rotate: '45deg' }],
-  },
-  superscript: {
-    fontFamily: Fonts.sans,
-    fontWeight: '800',
-    lineHeight: 20,
-  },
-  wordmark: {
-    fontFamily: Fonts.sans,
-    fontWeight: '800',
-    includeFontPadding: false,
-    letterSpacing: 0,
-  },
-  wordmarkArabic: {
-    writingDirection: 'rtl',
-  },
-  wordmarkLatin: {
-    writingDirection: 'ltr',
-  },
-});

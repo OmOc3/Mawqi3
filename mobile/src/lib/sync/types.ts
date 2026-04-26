@@ -40,13 +40,13 @@ export interface Station {
   location: string;
   zone?: string;
   coordinates?: Coordinates;
-  qrCodeValue: string;
+  qrCodeValue?: string;
   isActive: boolean;
-  createdAt: FirestoreTimestamp;
-  createdBy: string;
-  updatedAt?: FirestoreTimestamp;
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
   updatedBy?: string;
-  lastVisitedAt?: FirestoreTimestamp;
+  lastVisitedAt?: string;
   totalReports: number;
 }
 
@@ -54,16 +54,17 @@ export interface Report {
   reportId: string;
   stationId: string;
   stationLabel: string;
-  technicianUid: string;
-  technicianName: string;
+  technicianUid?: string;
+  technicianName?: string;
   status: StatusOption[];
+  clientReportId?: string;
   notes?: string;
   photoPaths?: ReportPhotoPaths;
-  submittedAt: FirestoreTimestamp;
+  submittedAt?: string;
   reviewStatus: "pending" | "reviewed" | "rejected";
-  editedAt?: FirestoreTimestamp;
+  editedAt?: string;
   editedBy?: string;
-  reviewedAt?: FirestoreTimestamp;
+  reviewedAt?: string;
   reviewedBy?: string;
   reviewNotes?: string;
 }

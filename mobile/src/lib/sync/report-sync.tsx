@@ -2,7 +2,8 @@
 import { AppState, type AppStateStatus } from 'react-native';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { getDrafts, syncDraft, type DraftReport } from '@/lib/drafts';
+import { getQueuedDrafts, syncDraft, type DraftReport } from '@/lib/drafts';
+import { auth } from '@/lib/sync/firebase';
 
 interface SyncStatusState {
   isSyncing: boolean;
@@ -28,12 +29,17 @@ function useSyncQueueController() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   const refreshPendingCount = useCallback(async () => {
-    const drafts = await getDrafts();
-    setPendingCount(drafts.filter((draft) => draft.synced !== true).length);
+    const drafts = await getQueuedDrafts();
+    setPendingCount(drafts.length);
   }, []);
 
   const syncAllDrafts = useCallback(async () => {
-    const drafts = (await getDrafts()).filter((draft) => draft.synced !== true);
+    if (!auth.currentUser) {
+      await refreshPendingCount();
+      return;
+    }
+
+    const drafts = await getQueuedDrafts();
 
     if (drafts.length === 0) {
       setPendingCount(0);

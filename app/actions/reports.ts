@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server-session";
 import { REPORTS_COL, STATIONS_COL } from "@/lib/collections";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
+import { submitReportWithAdmin } from "@/lib/reports/submit-report";
 import { reviewReportSchema, submitReportSchema } from "@/lib/validation/reports";
 import { writeAuditLog } from "@/lib/audit";
 import type { Report, ReportPhotoPaths, Station } from "@/types";
@@ -134,41 +135,20 @@ export async function submitStationReportAction(
     ...(afterPhotoPath ? { after: afterPhotoPath } : {}),
   };
 
-  await adminDb().runTransaction(async (tx) => {
-    tx.set(reportRef, {
-      reportId: reportRef.id,
-      stationId: parsed.data.stationId,
-      stationLabel: station.label ?? "محطة بدون اسم",
-      technicianUid: session.uid,
-      technicianName: session.user.displayName,
-      status: parsed.data.status,
-      ...(parsed.data.notes ? { notes: parsed.data.notes } : {}),
-      ...(Object.keys(photoPaths).length > 0 ? { photoPaths } : {}),
-      submittedAt: FieldValue.serverTimestamp(),
-      reviewStatus: "pending",
-    });
-    tx.update(stationRef, {
-      lastVisitedAt: FieldValue.serverTimestamp(),
-      totalReports: FieldValue.increment(1),
-    });
-  });
-
-  await writeAuditLog({
+  const result = await submitReportWithAdmin({
     actorUid: session.uid,
     actorRole: session.role,
-    action: "report.submit",
-    entityType: "report",
-    entityId: reportRef.id,
-    metadata: {
-      stationId: parsed.data.stationId,
-      status: parsed.data.status,
-      hasPhotos: Object.keys(photoPaths).length > 0,
-    },
+    reportId: reportRef.id,
+    stationId: parsed.data.stationId,
+    technicianName: session.user.displayName,
+    status: parsed.data.status,
+    notes: parsed.data.notes,
+    photoPaths,
   });
 
   return {
     success: true,
-    reportId: reportRef.id,
+    reportId: result.reportId,
   };
 }
 

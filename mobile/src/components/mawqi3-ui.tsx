@@ -5,10 +5,12 @@ import {
   Modal,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
+  type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +20,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Fonts, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 import { useTheme } from '@/hooks/use-theme';
-import type { StatusOption } from '@/lib/sync/types';
+import { selectionHaptic } from '@/lib/haptics';
+import { languageDateLocales } from '@/lib/i18n';
+import type { Station, StatusOption } from '@/lib/sync/types';
+import type { ReportSyncStatus } from '@/lib/drafts';
 
 type FeedbackVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 type SyncState = 'synced' | 'pending' | 'failed' | 'syncing';
@@ -48,6 +53,13 @@ interface ToastMessage {
 interface ToastContextValue {
   showToast: (message: string, variant?: ToastVariant) => void;
 }
+
+interface InputFieldProps extends TextInputProps {
+  error?: string | null;
+  label: string;
+}
+
+type ChipTone = 'danger' | 'info' | 'neutral' | 'success' | 'warning';
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
@@ -158,6 +170,40 @@ export function ScreenShell({ children }: { children: ReactNode }) {
   );
 }
 
+export function InputField({ error, label, multiline = false, style, ...props }: InputFieldProps) {
+  const theme = useTheme();
+  const { direction, isRtl } = useLanguage();
+
+  return (
+    <View style={styles.fieldGroup}>
+      <ThemedText type="smallBold">{label}</ThemedText>
+      <TextInput
+        multiline={multiline}
+        placeholderTextColor={theme.textSecondary}
+        style={[
+          styles.input,
+          multiline ? styles.inputMultiline : null,
+          {
+            backgroundColor: theme.background,
+            borderColor: error ? theme.danger : theme.border,
+            color: theme.text,
+            textAlign: isRtl ? 'right' : 'left',
+            writingDirection: direction,
+          },
+          style,
+        ]}
+        textAlignVertical={multiline ? 'top' : undefined}
+        {...props}
+      />
+      {error ? (
+        <ThemedText selectable type="smallBold" style={{ color: theme.danger }}>
+          {error}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
 export function Card({ accessibilityLabel, children, disabled, onPress, style, variant = 'default' }: CardProps) {
   const theme = useTheme();
   const { pressIn, pressOut, scale } = usePressScale(0.98);
@@ -175,7 +221,6 @@ export function Card({ accessibilityLabel, children, disabled, onPress, style, v
   if (!onPress) {
     return (
       <Animated.View style={[cardStyle, { transform: [{ scale }] }]}>
-        <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
         {children}
       </Animated.View>
     );
@@ -191,14 +236,21 @@ export function Card({ accessibilityLabel, children, disabled, onPress, style, v
         onPressIn={pressIn}
         onPressOut={pressOut}
         style={cardStyle}>
-        <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
         {children}
       </Pressable>
     </Animated.View>
   );
 }
 
-export function PrimaryButton({ children, disabled, loading = false, onPressIn, onPressOut, ...props }: LoadingButtonProps) {
+export function PrimaryButton({
+  children,
+  disabled,
+  loading = false,
+  onPress,
+  onPressIn,
+  onPressOut,
+  ...props
+}: LoadingButtonProps) {
   const theme = useTheme();
   const { pressIn, pressOut, scale } = usePressScale(0.96);
   const isDisabled = disabled || loading;
@@ -208,6 +260,10 @@ export function PrimaryButton({ children, disabled, loading = false, onPressIn, 
       <Pressable
         accessibilityRole="button"
         disabled={isDisabled}
+        onPress={(event) => {
+          void selectionHaptic();
+          callHandler(onPress, event);
+        }}
         onPressIn={(event) => {
           pressIn();
           callHandler(onPressIn, event);
@@ -236,6 +292,7 @@ export function SecondaryButton({
   children,
   disabled,
   loading = false,
+  onPress,
   selected = false,
   onPressIn,
   onPressOut,
@@ -250,6 +307,10 @@ export function SecondaryButton({
       <Pressable
         accessibilityRole="button"
         disabled={isDisabled}
+        onPress={(event) => {
+          void selectionHaptic();
+          callHandler(onPress, event);
+        }}
         onPressIn={(event) => {
           pressIn();
           callHandler(onPressIn, event);
@@ -282,6 +343,7 @@ export function IconButton({
   icon,
   label,
   loading = false,
+  onPress,
   onPressIn,
   onPressOut,
   ...props
@@ -296,6 +358,10 @@ export function IconButton({
         accessibilityLabel={label}
         accessibilityRole="button"
         disabled={isDisabled}
+        onPress={(event) => {
+          void selectionHaptic();
+          callHandler(onPress, event);
+        }}
         onPressIn={(event) => {
           pressIn();
           callHandler(onPressIn, event);
@@ -357,12 +423,186 @@ export function StatusBadge({ status }: { status: StatusOption }) {
   const { statusOptionLabels } = useLanguage();
   const colors = statusColors[status];
 
+  return <StatusChip backgroundColor={colors.background} label={statusOptionLabels[status]} textColor={colors.text} />;
+}
+
+function chipToneColor(tone: ChipTone, theme: ReturnType<typeof useTheme>): { backgroundColor: string; textColor: string } {
+  if (tone === 'success') {
+    return { backgroundColor: theme.successSoft, textColor: theme.successStrong };
+  }
+
+  if (tone === 'warning') {
+    return { backgroundColor: theme.warningSoft, textColor: theme.warningStrong };
+  }
+
+  if (tone === 'danger') {
+    return { backgroundColor: theme.dangerSoft, textColor: theme.dangerStrong };
+  }
+
+  if (tone === 'info') {
+    return { backgroundColor: theme.infoSoft, textColor: theme.info };
+  }
+
+  return { backgroundColor: theme.background, textColor: theme.textSecondary };
+}
+
+export function StatusChip({
+  backgroundColor,
+  label,
+  textColor,
+  tone = 'neutral',
+}: {
+  backgroundColor?: string;
+  label: string;
+  textColor?: string;
+  tone?: ChipTone;
+}) {
+  const theme = useTheme();
+  const toneColor = chipToneColor(tone, theme);
+
   return (
-    <View style={[styles.statusBadge, { backgroundColor: colors.background }]}>
-      <ThemedText type="smallBold" style={{ color: colors.text }}>
-        {statusOptionLabels[status]}
+    <View style={[styles.statusBadge, { backgroundColor: backgroundColor ?? toneColor.backgroundColor }]}>
+      <ThemedText type="smallBold" style={{ color: textColor ?? toneColor.textColor }}>
+        {label}
       </ThemedText>
     </View>
+  );
+}
+
+export function SyncBanner({
+  actionLabel,
+  body,
+  loading = false,
+  onAction,
+  title,
+  tone = 'neutral',
+}: {
+  actionLabel?: string;
+  body: string;
+  loading?: boolean;
+  onAction?: () => void;
+  title: string;
+  tone?: ChipTone;
+}) {
+  const theme = useTheme();
+  const toneColor = chipToneColor(tone, theme);
+
+  return (
+    <View style={[styles.syncBanner, { backgroundColor: toneColor.backgroundColor, borderColor: toneColor.textColor }]}>
+      <View style={styles.syncBannerCopy}>
+        <ThemedText type="smallBold" style={{ color: toneColor.textColor }}>
+          {title}
+        </ThemedText>
+        <ThemedText type="small" style={{ color: tone === 'neutral' ? theme.textSecondary : toneColor.textColor }}>
+          {body}
+        </ThemedText>
+      </View>
+      {actionLabel && onAction ? (
+        <SecondaryButton loading={loading} onPress={onAction}>
+          {actionLabel}
+        </SecondaryButton>
+      ) : null}
+    </View>
+  );
+}
+
+export function StationSummary({ station }: { station: Station }) {
+  const { strings } = useLanguage();
+
+  return (
+    <Card>
+      <View style={styles.summaryHeader}>
+        <View style={styles.summaryCopy}>
+          <ThemedText type="title">{station.label}</ThemedText>
+          <ThemedText selectable themeColor="textSecondary">
+            {station.location}
+          </ThemedText>
+        </View>
+        <StatusChip label={station.isActive ? strings.report.stationActive : strings.report.stationInactive} tone={station.isActive ? 'success' : 'danger'} />
+      </View>
+      <View style={styles.metaRow}>
+        <StatusChip label={`${strings.report.stationLabel} ${station.stationId}`} tone="info" />
+        {station.zone ? <StatusChip label={station.zone} /> : null}
+      </View>
+    </Card>
+  );
+}
+
+function syncTone(status?: ReportSyncStatus): ChipTone {
+  if (status === 'submitted') {
+    return 'success';
+  }
+
+  if (status === 'failed') {
+    return 'danger';
+  }
+
+  if (status === 'queued' || status === 'syncing') {
+    return 'warning';
+  }
+
+  return 'neutral';
+}
+
+function reviewTone(status?: 'pending' | 'rejected' | 'reviewed'): ChipTone {
+  if (status === 'reviewed') {
+    return 'success';
+  }
+
+  if (status === 'rejected') {
+    return 'danger';
+  }
+
+  return 'warning';
+}
+
+export function ReportCard({
+  action,
+  createdAt,
+  notes,
+  reviewStatus,
+  stationId,
+  stationLabel,
+  status,
+  syncStatus,
+}: {
+  action?: ReactNode;
+  createdAt?: string;
+  notes?: string;
+  reviewStatus?: 'pending' | 'rejected' | 'reviewed';
+  stationId: string;
+  stationLabel?: string;
+  status: StatusOption[];
+  syncStatus?: ReportSyncStatus;
+}) {
+  const { language, strings } = useLanguage();
+  const locale = languageDateLocales[language];
+  const dateLabel = createdAt
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(createdAt))
+    : null;
+  const syncLabel = syncStatus ? strings.syncStatus[syncStatus] : null;
+  const reviewLabel = reviewStatus ? strings.reviewStatus[reviewStatus] : null;
+
+  return (
+    <Card>
+      <View style={styles.reportHeader}>
+        <View style={styles.summaryCopy}>
+          <ThemedText type="smallBold">{stationLabel ?? `${strings.report.stationLabel} ${stationId}`}</ThemedText>
+          <ThemedText selectable type="small" themeColor="textSecondary">
+            {dateLabel ?? stationId}
+          </ThemedText>
+        </View>
+        {syncLabel ? <StatusChip label={syncLabel} tone={syncTone(syncStatus)} /> : null}
+      </View>
+      <View style={styles.metaRow}>
+        {status.map((item) => (
+          <StatusBadge key={item} status={item} />
+        ))}
+      </View>
+      {reviewLabel ? <StatusChip label={reviewLabel} tone={reviewTone(reviewStatus)} /> : null}
+      {notes ? <ThemedText>{notes}</ThemedText> : null}
+      {action}
+    </Card>
   );
 }
 
@@ -660,13 +900,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     position: 'relative',
   },
-  cardAccent: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    top: 0,
-    width: 4,
-  },
   content: {
     flex: 1,
     gap: Spacing.md,
@@ -674,6 +907,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.lg,
     width: '100%',
+  },
+  fieldGroup: {
+    gap: Spacing.xs,
+  },
+  input: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    fontFamily: Fonts.sans,
+    fontSize: Typography.fontSize.base,
+    minHeight: TouchTarget,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  inputMultiline: {
+    minHeight: 132,
+    paddingTop: Spacing.md,
   },
   emptyIcon: {
     alignItems: 'center',
@@ -758,6 +1007,39 @@ const styles = StyleSheet.create({
     minHeight: 36,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
+  },
+  summaryCopy: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  summaryHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row-reverse',
+    gap: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  metaRow: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  reportHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row-reverse',
+    gap: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  syncBanner: {
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row-reverse',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+  },
+  syncBannerCopy: {
+    flex: 2,
+    gap: Spacing.xs,
   },
   syncDot: {
     borderRadius: Radius.full,

@@ -10,7 +10,11 @@ interface ReportsState {
   reports: Report[];
 }
 
-export function useMyReports(technicianId: string): ReportsState {
+function reportTime(report: Report): number {
+  return report.submittedAt ? new Date(report.submittedAt).getTime() : 0;
+}
+
+export function useMyReports(): ReportsState {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,23 +23,13 @@ export function useMyReports(technicianId: string): ReportsState {
     let isMounted = true;
 
     async function loadReports(): Promise<void> {
-      if (!technicianId) {
-        if (isMounted) {
-          setReports([]);
-          setLoading(false);
-          setError(null);
-        }
-
-        return;
-      }
-
       setLoading(true);
 
       try {
-        const nextReports = await apiGet<Report[]>(`/api/mobile/reports?technicianId=${encodeURIComponent(technicianId)}`);
+        const nextReports = await apiGet<Report[]>('/api/mobile/reports');
 
         if (isMounted) {
-          setReports([...nextReports].sort((first, second) => second.submittedAt.seconds - first.submittedAt.seconds));
+          setReports([...nextReports].sort((first, second) => reportTime(second) - reportTime(first)));
           setError(null);
         }
       } catch (error: unknown) {
@@ -60,7 +54,7 @@ export function useMyReports(technicianId: string): ReportsState {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [technicianId]);
+  }, []);
 
   return { error, loading, reports };
 }

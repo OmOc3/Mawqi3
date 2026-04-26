@@ -1,7 +1,8 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { Fonts, ThemeColor, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
+import { useTextScale } from '@/contexts/text-scale-context';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -9,24 +10,38 @@ export type ThemedTextProps = TextProps & {
   themeColor?: ThemeColor;
 };
 
+function scaleTextStyle(style: TextStyle, textScale: number): TextStyle {
+  if (textScale === 1) {
+    return style;
+  }
+
+  return {
+    ...style,
+    ...(typeof style.fontSize === 'number' ? { fontSize: style.fontSize * textScale } : {}),
+    ...(typeof style.lineHeight === 'number' ? { lineHeight: style.lineHeight * textScale } : {}),
+  };
+}
+
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
   const { isRtl } = useLanguage();
+  const { textScale } = useTextScale();
+  const textStyle = StyleSheet.flatten([
+    { color: theme[themeColor ?? 'text'], textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' },
+    type === 'default' && styles.default,
+    type === 'title' && styles.title,
+    type === 'small' && styles.small,
+    type === 'smallBold' && styles.smallBold,
+    type === 'subtitle' && styles.subtitle,
+    type === 'link' && styles.link,
+    type === 'linkPrimary' && styles.linkPrimary,
+    type === 'code' && styles.code,
+    style,
+  ]) as TextStyle;
 
   return (
     <Text
-      style={[
-        { color: theme[themeColor ?? 'text'], textAlign: isRtl ? 'right' : 'left', writingDirection: isRtl ? 'rtl' : 'ltr' },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
-        style,
-      ]}
+      style={scaleTextStyle(textStyle, textScale)}
       {...rest}
     />
   );

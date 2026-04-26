@@ -4,7 +4,7 @@ import { getRoleRedirect } from "@/lib/auth/redirects";
 import { verifySignedRoleCookie } from "@/lib/auth/role-cookie";
 import type { UserRole } from "@/types";
 
-const publicPrefixes = ["/login", "/unauthorized", "/scan", "/api/auth"];
+const publicPrefixes = ["/login", "/unauthorized", "/scan", "/api/auth", "/api/mobile"];
 
 function isPublicPath(pathname: string): boolean {
   return pathname === "/" || publicPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

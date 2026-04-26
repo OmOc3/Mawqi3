@@ -56,6 +56,7 @@ export interface Report {
   technicianUid: string;
   technicianName: string;
   status: StatusOption[];
+  clientReportId?: string;
   notes?: string;
   photoPaths?: ReportPhotoPaths;
   submittedAt: FirestoreTimestamp;
