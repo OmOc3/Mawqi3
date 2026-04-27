@@ -43,9 +43,9 @@ export function WebQrScanner() {
     const isChromeMobile = /Chrome/.test(userAgent) && /Mobile/.test(userAgent);
     const isAndroid = /Android/.test(userAgent);
     const isIOS = /iPhone|iPad|iPod/.test(userAgent);
-    console.log("[QR Scanner] BarcodeDetector available:", hasBarcodeDetector);
-    console.log("[QR Scanner] User agent:", userAgent);
-    console.log("[QR Scanner] Chrome Mobile:", isChromeMobile, "Android:", isAndroid, "iOS:", isIOS);
+    console.warn("[QR Scanner] BarcodeDetector available:", hasBarcodeDetector);
+    console.warn("[QR Scanner] User agent:", userAgent);
+    console.warn("[QR Scanner] Chrome Mobile:", isChromeMobile, "Android:", isAndroid, "iOS:", isIOS);
     return hasBarcodeDetector;
   }, []);
 
