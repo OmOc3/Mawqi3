@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,10 +9,8 @@ import { BottomTabInset, Spacing } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useCurrentUser, signOut } from '@/lib/auth';
-import { getWebPortalPath, isWebPortalRole } from '@/lib/auth-routes';
+import { isWebPortalRole } from '@/lib/auth-routes';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
-import { ApiClientError, apiPost } from '@/lib/sync/api-client';
-import type { MobileWebSessionResponse } from '@/lib/sync/types';
 
 export default function AdminPortalScreen() {
   const currentUser = useCurrentUser();
@@ -26,7 +23,7 @@ export default function AdminPortalScreen() {
   const t = strings.adminPortal;
   const role = currentUser?.profile.role;
   const isPortalUser = role ? isWebPortalRole(role) : false;
-  const portalPath = role && isWebPortalRole(role) ? getWebPortalPath(role) : null;
+  const portalPath = null;
 
   const openPortal = useCallback(async (): Promise<void> => {
     if (!isPortalUser) {
@@ -38,17 +35,11 @@ export default function AdminPortalScreen() {
     setIsOpening(true);
 
     try {
-      const result = await apiPost<MobileWebSessionResponse, Record<string, never>>('/api/mobile/web-session', {});
-
-      await openBrowserAsync(result.url, {
-        presentationStyle: WebBrowserPresentationStyle.AUTOMATIC,
-      });
+      router.replace('/(tabs)');
+      showToast(t.technicianRedirect, 'success');
       await successHaptic();
     } catch (portalError: unknown) {
-      const message =
-        portalError instanceof ApiClientError && portalError.status === 0
-          ? strings.auth.networkError
-          : t.openError;
+      const message = portalError instanceof Error ? portalError.message : t.openError;
 
       setError(message);
       showToast(message, 'error');

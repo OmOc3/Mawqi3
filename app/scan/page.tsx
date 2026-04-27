@@ -5,6 +5,7 @@ import { RoleRedirectWatcher } from "@/components/auth/role-redirect-watcher";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ManualStationEntry } from "@/components/station/manual-station-entry";
+import { WebQrScanner } from "@/components/station/web-qr-scanner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { getCurrentSession } from "@/lib/auth/server-session";
 import { listReportsForTechnician, listStations } from "@/lib/db/repositories";
@@ -147,9 +148,11 @@ export default async function ScanInstructionsPage() {
               </p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
+              <WebQrScanner />
+              <div className="my-4 h-px w-full bg-slate-200" />
               <p className="text-sm font-semibold text-slate-800">إدخال يدوي</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">استخدمه إذا لم يعمل المسح أو كانت الكاميرا غير متاحة.</p>
-              <div className="mt-4">
+              <div className="mt-3">
                 <ManualStationEntry />
               </div>
               {!session ? (
