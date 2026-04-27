@@ -116,6 +116,7 @@ export const stations = sqliteTable(
     updatedAt: timestamp("updated_at"),
     updatedBy: text("updated_by"),
     lastVisitedAt: timestamp("last_visited_at"),
+    lastVisitedBy: text("last_visited_by"),
   },
   (table) => [
     index("stations_created_at_idx").on(table.createdAt),

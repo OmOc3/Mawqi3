@@ -128,6 +128,9 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
                     آخر زيارة
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">
+                    تمت الزيارة بواسطة
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">
                     التقارير
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -164,6 +167,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700">{formatTimestamp(station.lastVisitedAt)}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-teal-700">{station.lastVisitedBy ?? "-"}</td>
                         <td className="px-4 py-3 text-sm text-slate-700">{station.totalReports}</td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap items-center gap-3">

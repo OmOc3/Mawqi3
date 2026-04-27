@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/server-session";
-import { uploadStationImageToCloudinary } from "@/lib/cloudinary/station-images";
+import { deleteStationImageFromCloudinary, uploadStationImageToCloudinary } from "@/lib/cloudinary/station-images";
 import {
   createStationRecord,
   generateNextStationId,
@@ -225,4 +225,60 @@ export async function toggleStationStatusAction(
 
   revalidatePath("/dashboard/manager/stations");
   revalidatePath(`/dashboard/manager/stations/${stationId}`);
+}
+
+export interface DeleteStationImageResult {
+  error?: string;
+  success?: boolean;
+}
+
+export async function deleteStationImageAction(
+  stationId: string,
+  imageUrl: string,
+): Promise<DeleteStationImageResult> {
+  const session = await requireRole(["manager"]);
+  const station = await getStationById(stationId);
+
+  if (!station) {
+    return { error: "المحطة غير موجودة." };
+  }
+
+  const currentPhotoUrls = station.photoUrls ?? [];
+
+  if (!currentPhotoUrls.includes(imageUrl)) {
+    return { error: "الصورة غير موجودة في هذه المحطة." };
+  }
+
+  try {
+    await deleteStationImageFromCloudinary(imageUrl);
+  } catch {
+    // Continue to update DB even if Cloudinary delete fails
+  }
+
+  const updatedPhotoUrls = currentPhotoUrls.filter((url) => url !== imageUrl);
+
+  await updateStationRecord(stationId, {
+    label: station.label,
+    location: station.location,
+    description: station.description,
+    photoUrls: updatedPhotoUrls,
+    zone: station.zone,
+    coordinates: station.coordinates,
+    qrCodeValue: station.qrCodeValue,
+    updatedBy: session.uid,
+  });
+
+  await writeAuditLog({
+    actorUid: session.uid,
+    actorRole: session.role,
+    action: "station.image.delete",
+    entityType: "station",
+    entityId: stationId,
+    metadata: { deletedImageUrl: imageUrl, remainingImages: updatedPhotoUrls.length },
+  });
+
+  revalidatePath("/dashboard/manager/stations");
+  revalidatePath(`/dashboard/manager/stations/${stationId}`);
+
+  return { success: true };
 }

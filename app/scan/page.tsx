@@ -94,6 +94,12 @@ function StationCard({ station }: { station: Station }) {
         <span>آخر زيارة</span>
         <span className="font-semibold">{formatTimestamp(station.lastVisitedAt)}</span>
       </div>
+      {station.lastVisitedBy ? (
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <span>تمت الزيارة بواسطة</span>
+          <span className="font-semibold text-teal-700">{station.lastVisitedBy}</span>
+        </div>
+      ) : null}
       <Link
         className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-600"
         href={`/station/${station.stationId}/report`}

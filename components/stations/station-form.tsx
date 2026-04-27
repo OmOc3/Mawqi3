@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { createStationAction, updateStationAction, type StationActionResult } from "@/app/actions/stations";
+import { createStationAction, deleteStationImageAction, updateStationAction, type DeleteStationImageResult, type StationActionResult } from "@/app/actions/stations";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { stationFormSchema, type StationFormValues } from "@/lib/validation/stations";
@@ -57,6 +57,8 @@ function getFieldError(
 
 export function StationForm({ mode, station }: StationFormProps) {
   const [actionResult, setActionResult] = useState<StationActionResult | null>(null);
+  const [existingPhotoUrls, setExistingPhotoUrls] = useState<string[]>(station?.photoUrls ?? []);
+  const [deletingPhotoUrl, setDeletingPhotoUrl] = useState<string | null>(null);
   const form = useForm<StationFormValues>({
     resolver: zodResolver(stationFormSchema),
     defaultValues: {
@@ -68,6 +70,21 @@ export function StationForm({ mode, station }: StationFormProps) {
       lng: station?.coordinates ? String(station.coordinates.lng) : "",
     },
   });
+
+  async function handleDeletePhoto(photoUrl: string): Promise<void> {
+    if (!station?.stationId) return;
+
+    setDeletingPhotoUrl(photoUrl);
+    const result: DeleteStationImageResult = await deleteStationImageAction(station.stationId, photoUrl);
+
+    if (result.success) {
+      setExistingPhotoUrls((prev) => prev.filter((url) => url !== photoUrl));
+    } else {
+      setActionResult({ error: result.error ?? "تعذر حذف الصورة." });
+    }
+
+    setDeletingPhotoUrl(null);
+  }
 
   async function onSubmit(values: StationFormValues): Promise<void> {
     setActionResult(null);
@@ -165,20 +182,35 @@ export function StationForm({ mode, station }: StationFormProps) {
         />
       </div>
 
-      {station?.photoUrls?.length ? (
+      {existingPhotoUrls.length > 0 ? (
         <div className="space-y-2">
           <p className="text-sm font-semibold text-[var(--foreground)]">صور المحطة الحالية</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            {station.photoUrls.map((photoUrl) => (
-              <Image
-                alt={`صورة المحطة ${station.label}`}
-                className="h-28 w-full rounded-lg border border-slate-200 object-cover"
-                height={112}
-                key={photoUrl}
-                src={photoUrl}
-                unoptimized
-                width={220}
-              />
+            {existingPhotoUrls.map((photoUrl) => (
+              <div className="group relative" key={photoUrl}>
+                <Image
+                  alt={`صورة المحطة ${station?.label ?? ""}`}
+                  className="h-28 w-full rounded-lg border border-slate-200 object-cover"
+                  height={112}
+                  src={photoUrl}
+                  unoptimized
+                  width={220}
+                />
+                <button
+                  className="absolute start-2 top-2 rounded-full bg-red-600 p-1.5 text-white opacity-0 shadow-sm transition-opacity hover:bg-red-700 focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+                  disabled={deletingPhotoUrl === photoUrl}
+                  onClick={() => handleDeletePhoto(photoUrl)}
+                  type="button"
+                >
+                  {deletingPhotoUrl === photoUrl ? (
+                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             ))}
           </div>
         </div>

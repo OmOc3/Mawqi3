@@ -390,6 +390,7 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       .update(stations)
       .set({
         lastVisitedAt: submittedAt,
+        lastVisitedBy: input.technicianName,
         totalReports: sql`${stations.totalReports} + 1`,
       })
       .where(eq(stations.stationId, input.stationId));

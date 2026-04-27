@@ -39,6 +39,7 @@ export function stationFromRow(row: {
   isActive: boolean;
   label: string;
   lastVisitedAt: Date | null;
+  lastVisitedBy: string | null;
   lat: number | null;
   lng: number | null;
   location: string;
@@ -67,6 +68,7 @@ export function stationFromRow(row: {
     updatedAt: toAppTimestamp(row.updatedAt),
     updatedBy: row.updatedBy ?? undefined,
     lastVisitedAt: toAppTimestamp(row.lastVisitedAt),
+    lastVisitedBy: row.lastVisitedBy ?? undefined,
   };
 }
 

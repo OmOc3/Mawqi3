@@ -96,6 +96,19 @@ export function WebQrScanner() {
     setMessage("جاري تشغيل الكاميرا...");
 
     try {
+      // Check permission state first (if supported)
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: "camera" as PermissionName });
+          if (permissionStatus.state === "denied") {
+            setError("تم رفض صلاحية الكاميرا. تأكد من السماح للمتصفح بالوصول في إعدادات الموقع، ثم أعد تحميل الصفحة.");
+            return;
+          }
+        } catch {
+          // Some browsers don't support querying camera permission, continue anyway
+        }
+      }
+
       let stream: MediaStream;
 
       // Mobile Chrome works better with exact constraints sometimes
@@ -247,7 +260,20 @@ export function WebQrScanner() {
       </div>
 
       {message ? <p className="text-xs text-slate-600">{message}</p> : null}
-      {error ? <p className="text-xs font-medium text-red-700">{error}</p> : null}
+      {error ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-medium text-red-700">{error}</p>
+          {error.includes("أعد تحميل الصفحة") ? (
+            <button
+              className="rounded bg-red-100 px-2 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-200"
+              onClick={() => window.location.reload()}
+              type="button"
+            >
+              إعادة تحميل
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {debugInfo ? (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs text-slate-400">معلومات تقنية (للدعم)</summary>

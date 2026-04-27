@@ -111,6 +111,10 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
                 <dd className="mt-1 text-sm text-slate-900">{formatTimestamp(station.lastVisitedAt)}</dd>
               </div>
               <div>
+                <dt className="text-sm font-medium text-slate-500">تمت الزيارة بواسطة</dt>
+                <dd className="mt-1 text-sm font-semibold text-teal-700">{station.lastVisitedBy ?? "غير متاح"}</dd>
+              </div>
+              <div>
                 <dt className="text-sm font-medium text-slate-500">آخر تعديل</dt>
                 <dd className="mt-1 text-sm text-slate-900">{formatTimestamp(station.updatedAt)}</dd>
               </div>

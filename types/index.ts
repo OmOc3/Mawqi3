@@ -44,6 +44,7 @@ export interface Station {
   updatedAt?: AppTimestamp;
   updatedBy?: string;
   lastVisitedAt?: AppTimestamp;
+  lastVisitedBy?: string;
   totalReports: number;
 }
 
