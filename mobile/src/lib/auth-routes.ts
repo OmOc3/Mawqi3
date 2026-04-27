@@ -8,7 +8,8 @@ export function isWebPortalRole(role: UserRole): role is WebPortalRole {
 }
 
 export function getMobileHomeRoute(role: UserRole): MobileHomeRoute {
-  return isWebPortalRole(role) ? '/admin-portal' : '/(tabs)';
+  void role;
+  return '/(tabs)';
 }
 
 export function getWebPortalPath(role: WebPortalRole): '/dashboard/manager' | '/dashboard/supervisor' {

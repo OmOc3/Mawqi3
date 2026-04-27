@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -213,14 +213,6 @@ export default function SettingsScreen() {
                 />
               </View>
             </View>
-            <View style={styles.portalLinks}>
-              <SecondaryButton icon="dashboard" onPress={() => Linking.openURL(`${webAppUrl.replace(/\/$/, '')}/dashboard/supervisor`)}>
-                {t.supervisorPortal}
-              </SecondaryButton>
-              <SecondaryButton icon="dashboard" onPress={() => Linking.openURL(`${webAppUrl.replace(/\/$/, '')}/dashboard/manager`)}>
-                {t.managerPortal}
-              </SecondaryButton>
-            </View>
           </SettingsCard>
 
           <View style={styles.section}>
@@ -295,11 +287,6 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: Typography.fontSize.lg,
-  },
-  portalLinks: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
   },
   profileCard: {
     alignItems: 'center',

@@ -146,7 +146,7 @@ export default function HomeScreen() {
           </View>
 
           <PrimaryButton icon="qr-code" onPress={() => router.push('/(tabs)/scan')}>
-            فتح المسح الضوئي
+            مسح QR بالكاميرا
           </PrimaryButton>
 
           <View style={styles.sectionHeader}>
