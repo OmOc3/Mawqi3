@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ROLE_COOKIE_NAME } from "@/lib/auth/constants";
 import { verifySignedRoleCookie } from "@/lib/auth/role-cookie";
 
-const publicPrefixes = ["/login", "/unauthorized", "/scan", "/api/auth", "/api/mobile"];
+const publicPrefixes = ["/login", "/unauthorized", "/account-disabled", "/scan", "/api/auth", "/api/mobile"];
 
 function isPublicPath(pathname: string): boolean {
   return pathname === "/" || publicPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

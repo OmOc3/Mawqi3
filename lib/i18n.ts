@@ -70,6 +70,9 @@ const ar = {
   errors: {
     accessDenied: "ليست لديك صلاحية للوصول إلى هذه الصفحة.",
     accessDeniedTitle: "وصول غير مصرح",
+    accountDisabled: "تم تعطيل حسابك. يرجى التواصل مع المدير لإعادة تفعيله.",
+    accountDisabledContact: "إذا كنت تعتقد أن هذا خطأ، تواصل مع دعم الشركة.",
+    accountDisabledTitle: "الحساب معطل",
     unexpected: "حدث خطأ غير متوقع. حاول مرة أخرى.",
   },
   scan: {
@@ -152,6 +155,9 @@ const en = {
   errors: {
     accessDenied: "You do not have permission to access this page.",
     accessDeniedTitle: "Unauthorized access",
+    accountDisabled: "Your account has been disabled. Please contact the manager to reactivate it.",
+    accountDisabledContact: "If you believe this is an error, contact company support.",
+    accountDisabledTitle: "Account Disabled",
     unexpected: "An unexpected error occurred. Try again.",
   },
   scan: {
