@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { submitStationReportAction, type SubmitReportActionResult } from "@/app/actions/reports";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ interface ReportFormProps {
   stationLabel: string;
 }
 
-function toFormData(values: SubmitReportValues, beforePhoto?: File, afterPhoto?: File): FormData {
+function toFormData(values: SubmitReportValues): FormData {
   const formData = new FormData();
 
   values.status.forEach((status) => {
@@ -26,14 +26,6 @@ function toFormData(values: SubmitReportValues, beforePhoto?: File, afterPhoto?:
 
   if (values.notes) {
     formData.set("notes", values.notes);
-  }
-
-  if (beforePhoto) {
-    formData.set("beforePhoto", beforePhoto);
-  }
-
-  if (afterPhoto) {
-    formData.set("afterPhoto", afterPhoto);
   }
 
   return formData;
@@ -49,8 +41,6 @@ function getFieldError(
 export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
   const [actionResult, setActionResult] = useState<SubmitReportActionResult | null>(null);
   const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
-  const beforePhotoRef = useRef<HTMLInputElement>(null);
-  const afterPhotoRef = useRef<HTMLInputElement>(null);
   const form = useForm<SubmitReportValues>({
     resolver: zodResolver(submitReportSchema),
     defaultValues: {
@@ -62,9 +52,7 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
 
   async function onSubmit(values: SubmitReportValues): Promise<void> {
     setActionResult(null);
-    const beforePhoto = beforePhotoRef.current?.files?.[0];
-    const afterPhoto = afterPhotoRef.current?.files?.[0];
-    const result = await submitStationReportAction(stationId, toFormData(values, beforePhoto, afterPhoto));
+    const result = await submitStationReportAction(stationId, toFormData(values));
 
     if (result.success) {
       setSubmittedAt(new Date());
@@ -144,33 +132,6 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
             {form.formState.errors.notes?.message ?? getFieldError(actionResult, "notes")}
           </p>
         ) : null}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label className="block text-base font-bold text-slate-900" htmlFor="beforePhoto">
-            صورة قبل الفحص
-          </label>
-          <input
-            accept="image/*"
-            className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700"
-            id="beforePhoto"
-            ref={beforePhotoRef}
-            type="file"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="block text-base font-bold text-slate-900" htmlFor="afterPhoto">
-            صورة بعد الفحص
-          </label>
-          <input
-            accept="image/*"
-            className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700"
-            id="afterPhoto"
-            ref={afterPhotoRef}
-            type="file"
-          />
-        </div>
       </div>
 
       <Button className="w-full py-3 text-base" disabled={form.formState.isSubmitting} isLoading={form.formState.isSubmitting} type="submit">

@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { createStationAction, updateStationAction, type StationActionResult } from "@/app/actions/stations";
@@ -12,6 +13,8 @@ import type { Coordinates } from "@/types";
 interface StationFormProps {
   mode: "create" | "edit";
   station?: {
+    description?: string;
+    photoUrls?: string[];
     stationId: string;
     label: string;
     location: string;
@@ -25,6 +28,10 @@ function toFormData(values: StationFormValues): FormData {
 
   formData.set("label", values.label);
   formData.set("location", values.location);
+
+  if (values.description) {
+    formData.set("description", values.description);
+  }
 
   if (values.zone) {
     formData.set("zone", values.zone);
@@ -55,6 +62,7 @@ export function StationForm({ mode, station }: StationFormProps) {
     defaultValues: {
       label: station?.label ?? "",
       location: station?.location ?? "",
+      description: station?.description ?? "",
       zone: station?.zone ?? "",
       lat: station?.coordinates ? String(station.coordinates.lat) : "",
       lng: station?.coordinates ? String(station.coordinates.lng) : "",
@@ -64,6 +72,12 @@ export function StationForm({ mode, station }: StationFormProps) {
   async function onSubmit(values: StationFormValues): Promise<void> {
     setActionResult(null);
     const formData = toFormData(values);
+    const photoInput = document.getElementById("photos");
+
+    if (photoInput instanceof HTMLInputElement && photoInput.files) {
+      Array.from(photoInput.files).forEach((file) => formData.append("photos", file));
+    }
+
     const result =
       mode === "create"
         ? await createStationAction(formData)
@@ -105,6 +119,23 @@ export function StationForm({ mode, station }: StationFormProps) {
         {...form.register("zone")}
       />
 
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[var(--foreground)]" htmlFor="description">
+          وصف المحطة
+        </label>
+        <textarea
+          className="min-h-28 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--foreground)] shadow-control transition placeholder:text-slate-400 focus:border-[var(--focus)]"
+          id="description"
+          placeholder="مثال: بجوار مدخل المخزن، تحتاج متابعة أسبوعية."
+          {...form.register("description")}
+        />
+        {form.formState.errors.description?.message ?? getFieldError(actionResult, "description") ? (
+          <p className="text-sm font-medium text-[var(--danger)]" role="alert">
+            {form.formState.errors.description?.message ?? getFieldError(actionResult, "description")}
+          </p>
+        ) : null}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           error={form.formState.errors.lat?.message ?? getFieldError(actionResult, "coordinates")}
@@ -126,6 +157,40 @@ export function StationForm({ mode, station }: StationFormProps) {
           type="number"
           {...form.register("lng")}
         />
+      </div>
+
+      {station?.photoUrls?.length ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-[var(--foreground)]">صور المحطة الحالية</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {station.photoUrls.map((photoUrl) => (
+              <Image
+                alt={`صورة المحطة ${station.label}`}
+                className="h-28 w-full rounded-lg border border-slate-200 object-cover"
+                height={112}
+                key={photoUrl}
+                src={photoUrl}
+                unoptimized
+                width={220}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[var(--foreground)]" htmlFor="photos">
+          صور المحطة
+        </label>
+        <input
+          accept="image/jpeg,image/png,image/webp"
+          className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--foreground)] shadow-control file:me-4 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-teal-700"
+          id="photos"
+          multiple
+          name="photos"
+          type="file"
+        />
+        <p className="text-xs leading-5 text-slate-500">يمكن رفع صور JPG أو PNG أو WebP. يتم حفظ الصور في Cloudinary عند ضبط إعداداته.</p>
       </div>
 
       <div className="flex flex-col gap-3 pt-2 sm:flex-row">

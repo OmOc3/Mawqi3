@@ -11,3 +11,4 @@ data/*.db-*
 *.log
 *.tsbuildinfo
 ui-debug.log
+mobile/eslint/

@@ -156,6 +156,11 @@ html.dark .hover\:underline:hover {
 @media (min-width: 1024px) {
   main:has([data-dashboard-nav]) {
     padding-inline-start: 18rem;
+    transition: padding-inline-start 200ms ease;
+  }
+
+  main:has([data-dashboard-nav="collapsed"]) {
+    padding-inline-start: 6rem;
   }
 }
 

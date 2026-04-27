@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, type BetterAuthSession } from "@/lib/auth/better-auth";
 import { requiredTimestamp } from "@/lib/db/mappers";
+import { getActiveAppUser } from "@/lib/db/repositories";
 import type { AppUser, UserRole } from "@/types";
 
 export interface CurrentSession {
@@ -46,7 +47,13 @@ export async function getCurrentSession(): Promise<CurrentSession | null> {
       return null;
     }
 
-    const user = userFromBetterAuth(session.user);
+    const sessionUser = userFromBetterAuth(session.user);
+
+    if (!sessionUser) {
+      return null;
+    }
+
+    const user = await getActiveAppUser(sessionUser.uid);
 
     if (!user) {
       return null;

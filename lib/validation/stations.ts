@@ -26,6 +26,8 @@ export const stationCoordinatesSchema = z.object({
 export const createStationSchema = z.object({
   label: z.string().trim().min(1),
   location: z.string().trim().min(1),
+  description: z.string().trim().max(800).optional(),
+  photoUrls: z.array(z.string().url()).max(8).optional(),
   zone: z.string().trim().optional(),
   coordinates: z.preprocess(
     (value) => (isEmptyCoordinate(value) ? undefined : value),
@@ -38,6 +40,7 @@ export const updateStationSchema = createStationSchema.partial();
 export const stationFormSchema = z.object({
   label: z.string().trim().min(1),
   location: z.string().trim().min(1),
+  description: z.string().trim().max(800).optional(),
   zone: z.string().trim().optional(),
   lat: z.string().trim().optional(),
   lng: z.string().trim().optional(),

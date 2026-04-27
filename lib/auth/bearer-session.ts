@@ -3,6 +3,7 @@ import "server-only";
 import type { NextRequest } from "next/server";
 import { auth, type BetterAuthSession } from "@/lib/auth/better-auth";
 import { requiredTimestamp } from "@/lib/db/mappers";
+import { getActiveAppUser } from "@/lib/db/repositories";
 import { AppError } from "@/lib/errors";
 import type { AppUser, UserRole } from "@/types";
 
@@ -56,7 +57,13 @@ export async function requireBearerRole(request: NextRequest, roles: UserRole[])
     throw new AppError("سجل الدخول قبل استخدام تطبيق الموبايل.", "AUTH_REQUIRED", 401);
   }
 
-  const user = userFromSession(session.user);
+  const sessionUser = userFromSession(session.user);
+
+  if (!sessionUser) {
+    throw new AppError("انتهت الجلسة أو أن الحساب غير نشط.", "AUTH_INVALID_SESSION", 401);
+  }
+
+  const user = await getActiveAppUser(sessionUser.uid);
 
   if (!user) {
     throw new AppError("انتهت الجلسة أو أن الحساب غير نشط.", "AUTH_INVALID_SESSION", 401);

@@ -20,8 +20,10 @@ import type { SharedReviewStatus } from "@/lib/shared/constants";
 export interface CreateStationRecord {
   coordinates?: Coordinates;
   createdBy: string;
+  description?: string;
   label: string;
   location: string;
+  photoUrls?: string[];
   qrCodeValue: string;
   stationId: string;
   zone?: string;
@@ -29,8 +31,10 @@ export interface CreateStationRecord {
 
 export interface UpdateStationRecord {
   coordinates?: Coordinates;
+  description?: string;
   label?: string;
   location?: string;
+  photoUrls?: string[];
   qrCodeValue: string;
   updatedBy: string;
   zone?: string;
@@ -181,7 +185,9 @@ export async function createStationRecord(input: CreateStationRecord): Promise<v
     stationId: input.stationId,
     label: input.label,
     location: input.location,
+    description: input.description,
     zone: input.zone,
+    photoUrls: input.photoUrls,
     lat: input.coordinates?.lat,
     lng: input.coordinates?.lng,
     qrCodeValue: input.qrCodeValue,
@@ -198,7 +204,9 @@ export async function updateStationRecord(stationId: string, input: UpdateStatio
     .set({
       label: input.label,
       location: input.location,
+      description: input.description ?? null,
       zone: input.zone ?? null,
+      photoUrls: input.photoUrls ?? null,
       lat: input.coordinates?.lat ?? null,
       lng: input.coordinates?.lng ?? null,
       qrCodeValue: input.qrCodeValue,
@@ -343,6 +351,8 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       throw new AppError("هذه المحطة غير نشطة.", "STATION_INACTIVE", 409);
     }
 
+    const submittedAt = now();
+
     stationLabel = station.label.trim().length > 0 ? station.label : stationLabel;
 
     await tx.insert(reports).values({
@@ -354,7 +364,7 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       clientReportId: input.clientReportId,
       notes: input.notes,
       photoPaths: input.photoPaths,
-      submittedAt: now(),
+      submittedAt,
       reviewStatus: "pending",
     });
 
@@ -363,19 +373,19 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
     await tx
       .update(stations)
       .set({
-        lastVisitedAt: now(),
+        lastVisitedAt: submittedAt,
         totalReports: sql`${stations.totalReports} + 1`,
       })
       .where(eq(stations.stationId, input.stationId));
-  });
 
-  if (!duplicate) {
-    await writeAuditLogRecord({
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
       actorUid: input.actorUid,
       actorRole: input.actorRole,
       action: "report.submit",
       entityType: "report",
       entityId: reportId,
+      createdAt: submittedAt,
       metadata: {
         stationId: input.stationId,
         status: input.status,
@@ -383,7 +393,7 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
         source: input.clientReportId ? "mobile" : "web",
       },
     });
-  }
+  });
 
   return {
     duplicate,

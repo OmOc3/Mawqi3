@@ -3,12 +3,12 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "EXPO_NO_TELEMETRY=1 expo start",
+    "start": "cross-env EXPO_NO_TELEMETRY=1 expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "EXPO_NO_TELEMETRY=1 expo start --android",
-    "ios": "EXPO_NO_TELEMETRY=1 expo start --ios",
-    "web": "EXPO_NO_TELEMETRY=1 expo start --web",
-    "lint": "EXPO_NO_TELEMETRY=1 expo lint --no-cache"
+    "android": "cross-env EXPO_NO_TELEMETRY=1 expo start --android",
+    "ios": "cross-env EXPO_NO_TELEMETRY=1 expo start --ios",
+    "web": "cross-env EXPO_NO_TELEMETRY=1 expo start --web",
+    "lint": "cross-env EXPO_NO_TELEMETRY=1 expo lint --no-cache"
   },
   "dependencies": {
     "@better-auth/expo": "^1.6.9",
@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^55.0.0",
     "typescript": "~5.9.2"

@@ -42,6 +42,8 @@ export function stationFromRow(row: {
   lat: number | null;
   lng: number | null;
   location: string;
+  description: string | null;
+  photoUrls: string[] | null;
   qrCodeValue: string;
   stationId: string;
   totalReports: number;
@@ -53,7 +55,9 @@ export function stationFromRow(row: {
     stationId: row.stationId,
     label: row.label,
     location: row.location,
+    description: row.description ?? undefined,
     zone: row.zone ?? undefined,
+    photoUrls: row.photoUrls ?? undefined,
     coordinates: coordinatesFromRow(row),
     qrCodeValue: row.qrCodeValue,
     isActive: row.isActive,

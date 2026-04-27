@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { ReportForm } from "@/components/station/report-form";
 import { requireRole } from "@/lib/auth/server-session";
@@ -55,9 +56,20 @@ export default async function StationReportPage({ params }: StationReportPagePro
 
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="rounded-xl bg-slate-50 p-4">
+            {station.photoUrls?.[0] ? (
+              <Image
+                alt={`صورة المحطة ${station.label}`}
+                className="mb-4 h-40 w-full rounded-xl border border-slate-200 object-cover"
+                height={160}
+                src={station.photoUrls[0]}
+                unoptimized
+                width={480}
+              />
+            ) : null}
             <p className="text-sm font-medium text-slate-500">المحطة</p>
             <p className="mt-1 text-lg font-semibold text-slate-900">{station.label ?? "محطة بدون اسم"}</p>
             <p className="mt-1 text-base leading-7 text-slate-600">{station.location ?? "غير محدد"}</p>
+            {station.description ? <p className="mt-2 text-sm leading-6 text-slate-600">{station.description}</p> : null}
           </div>
           <div className="mt-5">
             <ReportForm stationId={stationId} stationLabel={station.label ?? "محطة بدون اسم"} />

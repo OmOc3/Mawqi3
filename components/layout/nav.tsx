@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactElement, SVGProps } from "react";
+import { useEffect, useState, type ReactElement, type SVGProps } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandMark } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -37,6 +37,8 @@ const supervisorItems: NavItem[] = [
 ];
 
 type IconName = "analytics" | "audit" | "dashboard" | "reports" | "stations" | "supervisor" | "tasks" | "team";
+
+const SIDEBAR_STORAGE_KEY = "mawqi3-dashboard-sidebar";
 
 function IconFrame({ children, className, ...props }: SVGProps<SVGSVGElement>) {
   return (
@@ -146,6 +148,35 @@ function SupervisorIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
+  return (
+    <IconFrame className="h-5 w-5">
+      <rect height="16" rx="2" width="16" x="4" y="4" />
+      <path d="M14 4v16" />
+      <path d={isOpen ? "m9 9-3 3 3 3" : "m7 9 3 3-3 3"} />
+    </IconFrame>
+  );
+}
+
+function MobileMenuIcon({ isOpen }: { isOpen: boolean }) {
+  return (
+    <IconFrame className="h-5 w-5">
+      {isOpen ? (
+        <>
+          <path d="M6 6l12 12" />
+          <path d="M18 6 6 18" />
+        </>
+      ) : (
+        <>
+          <path d="M5 7h14" />
+          <path d="M5 12h14" />
+          <path d="M5 17h14" />
+        </>
+      )}
+    </IconFrame>
+  );
+}
+
 const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> = {
   analytics: AnalyticsIcon,
   audit: AuditIcon,
@@ -167,51 +198,186 @@ function isItemActive(pathname: string, href: string): boolean {
 
 export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const items = role === "manager" ? managerItems : supervisorItems;
   const currentPathname = pathname ?? "";
+  const toggleLabel = isSidebarOpen ? "إغلاق القائمة" : "فتح القائمة";
+  const mobileToggleLabel = isMobileNavOpen ? "إغلاق القائمة" : "فتح القائمة";
+
+  useEffect(() => {
+    const storedState = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+
+    if (storedState === "collapsed") {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [currentPathname]);
+
+  function toggleSidebar(): void {
+    setIsSidebarOpen((currentState) => {
+      const nextState = !currentState;
+
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, nextState ? "expanded" : "collapsed");
+
+      return nextState;
+    });
+  }
 
   return (
     <>
+      <button
+        aria-controls="dashboard-mobile-sidebar"
+        aria-expanded={isMobileNavOpen}
+        aria-label={mobileToggleLabel}
+        className="fixed bottom-24 right-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-slate-100 shadow-2xl transition-colors hover:bg-slate-900 lg:hidden"
+        onClick={() => setIsMobileNavOpen((currentState) => !currentState)}
+        title={mobileToggleLabel}
+        type="button"
+      >
+        <MobileMenuIcon isOpen={isMobileNavOpen} />
+        <span className="sr-only">{mobileToggleLabel}</span>
+      </button>
+
+      {isMobileNavOpen ? (
+        <>
+          <button
+            aria-label="إغلاق القائمة"
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsMobileNavOpen(false)}
+            type="button"
+          />
+          <aside
+            className="fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[calc(100vw-3rem)] flex-col bg-slate-950 text-slate-100 shadow-2xl lg:hidden"
+            data-dashboard-nav="mobile-drawer"
+            dir="rtl"
+            id="dashboard-mobile-sidebar"
+          >
+            <div className="border-b border-slate-800 px-5 py-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <BrandMark className="h-12 w-12 rounded-xl border-slate-800 bg-teal-600 text-white" inverse />
+                  <div className="min-w-0">
+                    <p className="text-xl font-extrabold leading-6 text-white">
+                      موقعي
+                      <span className="ms-2 text-sm font-semibold text-slate-400">Mawqi3</span>
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-teal-400">إدارة محطات الطعوم</p>
+                  </div>
+                </div>
+                <button
+                  aria-label="إغلاق القائمة"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                  onClick={() => setIsMobileNavOpen(false)}
+                  title="إغلاق القائمة"
+                  type="button"
+                >
+                  <MobileMenuIcon isOpen />
+                  <span className="sr-only">إغلاق القائمة</span>
+                </button>
+              </div>
+            </div>
+
+            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
+              {items.map((item) => {
+                const isActive = isItemActive(currentPathname, item.href);
+                const Icon = icons[item.icon];
+
+                return (
+                  <Link
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                      isActive ? "bg-teal-600 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-white",
+                    )}
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => setIsMobileNavOpen(false)}
+                  >
+                    <Icon className={cn(isActive ? "text-white" : "text-slate-500")} />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="space-y-3 border-t border-slate-800 p-4">
+              <ThemeToggle className="!w-full !border-slate-800 !bg-slate-900 !text-slate-200 hover:!bg-slate-800 hover:!text-white" />
+              <LogoutButton
+                buttonClassName="!w-full !border-slate-800 !bg-slate-900 !text-slate-200 hover:!bg-slate-800 hover:!text-white"
+                className="text-slate-200"
+              />
+            </div>
+          </aside>
+        </>
+      ) : null}
+
       <aside
-        className="fixed inset-y-0 right-0 z-40 hidden w-64 flex-col bg-slate-950 text-slate-100 shadow-2xl lg:flex"
-        data-dashboard-nav
+        className={cn(
+          "fixed inset-y-0 right-0 z-40 hidden flex-col bg-slate-950 text-slate-100 shadow-2xl transition-[width] duration-200 ease-out lg:flex",
+          isSidebarOpen ? "w-64" : "w-20",
+        )}
+        data-dashboard-nav={isSidebarOpen ? "expanded" : "collapsed"}
+        id="dashboard-sidebar"
         dir="rtl"
       >
-        <div className="border-b border-slate-800 px-5 py-6">
-          <div className="flex items-center gap-3">
-            <BrandMark className="h-12 w-12 rounded-xl border-slate-800 bg-teal-600 text-white" inverse />
-            <div className="min-w-0">
-              <p className="text-xl font-extrabold leading-6 text-white">
-                موقعي
-                <span className="ms-2 text-sm font-semibold text-slate-400">Mawqi3</span>
-              </p>
-              <p className="mt-1 text-xs font-medium text-teal-400">إدارة محطات الطعوم</p>
+        <div className={cn("border-b border-slate-800 py-6", isSidebarOpen ? "px-5" : "px-3")}>
+          <div className={cn("flex items-center gap-3", isSidebarOpen ? "justify-between" : "flex-col")}>
+            <div className={cn("flex min-w-0 items-center gap-3", isSidebarOpen ? "flex-1" : "justify-center")}>
+              <BrandMark className="h-12 w-12 rounded-xl border-slate-800 bg-teal-600 text-white" inverse />
+              <div className={cn("min-w-0", isSidebarOpen ? "block" : "sr-only")}>
+                <p className="text-xl font-extrabold leading-6 text-white">
+                  موقعي
+                  <span className="ms-2 text-sm font-semibold text-slate-400">Mawqi3</span>
+                </p>
+                <p className="mt-1 text-xs font-medium text-teal-400">إدارة محطات الطعوم</p>
+              </div>
             </div>
+            <button
+              aria-controls="dashboard-sidebar"
+              aria-expanded={isSidebarOpen}
+              aria-label={toggleLabel}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+              onClick={toggleSidebar}
+              title={toggleLabel}
+              type="button"
+            >
+              <SidebarToggleIcon isOpen={isSidebarOpen} />
+              <span className="sr-only">{toggleLabel}</span>
+            </button>
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
+        <nav
+          className={cn("min-h-0 flex-1 space-y-1 overflow-y-auto py-5", isSidebarOpen ? "px-3" : "px-2")}
+          aria-label="التنقل الرئيسي"
+        >
           {items.map((item) => {
             const isActive = isItemActive(currentPathname, item.href);
             const Icon = icons[item.icon];
 
             return (
               <Link
+                aria-label={item.label}
                 className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                  "flex min-h-11 items-center gap-3 rounded-xl py-2.5 text-sm font-semibold transition-colors",
+                  isSidebarOpen ? "px-3" : "justify-center px-2",
                   isActive ? "bg-teal-600 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-white",
                 )}
                 href={item.href}
                 key={item.href}
+                title={item.label}
               >
                 <Icon className={cn(isActive ? "text-white" : "text-slate-500")} />
-                <span className="truncate">{item.label}</span>
+                <span className={cn("truncate", isSidebarOpen ? "block" : "sr-only")}>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-slate-800 p-4">
+        <div className={cn("space-y-3 border-t border-slate-800 p-4", isSidebarOpen ? "block" : "hidden")}>
           <ThemeToggle className="!w-full !border-slate-800 !bg-slate-900 !text-slate-200 hover:!bg-slate-800 hover:!text-white" />
           <LogoutButton
             buttonClassName="!w-full !border-slate-800 !bg-slate-900 !text-slate-200 hover:!bg-slate-800 hover:!text-white"
@@ -222,7 +388,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
       <nav
         className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-800 bg-slate-950/95 px-2 py-2 shadow-2xl backdrop-blur lg:hidden"
-        data-dashboard-nav
+        data-dashboard-nav="mobile"
         dir="rtl"
         aria-label="التنقل الرئيسي"
       >

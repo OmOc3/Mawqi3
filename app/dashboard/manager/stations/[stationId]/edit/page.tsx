@@ -29,6 +29,8 @@ export default async function EditStationPage({ params }: EditStationPageProps) 
     stationId: stationRecord.stationId,
     label: stationRecord.label,
     location: stationRecord.location,
+    description: stationRecord.description,
+    photoUrls: stationRecord.photoUrls,
     zone: stationRecord.zone,
     coordinates: stationRecord.coordinates,
   };

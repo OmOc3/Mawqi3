@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { getRoleRedirect } from "@/lib/auth/redirects";
+import { getCurrentSession } from "@/lib/auth/server-session";
 import { i18n } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: i18n.auth.loginTitle,
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await getCurrentSession();
+
+  if (session) {
+    redirect(getRoleRedirect(session.role));
+  }
+
   return (
     <main className="flex min-h-dvh items-center px-4 py-6 sm:px-6">
       <section className="mx-auto w-full max-w-md">

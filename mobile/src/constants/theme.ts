@@ -176,4 +176,4 @@ export const Brand = {
   slug: 'mawqi3',
 } as const;
 
-export const WebBaseUrl = process.env.EXPO_PUBLIC_MAWQI3_WEB_BASE_URL ?? 'http://localhost:3010';
+export const WebBaseUrl = process.env.EXPO_PUBLIC_MAWQI3_WEB_BASE_URL ?? 'http://localhost:3000';

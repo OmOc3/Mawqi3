@@ -72,6 +72,12 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
                 <dt className="text-sm font-medium text-slate-500">الموقع</dt>
                 <dd className="mt-1 text-sm text-slate-900">{station.location}</dd>
               </div>
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-slate-500">وصف المحطة</dt>
+                <dd className="mt-1 text-sm leading-6 text-slate-900">
+                  {station.description ?? "لم يتم إضافة وصف بعد."}
+                </dd>
+              </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">المنطقة</dt>
                 <dd className="mt-1 text-sm text-slate-900">{station.zone ?? "غير محدد"}</dd>
@@ -109,6 +115,24 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
                 </dd>
               </div>
             </dl>
+            {station.photoUrls?.length ? (
+              <div className="mt-6">
+                <h3 className="text-base font-semibold text-slate-800">صور المحطة</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {station.photoUrls.map((photoUrl) => (
+                    <Image
+                      alt={`صورة المحطة ${station.label}`}
+                      className="h-40 w-full rounded-xl border border-slate-200 object-cover"
+                      height={180}
+                      key={photoUrl}
+                      src={photoUrl}
+                      unoptimized
+                      width={320}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-control sm:p-6">
