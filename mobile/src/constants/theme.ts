@@ -115,7 +115,7 @@ export const Typography = {
     regular: '400',
     medium: '500',
     bold: '700',
-    heavy: '800',
+    heavy: '700',
   },
   lineHeight: {
     tight: 1.2,
@@ -176,4 +176,4 @@ export const Brand = {
   slug: 'ecopest',
 } as const;
 
-export const WebBaseUrl = process.env.EXPO_PUBLIC_ECOPEST_WEB_BASE_URL ?? 'http://localhost:3000';
+export const WebBaseUrl = 'https://ecopest-production.vercel.app/';

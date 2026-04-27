@@ -120,6 +120,7 @@ export default function DraftsScreen() {
             <InputField
               autoCapitalize="none"
               autoCorrect={false}
+              contentDirection="ltr"
               label={strings.report.stationLabel}
               onChangeText={setStationId}
               placeholder={t.stationPlaceholder}
@@ -133,7 +134,7 @@ export default function DraftsScreen() {
               ))}
             </View>
             {status.length > 0 ? (
-              <View style={styles.statusPreview}>
+              <View style={[styles.statusPreview, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 {status.map((item) => (
                   <StatusBadge key={item} status={item} />
                 ))}
@@ -157,7 +158,7 @@ export default function DraftsScreen() {
           {queueReports.map((draft) => (
             <ReportCard
               action={
-                <View style={styles.actions}>
+                <View style={[styles.actions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <SecondaryButton onPress={() => void retrySync(draft.id)}>{strings.actions.retry}</SecondaryButton>
                   <SecondaryButton onPress={() => void removeDraft(draft.id)}>{t.deleteDraft}</SecondaryButton>
                 </View>
@@ -181,7 +182,7 @@ export default function DraftsScreen() {
           {drafts.map((draft) => (
             <ReportCard
               action={
-                <View style={styles.actions}>
+                <View style={[styles.actions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <SecondaryButton onPress={() => router.push({ pathname: '/report/[stationId]', params: { stationId: draft.stationId } })}>
                     {t.openReport}
                   </SecondaryButton>
@@ -205,7 +206,6 @@ export default function DraftsScreen() {
 
 const styles = StyleSheet.create({
   actions: {
-    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
@@ -222,7 +222,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   statusPreview: {
-    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: Spacing.two,
   },

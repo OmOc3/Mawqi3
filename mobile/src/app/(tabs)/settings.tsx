@@ -1,13 +1,12 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EcoPestIcon, type EcoPestIconName } from '@/components/icons';
-import { InputField, MobileTopBar, ScreenShell, SecondaryButton, useToast } from '@/components/ecopest-ui';
+import { MobileTopBar, ScreenShell, SecondaryButton, useToast } from '@/components/ecopest-ui';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, Brand, Fonts, Radius, Shadow, Spacing, TouchTarget, Typography, WebBaseUrl } from '@/constants/theme';
+import { BottomTabInset, Brand, Fonts, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
 import { useKeepAwakeMode } from '@/contexts/keep-awake-context';
 import { useLanguage } from '@/contexts/language-context';
 import { useTextScale } from '@/contexts/text-scale-context';
@@ -15,7 +14,6 @@ import { type ThemeMode, useThemeMode } from '@/contexts/theme-context';
 import { useTheme } from '@/hooks/use-theme';
 import { signOut, useCurrentUser } from '@/lib/auth';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
-import { getApiBaseUrl, setApiBaseUrl } from '@/lib/sync/api-client';
 import { type Language } from '@/lib/i18n';
 
 const modes: ThemeMode[] = ['system', 'light', 'dark'];
@@ -55,9 +53,10 @@ function SettingsRow({
   title: string;
 }) {
   const theme = useTheme();
+  const { isRtl } = useLanguage();
 
   return (
-    <View style={styles.settingsRow}>
+    <View style={[styles.settingsRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
       <View style={[styles.rowIcon, { backgroundColor: theme.background }]}>
         <EcoPestIcon color={theme.textSecondary} name={icon} size={25} />
       </View>
@@ -80,38 +79,12 @@ export default function SettingsScreen() {
   const { mode, resolvedTheme, setMode } = useThemeMode();
   const { keepAwakeEnabled, setKeepAwakeEnabled } = useKeepAwakeMode();
   const { largeTextEnabled, setLargeTextEnabled } = useTextScale();
-  const { language, needsRestart, roleLabels, setLanguage, strings } = useLanguage();
+  const { isRtl, language, needsRestart, roleLabels, setLanguage, strings } = useLanguage();
   const currentUser = useCurrentUser();
   const theme = useTheme();
   const t = strings.settings;
   const legal = strings.legal;
-  const [webAppUrl, setWebAppUrlState] = useState(WebBaseUrl);
   const { showToast } = useToast();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    void getApiBaseUrl().then((value) => {
-      if (isMounted) {
-        setWebAppUrlState(value);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  async function saveWebAppUrl(): Promise<void> {
-    const cleanUrl = webAppUrl.trim();
-
-    if (!cleanUrl) {
-      return;
-    }
-
-    await setApiBaseUrl(cleanUrl);
-    showToast(t.webAppUrlSaved, 'success');
-  }
 
   async function logout(): Promise<void> {
     try {
@@ -140,7 +113,16 @@ export default function SettingsScreen() {
             title={t.title}
           />
 
-          <View style={[styles.profileCard, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <View
+            style={[
+              styles.profileCard,
+              Shadow.sm,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.border,
+                flexDirection: isRtl ? 'row-reverse' : 'row',
+              },
+            ]}>
             <View style={[styles.avatar, { backgroundColor: theme.surfaceCardDark }]}>
               <EcoPestIcon color={theme.onPrimary} name="user" size={30} />
             </View>
@@ -152,7 +134,7 @@ export default function SettingsScreen() {
 
           <SettingsCard title={t.appSettingsTitle}>
             <SettingsRow icon="globe" title={t.languageTitle}>
-              <View style={styles.segmented}>
+              <View style={[styles.segmented, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 {languageOptions.map((item) => (
                   <SecondaryButton key={item} selected={language === item} onPress={() => void setLanguage(item)}>
                     {t[languageLabelKeys[item]]}
@@ -167,7 +149,7 @@ export default function SettingsScreen() {
             ) : null}
             <View style={[styles.rowDivider, { backgroundColor: theme.border }]} />
             <SettingsRow icon="moon" subtitle={`${t.themeCurrent}: ${resolvedTheme === 'dark' ? t.themeDark : t.themeLight}`} title={t.themeTitle}>
-              <View style={styles.segmented}>
+              <View style={[styles.segmented, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 {modes.map((item) => (
                   <SecondaryButton key={item} selected={mode === item} onPress={() => setMode(item)}>
                     {t[modeLabelKeys[item]]}
@@ -178,6 +160,10 @@ export default function SettingsScreen() {
             <View style={[styles.rowDivider, { backgroundColor: theme.border }]} />
             <SettingsRow icon="type" title={t.largeTextTitle}>
               <Switch
+                accessibilityHint={t.largeTextBody}
+                accessibilityLabel={t.largeTextTitle}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: largeTextEnabled }}
                 onValueChange={setLargeTextEnabled}
                 thumbColor={theme.backgroundElement}
                 trackColor={{ false: theme.border, true: theme.primaryLight }}
@@ -189,34 +175,31 @@ export default function SettingsScreen() {
           <SettingsCard title={t.dataSyncTitle}>
             <SettingsRow icon="sun" subtitle={t.keepAwakeBody} title={t.keepAwakeTitle}>
               <Switch
+                accessibilityHint={t.keepAwakeBody}
+                accessibilityLabel={t.keepAwakeTitle}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: keepAwakeEnabled }}
                 onValueChange={setKeepAwakeEnabled}
                 thumbColor={theme.backgroundElement}
                 trackColor={{ false: theme.border, true: theme.primaryLight }}
                 value={keepAwakeEnabled}
               />
             </SettingsRow>
-            <View style={[styles.rowDivider, { backgroundColor: theme.border }]} />
-            <SettingsRow icon="link" title={t.webAppTitle} />
-            <View style={styles.webUrlRow}>
-              <SecondaryButton onPress={() => void saveWebAppUrl()}>{strings.actions.save}</SecondaryButton>
-              <View style={styles.webInput}>
-                <InputField
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  label={t.webAppUrlLabel}
-                  onChangeText={setWebAppUrlState}
-                  placeholder={t.webAppUrlPlaceholder}
-                  value={webAppUrl}
-                />
-              </View>
-            </View>
           </SettingsCard>
 
           <View style={styles.section}>
             <ThemedText type="title" style={styles.sectionTitle}>
               {t.accountSecurityTitle}
             </ThemedText>
-            <View style={[styles.securityCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.securityCard,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  flexDirection: isRtl ? 'row-reverse' : 'row',
+                },
+              ]}>
               <EcoPestIcon color={theme.textSecondary} name="shield" size={28} />
               <ThemedText themeColor="textSecondary" style={styles.securityText}>
                 {t.securityBody}
@@ -229,7 +212,7 @@ export default function SettingsScreen() {
             onPress={() => void logout()}
             style={({ pressed }) => [
               styles.logoutButton,
-              { borderColor: theme.danger, opacity: pressed ? 0.76 : 1 },
+              { borderColor: theme.danger, flexDirection: isRtl ? 'row-reverse' : 'row', opacity: pressed ? 0.76 : 1 },
             ]}>
             <EcoPestIcon color={theme.danger} name="logout" size={26} />
             <ThemedText type="title" style={[styles.logoutText, { color: theme.danger }]}>
@@ -270,7 +253,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 2,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     justifyContent: 'center',
     minHeight: 78,
@@ -282,7 +264,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.lg,
     minHeight: 132,
     padding: Spacing.lg,
@@ -332,7 +313,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     padding: Spacing.lg,
   },
@@ -341,7 +321,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   segmented: {
-    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: Spacing.sm,
     justifyContent: 'flex-start',
@@ -354,17 +333,7 @@ const styles = StyleSheet.create({
   },
   settingsRow: {
     alignItems: 'center',
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     minHeight: TouchTarget,
-  },
-  webInput: {
-    flex: 1,
-    minWidth: 190,
-  },
-  webUrlRow: {
-    alignItems: 'flex-end',
-    flexDirection: 'row-reverse',
-    gap: Spacing.sm,
   },
 });

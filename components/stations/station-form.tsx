@@ -107,10 +107,14 @@ export function StationForm({ mode, station }: StationFormProps) {
     setActionResult(result);
   }
 
+  const descriptionError = form.formState.errors.description?.message ?? getFieldError(actionResult, "description");
+
   return (
     <form className="space-y-4" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
       {actionResult?.error ? (
-        <p className="rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700">{actionResult.error}</p>
+        <p className="rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+          {actionResult.error}
+        </p>
       ) : null}
 
       {mode === "create" ? (
@@ -151,14 +155,16 @@ export function StationForm({ mode, station }: StationFormProps) {
           وصف المحطة
         </label>
         <textarea
+          aria-describedby={descriptionError ? "description-error" : undefined}
+          aria-invalid={Boolean(descriptionError)}
           className="min-h-28 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--foreground)] shadow-control transition placeholder:text-slate-400 focus:border-[var(--focus)]"
           id="description"
           placeholder="مثال: بجوار مدخل المخزن، تحتاج متابعة أسبوعية."
           {...form.register("description")}
         />
-        {form.formState.errors.description?.message ?? getFieldError(actionResult, "description") ? (
-          <p className="text-sm font-medium text-[var(--danger)]" role="alert">
-            {form.formState.errors.description?.message ?? getFieldError(actionResult, "description")}
+        {descriptionError ? (
+          <p className="text-sm font-medium text-[var(--danger)]" id="description-error" role="alert">
+            {descriptionError}
           </p>
         ) : null}
       </div>
@@ -213,15 +219,16 @@ export function StationForm({ mode, station }: StationFormProps) {
                   width={220}
                 />
                 <button
+                  aria-label="حذف صورة المحطة"
                   className="absolute start-2 top-2 rounded-full bg-red-600 p-1.5 text-white opacity-0 shadow-sm transition-opacity hover:bg-red-700 focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
                   disabled={deletingPhotoUrl === photoUrl}
                   onClick={() => handleDeletePhoto(photoUrl)}
                   type="button"
                 >
                   {deletingPhotoUrl === photoUrl ? (
-                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span aria-hidden="true" className="block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   ) : (
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}

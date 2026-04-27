@@ -20,10 +20,10 @@ import { LanguageProvider } from '@/contexts/language-context';
 import { TextScaleProvider } from '@/contexts/text-scale-context';
 import { ThemeModeProvider, useThemeMode } from '@/contexts/theme-context';
 import { AuthProvider, useAuthReady, useCurrentUser } from '@/lib/auth';
-import { getMobileHomeRoute } from '@/lib/auth-routes';
 import { SyncProvider } from '@/lib/sync/report-sync';
 
 I18nManager.allowRTL(true);
+I18nManager.forceRTL(true);
 
 export default function TabLayout() {
   return (
@@ -88,21 +88,9 @@ function useAuthRoutes(): void {
       return;
     }
 
-    const homeRoute = getMobileHomeRoute(currentUser.profile.role);
-    const isTechnicianRoute = routeRoot === '(tabs)' || routeRoot === 'report';
-
     if (routeRoot === 'login') {
-      router.replace(homeRoute);
-      return;
-    }
-
-    if (homeRoute === '/admin-portal' && isTechnicianRoute) {
-      router.replace('/admin-portal');
-      return;
-    }
-
-    if (homeRoute === '/(tabs)' && routeRoot === 'admin-portal') {
       router.replace('/(tabs)');
+      return;
     }
   }, [authReady, currentUser, segments]);
 }

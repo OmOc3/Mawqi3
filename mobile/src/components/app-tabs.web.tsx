@@ -14,10 +14,14 @@ import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
+import { useCurrentUser } from '@/lib/auth';
+import { isMobileAdminRole } from '@/lib/auth-routes';
 
 export default function AppTabs() {
   const { direction, strings } = useLanguage();
+  const currentUser = useCurrentUser();
   const tabs = strings.tabs;
+  const isAdminUser = currentUser ? isMobileAdminRole(currentUser.profile.role) : false;
 
   return (
     <Tabs>
@@ -36,6 +40,11 @@ export default function AppTabs() {
           <TabTrigger name="history" href="/(tabs)/history" asChild>
             <TabButton>{tabs.history}</TabButton>
           </TabTrigger>
+          {isAdminUser ? (
+            <TabTrigger name="admin" href="/(tabs)/admin" asChild>
+              <TabButton>{tabs.admin}</TabButton>
+            </TabTrigger>
+          ) : null}
           <TabTrigger name="settings" href="/(tabs)/settings" asChild>
             <TabButton>{tabs.settings}</TabButton>
           </TabTrigger>
@@ -103,6 +112,8 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   tabButtonView: {
+    justifyContent: 'center',
+    minHeight: 44,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,

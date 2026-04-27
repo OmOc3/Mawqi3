@@ -1,6 +1,4 @@
 // Typed API client for mobile-to-web sync with Better Auth cookie authentication.
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { WebBaseUrl } from '@/constants/theme';
 import { readAuthCookieHeader } from '@/lib/auth-client';
 import type { MobileWebSessionResponse } from '@/lib/sync/types';
@@ -9,9 +7,12 @@ type ApiMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT';
 
 export interface ApiClientOptions<TBody = unknown> {
   authenticated?: boolean;
+  authRequiredMessage?: string;
   body?: TBody;
+  fallbackErrorMessage?: string;
   headers?: Record<string, string>;
   method?: ApiMethod;
+  networkErrorMessage?: string;
 }
 
 export class ApiClientError extends Error {
@@ -25,8 +26,6 @@ export class ApiClientError extends Error {
     this.code = code;
   }
 }
-
-const apiBaseUrlStorageKey = 'ecopest-api-base-url';
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -54,12 +53,16 @@ async function readResponseBody(response: Response): Promise<unknown> {
   }
 }
 
-function errorMessageFromBody(body: unknown): string {
+const defaultFallbackErrorMessage = 'Could not complete the request. Check your connection and try again.';
+const defaultAuthRequiredMessage = 'Sign in before syncing data.';
+const defaultNetworkErrorMessage = 'Could not reach the server. Check your connection and try again.';
+
+function errorMessageFromBody(body: unknown, fallbackMessage: string): string {
   if (typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string') {
     return body.message;
   }
 
-  return 'تعذر إكمال الطلب. تحقق من الاتصال وحاول مرة أخرى.';
+  return fallbackMessage;
 }
 
 function errorCodeFromBody(body: unknown): string {
@@ -71,23 +74,21 @@ function errorCodeFromBody(body: unknown): string {
 }
 
 export async function getApiBaseUrl(): Promise<string> {
-  const storedBaseUrl = await AsyncStorage.getItem(apiBaseUrlStorageKey);
-
-  return trimTrailingSlash(storedBaseUrl || WebBaseUrl);
+  return trimTrailingSlash(WebBaseUrl);
 }
 
-export async function setApiBaseUrl(baseUrl: string): Promise<void> {
-  await AsyncStorage.setItem(apiBaseUrlStorageKey, trimTrailingSlash(baseUrl));
+export async function setApiBaseUrl(_baseUrl: string): Promise<void> {
+  return undefined;
 }
 
-async function buildHeaders(headers: Record<string, string>, authenticated: boolean): Promise<Headers> {
+async function buildHeaders(headers: Record<string, string>, authenticated: boolean, authRequiredMessage: string): Promise<Headers> {
   const requestHeaders = new Headers(headers);
 
   if (authenticated) {
     const cookie = await readAuthCookieHeader();
 
     if (!cookie) {
-      throw new ApiClientError('سجل الدخول قبل مزامنة البيانات.', 401, 'auth_required');
+      throw new ApiClientError(authRequiredMessage, 401, 'auth_required');
     }
 
     requestHeaders.set('Cookie', cookie);
@@ -100,7 +101,11 @@ async function sendRequest<TBody>(path: string, options: ApiClientOptions<TBody>
   const baseUrl = await getApiBaseUrl();
   const method = options.method ?? 'GET';
   const hasBody = options.body !== undefined;
-  const headers = await buildHeaders(options.headers ?? {}, options.authenticated ?? true);
+  const headers = await buildHeaders(
+    options.headers ?? {},
+    options.authenticated ?? true,
+    options.authRequiredMessage ?? options.fallbackErrorMessage ?? defaultAuthRequiredMessage,
+  );
   let body: BodyInit | undefined;
 
   if (hasBody && isFormData(options.body)) {
@@ -119,7 +124,7 @@ async function sendRequest<TBody>(path: string, options: ApiClientOptions<TBody>
       method,
     });
   } catch {
-    throw new ApiClientError('تعذر الوصول إلى الخادم. تحقق من الاتصال وحاول مرة أخرى.', 0, 'NETWORK_ERROR');
+    throw new ApiClientError(options.networkErrorMessage ?? options.fallbackErrorMessage ?? defaultNetworkErrorMessage, 0, 'NETWORK_ERROR');
   }
 
   const responseBody = await readResponseBody(response);
@@ -134,7 +139,11 @@ export async function apiRequest<TResponse, TBody = unknown>(
   const result = await sendRequest(path, options);
 
   if (!result.response.ok) {
-    throw new ApiClientError(errorMessageFromBody(result.body), result.response.status, errorCodeFromBody(result.body));
+    throw new ApiClientError(
+      errorMessageFromBody(result.body, options.fallbackErrorMessage ?? defaultFallbackErrorMessage),
+      result.response.status,
+      errorCodeFromBody(result.body),
+    );
   }
 
   return result.body as TResponse;
@@ -152,6 +161,14 @@ export function apiPost<TResponse, TBody = unknown>(
   return apiRequest<TResponse, TBody>(path, { ...options, body, method: 'POST' });
 }
 
-export function createMobileWebSession(): Promise<MobileWebSessionResponse> {
-  return apiRequest<MobileWebSessionResponse>('/api/mobile/web-session', { method: 'POST' });
+export function apiPatch<TResponse, TBody = unknown>(
+  path: string,
+  body: TBody,
+  options: Omit<ApiClientOptions<TBody>, 'body' | 'method'> = {},
+): Promise<TResponse> {
+  return apiRequest<TResponse, TBody>(path, { ...options, body, method: 'PATCH' });
+}
+
+export function createMobileWebSession(options: Omit<ApiClientOptions, 'body' | 'method'> = {}): Promise<MobileWebSessionResponse> {
+  return apiRequest<MobileWebSessionResponse>('/api/mobile/web-session', { ...options, method: 'POST' });
 }

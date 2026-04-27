@@ -21,6 +21,8 @@ declare global {
   }
 }
 
+const scannerFrameIntervalMs = 250;
+
 function extractStationIdFromQr(value: string): string | null {
   const match = value.match(/\/station\/([^/?#]+)\/report/);
 
@@ -32,6 +34,7 @@ export function WebQrScanner() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRequestRef = useRef<number | null>(null);
+  const scannerSessionRef = useRef(0);
   const [isScanning, setIsScanning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,17 +42,12 @@ export function WebQrScanner() {
   const supportsBarcodeDetector = useMemo(() => {
     if (typeof window === "undefined") return false;
     const hasBarcodeDetector = typeof window.BarcodeDetector !== "undefined";
-    const userAgent = navigator.userAgent;
-    const isChromeMobile = /Chrome/.test(userAgent) && /Mobile/.test(userAgent);
-    const isAndroid = /Android/.test(userAgent);
-    const isIOS = /iPhone|iPad|iPod/.test(userAgent);
-    console.warn("[QR Scanner] BarcodeDetector available:", hasBarcodeDetector);
-    console.warn("[QR Scanner] User agent:", userAgent);
-    console.warn("[QR Scanner] Chrome Mobile:", isChromeMobile, "Android:", isAndroid, "iOS:", isIOS);
     return hasBarcodeDetector;
   }, []);
 
   const stopScanner = useCallback(() => {
+    scannerSessionRef.current += 1;
+
     if (frameRequestRef.current !== null) {
       cancelAnimationFrame(frameRequestRef.current);
       frameRequestRef.current = null;
@@ -68,17 +66,20 @@ export function WebQrScanner() {
     }
 
     setIsScanning(false);
+    setMessage(null);
   }, []);
 
   const startScanner = useCallback(async () => {
     // Check for secure context (HTTPS) requirement
     if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setMessage(null);
       setError("الكاميرا تحتاج اتصال آمن (HTTPS). لا يمكن المسح عبر HTTP.");
       return;
     }
 
     // Check if mediaDevices is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMessage(null);
       setError("المتصفح لا يدعم الوصول للكاميرا. جرب متصفح حديث (Chrome, Safari, Edge).");
       return;
     }
@@ -88,11 +89,13 @@ export function WebQrScanner() {
       const isChromeMobile = /Chrome/.test(navigator.userAgent) && /Mobile/.test(navigator.userAgent);
       const browserInfo = isChromeMobile ? " (Chrome Mobile detected)" : "";
       setDebugInfo(`BarcodeDetector API not available${browserInfo}. UserAgent: ${navigator.userAgent.slice(0, 50)}...`);
+      setMessage(null);
       setError("متصفحك لا يدعم ميزة مسح QR التلقائي. استخدم الإدخال اليدوي أو جرب Chrome/Safari المحدث على الكمبيوتر.");
       return;
     }
 
     setError(null);
+    setDebugInfo(null);
     setMessage("جاري تشغيل الكاميرا...");
 
     try {
@@ -101,6 +104,7 @@ export function WebQrScanner() {
         try {
           const permissionStatus = await navigator.permissions.query({ name: "camera" as PermissionName });
           if (permissionStatus.state === "denied") {
+            setMessage(null);
             setError("تم رفض صلاحية الكاميرا. تأكد من السماح للمتصفح بالوصول في إعدادات الموقع، ثم أعد تحميل الصفحة.");
             return;
           }
@@ -122,7 +126,6 @@ export function WebQrScanner() {
           },
         });
       } catch (firstError) {
-        console.warn("First camera attempt failed, trying exact environment:", firstError);
         // Second try: exact environment facing mode
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -132,7 +135,12 @@ export function WebQrScanner() {
             },
           });
         } catch (secondError) {
-          console.warn("Exact environment failed, trying any camera:", secondError);
+          setDebugInfo(
+            [
+              firstError instanceof Error ? firstError.message : String(firstError),
+              secondError instanceof Error ? secondError.message : String(secondError),
+            ].join(" | "),
+          );
           // Final fallback: any camera
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
@@ -152,6 +160,7 @@ export function WebQrScanner() {
 
       video.srcObject = stream;
       await video.play();
+      setMessage("الكاميرا تعمل. وجّهها إلى QR المحطة.");
 
       const BarcodeDetector = window.BarcodeDetector;
       if (!BarcodeDetector) {
@@ -164,21 +173,43 @@ export function WebQrScanner() {
       try {
         detector = new BarcodeDetector({ formats: ["qr_code"] });
       } catch (detectorError) {
-        console.error("BarcodeDetector creation failed:", detectorError);
+        setDebugInfo(detectorError instanceof Error ? detectorError.message : String(detectorError));
         stopScanner();
         setError("تعذر تهيئة ماسح QR. جرب متصفحًا آخر.");
         return;
       }
 
       setIsScanning(true);
+      scannerSessionRef.current += 1;
+      const scannerSession = scannerSessionRef.current;
+      let lastDetectionAt = 0;
 
-      const tick = async (): Promise<void> => {
-        if (!videoRef.current || videoRef.current.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
-          frameRequestRef.current = requestAnimationFrame(() => {
-            void tick();
-          });
+      const scheduleTick = (): void => {
+        if (scannerSessionRef.current !== scannerSession) {
           return;
         }
+
+        frameRequestRef.current = requestAnimationFrame(() => {
+          void tick();
+        });
+      };
+
+      const tick = async (): Promise<void> => {
+        if (scannerSessionRef.current !== scannerSession) {
+          return;
+        }
+
+        if (!videoRef.current || videoRef.current.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
+          scheduleTick();
+          return;
+        }
+
+        const now = performance.now();
+        if (now - lastDetectionAt < scannerFrameIntervalMs) {
+          scheduleTick();
+          return;
+        }
+        lastDetectionAt = now;
 
         try {
           const results = await detector.detect(videoRef.current);
@@ -188,7 +219,7 @@ export function WebQrScanner() {
             const stationId = extractStationIdFromQr(rawValue);
             if (stationId) {
               stopScanner();
-              router.push(`/station/${stationId}/report`);
+              router.push(`/station/${encodeURIComponent(stationId)}/report`);
               return;
             }
 
@@ -198,17 +229,13 @@ export function WebQrScanner() {
           setError("تعذر قراءة QR حاليًا. حرّك الكاميرا قليلاً وحاول مرة أخرى.");
         }
 
-        frameRequestRef.current = requestAnimationFrame(() => {
-          void tick();
-        });
+        scheduleTick();
       };
 
-      frameRequestRef.current = requestAnimationFrame(() => {
-        void tick();
-      });
+      scheduleTick();
     } catch (err) {
-      console.error("Camera access error:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
+      setDebugInfo(errorMessage);
       // Show specific error for debugging
       if (errorMessage.includes("Permission denied") || errorMessage.includes("NotAllowed")) {
         setError("تم رفض صلاحية الكاميرا. تأكد من السماح للمتصفح بالوصول في إعدادات الموقع.");

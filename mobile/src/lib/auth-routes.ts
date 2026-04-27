@@ -1,14 +1,19 @@
 import type { UserRole } from '@/lib/sync/types';
 
-export type MobileHomeRoute = '/(tabs)' | '/admin-portal';
-export type WebPortalRole = 'manager' | 'supervisor';
+export type MobileHomeRoute = '/(tabs)';
+export type MobileAdminRole = 'manager' | 'supervisor';
+export type WebPortalRole = MobileAdminRole;
 
-export function isWebPortalRole(role: UserRole): role is WebPortalRole {
+export function isMobileAdminRole(role: UserRole): role is MobileAdminRole {
   return role === 'manager' || role === 'supervisor';
 }
 
-export function getMobileHomeRoute(role: UserRole): MobileHomeRoute {
-  return isWebPortalRole(role) ? '/admin-portal' : '/(tabs)';
+export function isWebPortalRole(role: UserRole): role is WebPortalRole {
+  return isMobileAdminRole(role);
+}
+
+export function getMobileHomeRoute(_role: UserRole): MobileHomeRoute {
+  return '/(tabs)';
 }
 
 export function getWebPortalPath(role: WebPortalRole): '/dashboard/manager' | '/dashboard/supervisor' {

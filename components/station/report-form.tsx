@@ -85,15 +85,24 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
     );
   }
 
+  const statusError = form.formState.errors.status?.message ?? getFieldError(actionResult, "status");
+  const notesError = form.formState.errors.notes?.message ?? getFieldError(actionResult, "notes");
+
   return (
     <form className="space-y-5" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
       {actionResult?.error ? (
-        <p className="rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700">{actionResult.error}</p>
+        <p className="rounded-lg bg-red-100 px-4 py-3 text-sm font-medium text-red-700" role="alert">
+          {actionResult.error}
+        </p>
       ) : null}
 
       <input type="hidden" value={stationId} {...form.register("stationId")} />
 
-      <fieldset className="space-y-2">
+      <fieldset
+        aria-describedby={statusError ? "status-error" : undefined}
+        aria-invalid={Boolean(statusError)}
+        className="space-y-2"
+      >
         <legend className="mb-2 text-base font-bold text-slate-900">حالة المحطة</legend>
         {statusOptions.map((status) => (
           <label
@@ -109,9 +118,9 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
             <span className="text-base font-medium text-slate-700">{statusOptionLabels[status]}</span>
           </label>
         ))}
-        {form.formState.errors.status?.message || getFieldError(actionResult, "status") ? (
-          <p className="text-sm font-medium text-red-600">
-            {form.formState.errors.status?.message ?? getFieldError(actionResult, "status")}
+        {statusError ? (
+          <p className="text-sm font-medium text-red-600" id="status-error" role="alert">
+            {statusError}
           </p>
         ) : null}
       </fieldset>
@@ -121,15 +130,17 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
           ملاحظات
         </label>
         <textarea
+          aria-describedby={notesError ? "notes-error" : undefined}
+          aria-invalid={Boolean(notesError)}
           className="min-h-24 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-base text-slate-900 placeholder-slate-400 transition-colors focus:border-transparent focus:outline-none focus:ring-2 focus:ring-teal-500"
           id="notes"
           maxLength={500}
           placeholder="اختياري، حتى 500 حرف"
           {...form.register("notes")}
         />
-        {form.formState.errors.notes?.message || getFieldError(actionResult, "notes") ? (
-          <p className="text-sm font-medium text-red-600">
-            {form.formState.errors.notes?.message ?? getFieldError(actionResult, "notes")}
+        {notesError ? (
+          <p className="text-sm font-medium text-red-600" id="notes-error" role="alert">
+            {notesError}
           </p>
         ) : null}
       </div>

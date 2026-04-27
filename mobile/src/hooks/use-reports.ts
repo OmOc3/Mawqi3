@@ -26,7 +26,11 @@ export function useMyReports(fallbackError = 'Could not load reports.'): Reports
       setLoading(true);
 
       try {
-        const nextReports = await apiGet<Report[]>('/api/mobile/reports');
+        const nextReports = await apiGet<Report[]>('/api/mobile/reports', {
+          authRequiredMessage: fallbackError,
+          fallbackErrorMessage: fallbackError,
+          networkErrorMessage: fallbackError,
+        });
 
         if (isMounted) {
           setReports([...nextReports].sort((first, second) => reportTime(second) - reportTime(first)));

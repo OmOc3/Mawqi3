@@ -1,26 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mobileApiErrorResponse } from "@/lib/api/mobile";
+import { mobileStationResponse, type MobileStationResponse } from "@/lib/api/mobile-serializers";
+import { writeAuditLog } from "@/lib/audit";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
-import { getStationById } from "@/lib/db/repositories";
+import { getStationById, toggleStationStatusRecord, updateStationRecord } from "@/lib/db/repositories";
 import { AppError } from "@/lib/errors";
-import type { AppTimestamp, Station } from "@/types";
+import { buildStationReportUrl } from "@/lib/url/base-url";
+import { updateStationSchema } from "@/lib/validation/stations";
 
 export const runtime = "nodejs";
-
-interface MobileStationResponse {
-  createdAt?: string;
-  description?: string;
-  isActive: boolean;
-  label: string;
-  lastVisitedAt?: string;
-  location: string;
-  photoUrls?: string[];
-  stationId: string;
-  totalReports: number;
-  updatedAt?: string;
-  requiresImmediateSupervision: boolean;
-  zone?: string;
-}
 
 interface MobileStationRouteContext {
   params: Promise<{
@@ -28,31 +16,17 @@ interface MobileStationRouteContext {
   }>;
 }
 
-function timestampToIso(value: unknown): string | undefined {
-  const timestamp = value as Partial<AppTimestamp>;
-
-  if (typeof timestamp?.toDate !== "function") {
-    return undefined;
-  }
-
-  return timestamp.toDate().toISOString();
-}
-
-function stationResponse(stationId: string, data: Partial<Station>): MobileStationResponse {
-  return {
-    stationId: data.stationId ?? stationId,
-    label: data.label ?? "محطة بدون اسم",
-    location: data.location ?? "غير محدد",
-    ...(data.description ? { description: data.description } : {}),
-    ...(data.zone ? { zone: data.zone } : {}),
-    ...(data.photoUrls?.length ? { photoUrls: data.photoUrls } : {}),
-    isActive: data.isActive ?? false,
-    requiresImmediateSupervision: data.requiresImmediateSupervision ?? false,
-    totalReports: data.totalReports ?? 0,
-    ...(timestampToIso(data.createdAt) ? { createdAt: timestampToIso(data.createdAt) } : {}),
-    ...(timestampToIso(data.updatedAt) ? { updatedAt: timestampToIso(data.updatedAt) } : {}),
-    ...(timestampToIso(data.lastVisitedAt) ? { lastVisitedAt: timestampToIso(data.lastVisitedAt) } : {}),
+interface UpdateStationBody {
+  action?: "toggleActive";
+  coordinates?: {
+    lat: number;
+    lng: number;
   };
+  description?: string;
+  label?: string;
+  location?: string;
+  requiresImmediateSupervision?: boolean;
+  zone?: string;
 }
 
 export async function GET(
@@ -68,7 +42,93 @@ export async function GET(
       throw new AppError("المحطة غير موجودة.", "STATION_NOT_FOUND", 404);
     }
 
-    return NextResponse.json(stationResponse(station.stationId, station));
+    return NextResponse.json(mobileStationResponse(station.stationId, station));
+  } catch (error: unknown) {
+    return mobileApiErrorResponse(error);
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: MobileStationRouteContext,
+): Promise<NextResponse<MobileStationResponse | { code: string; message: string }>> {
+  try {
+    const session = await requireBearerRole(request, ["manager"]);
+    const { stationId } = await params;
+    const station = await getStationById(stationId);
+
+    if (!station) {
+      throw new AppError("المحطة غير موجودة.", "STATION_NOT_FOUND", 404);
+    }
+
+    const body = (await request.json()) as UpdateStationBody;
+
+    if (body.action === "toggleActive") {
+      const nextIsActive = !station.isActive;
+
+      await toggleStationStatusRecord(stationId, nextIsActive, session.uid);
+      await writeAuditLog({
+        actorUid: session.uid,
+        actorRole: session.role,
+        action: nextIsActive ? "station.activate" : "station.deactivate",
+        entityType: "station",
+        entityId: stationId,
+        metadata: { isActive: nextIsActive, source: "mobile" },
+      });
+
+      return NextResponse.json(mobileStationResponse(stationId, { ...station, isActive: nextIsActive }));
+    }
+
+    const parsed = updateStationSchema.safeParse({
+      label: body.label ?? station.label,
+      location: body.location ?? station.location,
+      description: body.description,
+      photoUrls: station.photoUrls,
+      zone: body.zone,
+      coordinates: body.coordinates,
+      requiresImmediateSupervision: body.requiresImmediateSupervision ?? station.requiresImmediateSupervision,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          code: "MOBILE_STATION_INVALID",
+          message: "تحقق من بيانات المحطة وحاول مرة أخرى.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const qrCodeValue = await buildStationReportUrl(stationId);
+
+    await updateStationRecord(stationId, {
+      label: parsed.data.label,
+      location: parsed.data.location,
+      description: parsed.data.description,
+      photoUrls: parsed.data.photoUrls,
+      zone: parsed.data.zone,
+      coordinates: parsed.data.coordinates,
+      qrCodeValue,
+      requiresImmediateSupervision: parsed.data.requiresImmediateSupervision,
+      updatedBy: session.uid,
+    });
+    await writeAuditLog({
+      actorUid: session.uid,
+      actorRole: session.role,
+      action: "station.update",
+      entityType: "station",
+      entityId: stationId,
+      metadata: { ...parsed.data, source: "mobile" },
+    });
+
+    return NextResponse.json(
+      mobileStationResponse(stationId, {
+        ...station,
+        ...parsed.data,
+        qrCodeValue,
+        updatedBy: session.uid,
+      }),
+    );
   } catch (error: unknown) {
     return mobileApiErrorResponse(error);
   }

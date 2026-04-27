@@ -78,13 +78,21 @@ function StatCard({
 
 function RecentReportItem({ locale, report }: { locale: string; report: DraftReport }) {
   const theme = useTheme();
-  const { strings } = useLanguage();
+  const { isRtl, strings } = useLanguage();
   const title = report.stationLabel ?? `${strings.report.stationLabel} #${report.stationId}`;
   const statusTone = report.syncStatus === 'submitted' ? 'success' : report.syncStatus === 'failed' ? 'danger' : 'warning';
   const statusLabel = report.syncStatus ? strings.syncStatus[report.syncStatus] : strings.syncStatus.queued;
 
   return (
-    <View style={[styles.reportItem, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.reportItem,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
+          flexDirection: isRtl ? 'row-reverse' : 'row',
+        },
+      ]}>
       <View style={[styles.reportIcon, { backgroundColor: theme.backgroundSelected }]}>
         <EcoPestIcon color={theme.primary} name="file-text" size={25} />
       </View>
@@ -106,7 +114,7 @@ export default function HomeScreen() {
   const { syncAllDrafts } = useSyncActions();
   const currentUser = useCurrentUser();
   const theme = useTheme();
-  const { language, strings } = useLanguage();
+  const { isRtl, language, strings } = useLanguage();
   const t = strings.home;
   const locale = languageDateLocales[language];
   const [draftCount, setDraftCount] = useState(0);
@@ -159,7 +167,16 @@ export default function HomeScreen() {
             <ThemedText themeColor="textSecondary">{t.overview}</ThemedText>
           </View>
 
-          <View style={[styles.syncCard, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: pendingTotal > 0 ? theme.warningStrong : theme.successStrong }]}>
+          <View
+            style={[
+              styles.syncCard,
+              Shadow.sm,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: pendingTotal > 0 ? theme.warningStrong : theme.successStrong,
+                flexDirection: isRtl ? 'row-reverse' : 'row',
+              },
+            ]}>
             <View style={[styles.syncIcon, { backgroundColor: pendingTotal > 0 ? theme.warningSoft : theme.primarySoft }]}>
               <EcoPestIcon color={pendingTotal > 0 ? theme.warningStrong : theme.successStrong} name={pendingTotal > 0 ? 'alert-circle' : 'check-cloud'} size={30} />
             </View>
@@ -178,7 +195,7 @@ export default function HomeScreen() {
             ) : null}
           </View>
 
-          <View style={styles.statsGrid}>
+          <View style={[styles.statsGrid, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <StatCard icon="file-text" label={t.pendingReports} onPress={() => router.push('/(tabs)/drafts')} value={String(pendingTotal)} />
             <StatCard icon="clipboard-check" label={t.savedDrafts} onPress={() => router.push('/(tabs)/drafts')} value={String(draftCount)} />
             <StatCard icon="dashboard" label={t.todayReports} onPress={() => router.push('/(tabs)/history')} value={String(recentReports.length)} wide />
@@ -190,7 +207,7 @@ export default function HomeScreen() {
             </PrimaryButton>
           ) : null}
 
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, { flexDirection: isRtl ? 'row' : 'row-reverse' }]}>
             <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/history')}>
               <ThemedText type="smallBold" style={{ color: theme.primary }}>
                 {t.viewAll}
@@ -231,7 +248,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   greeting: {
-    textAlign: 'right',
   },
   heroCopy: {
     gap: Spacing.xs,
@@ -252,7 +268,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     minHeight: 86,
     padding: Spacing.md,
@@ -273,7 +288,6 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'space-between',
     paddingTop: Spacing.sm,
   },
@@ -298,10 +312,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   statLabel: {
-    textAlign: 'right',
   },
   statsGrid: {
-    flexDirection: 'row-reverse',
     flexWrap: 'wrap',
     gap: Spacing.md,
   },
@@ -310,7 +322,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.display,
     fontWeight: Typography.fontWeight.heavy,
     lineHeight: Typography.fontSize.display * Typography.lineHeight.tight,
-    textAlign: 'right',
   },
   syncAction: {
     paddingHorizontal: Spacing.sm,
@@ -320,7 +331,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     padding: Spacing.lg,
   },

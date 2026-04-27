@@ -1,3 +1,5 @@
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Directory, File, Paths } from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type AppStateStatus } from 'react-native';
@@ -24,8 +26,32 @@ function getParamValue(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
+type InspectionPhotoType = 'image/jpeg' | 'image/png' | 'image/webp';
+
+interface InspectionPhoto {
+  name: string;
+  type: InspectionPhotoType;
+  uri: string;
+}
+
+function safeFilePart(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]/g, '-').replace(/-+/g, '-').slice(0, 80) || 'station';
+}
+
+function persistCapturedPhoto(sourceUri: string, fileName: string): string {
+  const directory = new Directory(Paths.document, 'report-photos');
+  const source = new File(sourceUri);
+  const destination = new File(directory, fileName);
+
+  directory.create({ idempotent: true, intermediates: true });
+  source.copy(destination);
+
+  return destination.uri;
+}
+
 function StatusOptionRow({ label, onPress, selected }: { label: string; onPress: () => void; selected: boolean }) {
   const theme = useTheme();
+  const { isRtl } = useLanguage();
 
   return (
     <Pressable
@@ -37,6 +63,7 @@ function StatusOptionRow({ label, onPress, selected }: { label: string; onPress:
         {
           backgroundColor: selected ? theme.primarySoft : theme.backgroundElement,
           borderColor: selected ? theme.primaryLight : theme.border,
+          flexDirection: isRtl ? 'row-reverse' : 'row',
           opacity: pressed ? 0.82 : 1,
         },
       ]}>
@@ -50,10 +77,105 @@ function StatusOptionRow({ label, onPress, selected }: { label: string; onPress:
   );
 }
 
-function PhotoPlaceholder() {
+function PhotoCapturePanel({
+  onError,
+  onPhotoCaptured,
+  onPhotoRemoved,
+  photoUri,
+  stationId,
+}: {
+  onError: (message: string) => void;
+  onPhotoCaptured: (photo: InspectionPhoto) => void;
+  onPhotoRemoved: () => void;
+  photoUri: string | null;
+  stationId: string;
+}) {
   const theme = useTheme();
-  const { strings } = useLanguage();
+  const { isRtl, strings } = useLanguage();
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const t = strings.report;
+
+  async function openCamera(): Promise<void> {
+    if (permission?.granted) {
+      setIsCameraOpen(true);
+      return;
+    }
+
+    const result = await requestPermission();
+
+    if (result.granted) {
+      setIsCameraOpen(true);
+      return;
+    }
+
+    onError(t.cameraPermissionBody);
+    await warningHaptic();
+  }
+
+  async function capturePhoto(): Promise<void> {
+    if (!cameraRef.current) {
+      onError(t.photoCaptureFailed);
+      await errorHaptic();
+      return;
+    }
+
+    setIsCapturing(true);
+
+    try {
+      const captured = await cameraRef.current.takePictureAsync({ quality: 0.72 });
+      const name = `report-${safeFilePart(stationId)}-${Date.now()}.jpg`;
+      const uri = persistCapturedPhoto(captured.uri, name);
+
+      onPhotoCaptured({ name, type: 'image/jpeg', uri });
+      setIsCameraOpen(false);
+      await successHaptic();
+    } catch {
+      onError(t.photoCaptureFailed);
+      await errorHaptic();
+    } finally {
+      setIsCapturing(false);
+    }
+  }
+
+  if (isCameraOpen) {
+    return (
+      <View style={[styles.cameraBox, { backgroundColor: theme.surfaceCardDark, borderColor: theme.border }]}>
+        <CameraView ref={cameraRef} facing="back" style={StyleSheet.absoluteFill} />
+        <View style={[styles.cameraActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <SecondaryButton disabled={isCapturing} onPress={() => setIsCameraOpen(false)}>
+            {strings.actions.cancel}
+          </SecondaryButton>
+          <PrimaryButton disabled={isCapturing} icon="camera" loading={isCapturing} onPress={() => void capturePhoto()}>
+            {t.capturePhoto}
+          </PrimaryButton>
+        </View>
+      </View>
+    );
+  }
+
+  if (photoUri) {
+    return (
+      <View style={styles.photoCaptureSection}>
+        <View style={[styles.photoPreviewFrame, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <Image accessibilityLabel={t.photoPreviewLabel} resizeMode="cover" source={{ uri: photoUri }} style={styles.photoPreview} />
+        </View>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.photoHint}>
+          {t.photoUploadHint}
+        </ThemedText>
+        <View style={[styles.photoActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+          <SecondaryButton icon="camera" onPress={() => void openCamera()}>
+            {t.retakePhoto}
+          </SecondaryButton>
+          <SecondaryButton icon="trash" onPress={onPhotoRemoved}>
+            {t.removePhoto}
+          </SecondaryButton>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.photoBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -66,6 +188,9 @@ function PhotoPlaceholder() {
       <ThemedText type="small" themeColor="textSecondary" style={styles.photoHint}>
         {t.photoHint}
       </ThemedText>
+      <PrimaryButton icon="camera" onPress={() => void openCamera()}>
+        {t.takePhoto}
+      </PrimaryButton>
     </View>
   );
 }
@@ -75,6 +200,9 @@ export default function StationReportScreen() {
   const stationId = useMemo(() => decodeURIComponent(getParamValue(params.stationId)), [params.stationId]);
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<StatusOption[]>([]);
+  const [inspectionPhotoName, setInspectionPhotoName] = useState<string | undefined>();
+  const [inspectionPhotoType, setInspectionPhotoType] = useState<InspectionPhotoType | undefined>();
+  const [inspectionPhotoUri, setInspectionPhotoUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { isRtl, statusOptionLabels, strings } = useLanguage();
@@ -86,12 +214,18 @@ export default function StationReportScreen() {
   const stationPhotoUrl = station?.photoUrls?.[0];
   const notesRef = useRef(notes);
   const statusRef = useRef(status);
+  const inspectionPhotoNameRef = useRef(inspectionPhotoName);
+  const inspectionPhotoTypeRef = useRef(inspectionPhotoType);
+  const inspectionPhotoUriRef = useRef(inspectionPhotoUri);
   const lastAutoSavedSignature = useRef('');
 
   useEffect(() => {
     notesRef.current = notes;
     statusRef.current = status;
-  }, [notes, status]);
+    inspectionPhotoNameRef.current = inspectionPhotoName;
+    inspectionPhotoTypeRef.current = inspectionPhotoType;
+    inspectionPhotoUriRef.current = inspectionPhotoUri;
+  }, [inspectionPhotoName, inspectionPhotoType, inspectionPhotoUri, notes, status]);
 
   useEffect(() => {
     let isMounted = true;
@@ -102,7 +236,14 @@ export default function StationReportScreen() {
       if (isMounted && draft) {
         setNotes(draft.notes);
         setStatus(draft.status);
-        lastAutoSavedSignature.current = JSON.stringify({ notes: draft.notes, status: draft.status });
+        setInspectionPhotoName(draft.inspectionPhotoName);
+        setInspectionPhotoType(draft.inspectionPhotoType);
+        setInspectionPhotoUri(draft.inspectionPhotoUri ?? null);
+        lastAutoSavedSignature.current = JSON.stringify({
+          inspectionPhotoUri: draft.inspectionPhotoUri ?? null,
+          notes: draft.notes,
+          status: draft.status,
+        });
       }
     }
 
@@ -115,6 +256,20 @@ export default function StationReportScreen() {
 
   function toggleStatus(value: StatusOption): void {
     setStatus((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
+  }
+
+  function handlePhotoCaptured(photo: InspectionPhoto): void {
+    setInspectionPhotoName(photo.name);
+    setInspectionPhotoType(photo.type);
+    setInspectionPhotoUri(photo.uri);
+    setError(null);
+  }
+
+  function handlePhotoRemoved(): void {
+    setInspectionPhotoName(undefined);
+    setInspectionPhotoType(undefined);
+    setInspectionPhotoUri(null);
+    setError(null);
   }
 
   function validateDraft(): boolean {
@@ -165,19 +320,27 @@ export default function StationReportScreen() {
       const cleanStationId = stationId.trim();
       const currentNotes = notesRef.current.trim();
       const currentStatus = statusRef.current;
+      const currentPhotoUri = inspectionPhotoUriRef.current;
 
-      if (!cleanStationId || (currentNotes.length === 0 && currentStatus.length === 0)) {
+      if (!cleanStationId || (currentNotes.length === 0 && currentStatus.length === 0 && !currentPhotoUri)) {
         return;
       }
 
-      const signature = JSON.stringify({ notes: currentNotes, status: currentStatus });
+      const signature = JSON.stringify({ inspectionPhotoUri: currentPhotoUri, notes: currentNotes, status: currentStatus });
 
       if (signature === lastAutoSavedSignature.current) {
         return;
       }
 
       try {
-        await upsertWorkingDraft({ notes: currentNotes, stationId: cleanStationId, status: currentStatus });
+        await upsertWorkingDraft({
+          inspectionPhotoName: inspectionPhotoNameRef.current,
+          inspectionPhotoType: inspectionPhotoTypeRef.current,
+          inspectionPhotoUri: currentPhotoUri ?? undefined,
+          notes: currentNotes,
+          stationId: cleanStationId,
+          status: currentStatus,
+        });
         lastAutoSavedSignature.current = signature;
 
         if (showFeedback) {
@@ -221,8 +384,15 @@ export default function StationReportScreen() {
     setIsSaving(true);
 
     try {
-      await upsertWorkingDraft({ notes: notes.trim(), stationId: stationId.trim(), status });
-      lastAutoSavedSignature.current = JSON.stringify({ notes: notes.trim(), status });
+      await upsertWorkingDraft({
+        inspectionPhotoName,
+        inspectionPhotoType,
+        inspectionPhotoUri: inspectionPhotoUri ?? undefined,
+        notes: notes.trim(),
+        stationId: stationId.trim(),
+        status,
+      });
+      lastAutoSavedSignature.current = JSON.stringify({ inspectionPhotoUri, notes: notes.trim(), status });
       showToast(strings.report.draftSaved, 'success');
       await successHaptic();
     } catch {
@@ -244,6 +414,9 @@ export default function StationReportScreen() {
     try {
       const queuedReport = await saveSubmittedReport({
         notes: notes.trim(),
+        inspectionPhotoName,
+        inspectionPhotoType,
+        inspectionPhotoUri: inspectionPhotoUri ?? undefined,
         stationId: stationId.trim(),
         stationLabel: station?.label,
         status,
@@ -255,6 +428,9 @@ export default function StationReportScreen() {
       await successHaptic();
       setNotes('');
       setStatus([]);
+      setInspectionPhotoName(undefined);
+      setInspectionPhotoType(undefined);
+      setInspectionPhotoUri(null);
       router.push('/(tabs)/history');
     } catch {
       setError(strings.errors.unexpected);
@@ -302,7 +478,16 @@ export default function StationReportScreen() {
             showsVerticalScrollIndicator={false}>
             <MobileTopBar leftIcon="arrow-left" leftLabel={strings.actions.back} onLeftPress={() => router.back()} title={strings.report.screenTitle} />
 
-            <View style={[styles.stationCard, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.stationCard,
+                Shadow.sm,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  flexDirection: isRtl ? 'row-reverse' : 'row',
+                },
+              ]}>
               {stationPhotoUrl ? (
                 <Image
                   accessibilityLabel={`${strings.report.stationImageLabel} ${station?.label ?? stationId}`}
@@ -316,10 +501,10 @@ export default function StationReportScreen() {
                 </View>
               )}
               <View style={styles.stationCopy}>
-                <ThemedText type="title" style={styles.stationTitle}>
+                <ThemedText type="title">
                   {station?.label ?? `${strings.report.stationFallbackPrefix} #${stationId || '-'}`}
                 </ThemedText>
-                <ThemedText type="smallBold" style={[styles.stationNumber, { color: theme.primary }]}>
+                <ThemedText type="smallBold" style={{ color: theme.primary }}>
                   {strings.report.stationNumberPrefix} #{station?.stationId ?? stationId}
                 </ThemedText>
                 <View style={[styles.locationRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
@@ -375,7 +560,13 @@ export default function StationReportScreen() {
               <ThemedText type="title" style={styles.sectionTitle}>
                 {strings.report.visualDocumentation}
               </ThemedText>
-              <PhotoPlaceholder />
+              <PhotoCapturePanel
+                onError={setError}
+                onPhotoCaptured={handlePhotoCaptured}
+                onPhotoRemoved={handlePhotoRemoved}
+                photoUri={inspectionPhotoUri}
+                stationId={stationId}
+              />
             </View>
 
             {error ? <ThemedText selectable style={{ color: theme.danger }}>{error}</ThemedText> : null}
@@ -408,6 +599,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 34,
   },
+  cameraActions: {
+    bottom: Spacing.md,
+    gap: Spacing.sm,
+    left: Spacing.md,
+    position: 'absolute',
+    right: Spacing.md,
+  },
+  cameraBox: {
+    aspectRatio: 3 / 4,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    maxHeight: 520,
+    overflow: 'hidden',
+    position: 'relative',
+    width: '100%',
+  },
   keyboardView: {
     flex: 1,
   },
@@ -438,6 +645,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 64,
   },
+  photoActions: {
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    justifyContent: 'center',
+  },
+  photoCaptureSection: {
+    gap: Spacing.md,
+  },
+  photoPreview: {
+    height: '100%',
+    width: '100%',
+  },
+  photoPreviewFrame: {
+    aspectRatio: 4 / 3,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    width: '100%',
+  },
   safeArea: {
     flex: 1,
     width: '100%',
@@ -456,7 +682,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     minHeight: 112,
     padding: Spacing.lg,
@@ -472,17 +697,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 66,
   },
-  stationNumber: {
-    textAlign: 'right',
-  },
   stationPhoto: {
     borderRadius: Radius.md,
     borderWidth: 1,
     height: 74,
     width: 74,
-  },
-  stationTitle: {
-    textAlign: 'right',
   },
   statusLabel: {
     flex: 1,
@@ -495,7 +714,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     minHeight: TouchTarget + 18,
     paddingHorizontal: Spacing.md,

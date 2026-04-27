@@ -18,6 +18,7 @@ export interface Coordinates {
 export interface ReportPhotoPaths {
   after?: string;
   before?: string;
+  station?: string;
 }
 
 export interface AppUser {

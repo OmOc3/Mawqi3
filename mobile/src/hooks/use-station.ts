@@ -32,7 +32,11 @@ export function useStation(stationId: string, fallbackError = 'Could not load st
       setLoading(true);
 
       try {
-        const nextStation = await apiGet<Station>(`/api/mobile/stations/${encodeURIComponent(stationId)}`);
+        const nextStation = await apiGet<Station>(`/api/mobile/stations/${encodeURIComponent(stationId)}`, {
+          authRequiredMessage: fallbackError,
+          fallbackErrorMessage: fallbackError,
+          networkErrorMessage: fallbackError,
+        });
 
         if (isMounted) {
           setStation(nextStation);

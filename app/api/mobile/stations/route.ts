@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mobileApiErrorResponse } from "@/lib/api/mobile";
+import { mobileStationResponse, type MobileStationResponse } from "@/lib/api/mobile-serializers";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
 import { writeAuditLog } from "@/lib/audit";
-import { createStationRecord, generateNextStationId } from "@/lib/db/repositories";
+import { createStationRecord, generateNextStationId, listStations } from "@/lib/db/repositories";
 import { buildStationReportUrl } from "@/lib/url/base-url";
 import { createStationSchema } from "@/lib/validation/stations";
 
@@ -24,6 +25,21 @@ interface MobileCreateStationResponse {
   label: string;
   qrCodeValue: string;
   stationId: string;
+}
+
+export async function GET(
+  request: NextRequest,
+): Promise<NextResponse<MobileStationResponse[] | { code: string; message: string }>> {
+  try {
+    await requireBearerRole(request, ["manager"]);
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get("q") ?? undefined;
+    const stations = await listStations(query);
+
+    return NextResponse.json(stations.map((station) => mobileStationResponse(station.stationId, station)));
+  } catch (error: unknown) {
+    return mobileApiErrorResponse(error);
+  }
 }
 
 export async function POST(

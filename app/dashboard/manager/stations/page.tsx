@@ -101,7 +101,94 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
             <EmptyState description="جرّب البحث باسم محطة أو موقع مختلف." title="لا توجد نتائج مطابقة" />
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-control">
+          <div className="space-y-3">
+            <div className="grid gap-3 md:hidden">
+              {visibleStations.map((station) => {
+                const health = getStationHealth(station);
+
+                return (
+                  <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-control" key={station.stationId}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-500" dir="ltr">
+                          #{station.stationId}
+                        </p>
+                        <h2 className="mt-1 truncate text-base font-bold text-slate-950">{station.label}</h2>
+                        <p className="mt-1 text-sm text-slate-600">{station.location}</p>
+                      </div>
+                      <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${health.toneClassName}`}>
+                        {health.label}
+                      </span>
+                    </div>
+
+                    <dl className="mt-4 grid gap-3 text-sm">
+                      <div>
+                        <dt className="font-medium text-slate-500">المنطقة</dt>
+                        <dd className="mt-1 text-slate-800">{station.zone ?? "غير محدد"}</dd>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <dt className="font-medium text-slate-500">الحالة</dt>
+                          <dd className="mt-1">
+                            <span
+                              className={
+                                station.isActive
+                                  ? "inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700"
+                                  : "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                              }
+                            >
+                              {station.isActive ? "نشطة" : "غير نشطة"}
+                            </span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="font-medium text-slate-500">إشراف فوري</dt>
+                          <dd className="mt-1">
+                            <span
+                              className={
+                                station.requiresImmediateSupervision
+                                  ? "inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+                                  : "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+                              }
+                            >
+                              {station.requiresImmediateSupervision ? "مطلوب" : "لا"}
+                            </span>
+                          </dd>
+                        </div>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">آخر زيارة</dt>
+                        <dd className="mt-1 text-slate-800">{formatTimestamp(station.lastVisitedAt)}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Link
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                        href={`/dashboard/manager/stations/${station.stationId}`}
+                      >
+                        عرض
+                      </Link>
+                      <Link
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                        href={`/dashboard/manager/stations/${station.stationId}/edit`}
+                      >
+                        تعديل
+                      </Link>
+                      <form action={toggleStationStatusAction.bind(null, station.stationId, station.isActive)}>
+                        <button
+                          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                          type="submit"
+                        >
+                          {station.isActive ? "تعطيل" : "تفعيل"}
+                        </button>
+                      </form>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-control md:block">
             <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead className="border-b border-slate-200 bg-slate-50">
@@ -213,6 +300,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
               </tbody>
             </table>
             </div>
+          </div>
           </div>
         )}
       </section>

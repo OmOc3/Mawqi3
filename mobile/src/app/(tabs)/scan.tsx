@@ -194,6 +194,7 @@ export default function ScanScreen() {
             <InputField
               autoCapitalize="none"
               autoCorrect={false}
+              contentDirection="ltr"
               label={t.manualStationLabel}
               onChangeText={setStationId}
               placeholder={t.manualStationPlaceholder}

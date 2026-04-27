@@ -20,7 +20,7 @@ import { Logo } from '@/components/brand/logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EcoPestIcon, type EcoPestIconName } from '@/components/icons';
-import { Fonts, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
+import { Colors, Fonts, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 import { useThemeMode } from '@/contexts/theme-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -61,6 +61,7 @@ interface ToastContextValue {
 }
 
 interface InputFieldProps extends TextInputProps {
+  contentDirection?: 'auto' | 'ltr' | 'rtl';
   error?: string | null;
   label: string;
 }
@@ -69,13 +70,13 @@ type ChipTone = 'danger' | 'info' | 'neutral' | 'success' | 'warning';
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const statusColors: Record<StatusOption, { background: string; text: string }> = {
-  station_ok: { background: '#dcfce7', text: '#166534' },
-  station_replaced: { background: '#dbeafe', text: '#1d4ed8' },
-  bait_changed: { background: '#fef3c7', text: '#92400e' },
-  bait_ok: { background: '#ccfbf1', text: '#0f766e' },
-  station_excluded: { background: '#fee2e2', text: '#991b1b' },
-  station_substituted: { background: '#f3e8ff', text: '#7e22ce' },
+const statusTones: Record<StatusOption, ChipTone> = {
+  bait_changed: 'warning',
+  bait_ok: 'success',
+  station_excluded: 'danger',
+  station_ok: 'success',
+  station_replaced: 'info',
+  station_substituted: 'info',
 };
 
 function usePressScale(activeScale: number) {
@@ -161,14 +162,17 @@ export function ScreenShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function InputField({ error, label, multiline = false, style, ...props }: InputFieldProps) {
+export function InputField({ accessibilityLabel, contentDirection, error, label, multiline = false, style, ...props }: InputFieldProps) {
   const theme = useTheme();
   const { direction, isRtl } = useLanguage();
+  const writingDirection = contentDirection ?? direction;
+  const textAlign = writingDirection === 'ltr' ? 'left' : writingDirection === 'rtl' ? 'right' : isRtl ? 'right' : 'left';
 
   return (
     <View style={styles.fieldGroup}>
       <ThemedText type="smallBold">{label}</ThemedText>
       <TextInput
+        accessibilityLabel={accessibilityLabel ?? label}
         multiline={multiline}
         placeholderTextColor={theme.textSecondary}
         style={[
@@ -178,8 +182,8 @@ export function InputField({ error, label, multiline = false, style, ...props }:
             backgroundColor: theme.background,
             borderColor: error ? theme.danger : theme.border,
             color: theme.text,
-            textAlign: isRtl ? 'right' : 'left',
-            writingDirection: direction,
+            textAlign,
+            writingDirection,
           },
           style,
         ]}
@@ -464,9 +468,8 @@ export function StatTile({
 
 export function StatusBadge({ status }: { status: StatusOption }) {
   const { statusOptionLabels } = useLanguage();
-  const colors = statusColors[status];
 
-  return <StatusChip backgroundColor={colors.background} label={statusOptionLabels[status]} textColor={colors.text} />;
+  return <StatusChip label={statusOptionLabels[status]} tone={statusTones[status]} />;
 }
 
 function chipToneColor(tone: ChipTone, theme: ReturnType<typeof useTheme>): { backgroundColor: string; textColor: string } {
@@ -836,6 +839,7 @@ export function BottomSheet({
   visible: boolean;
 }) {
   const theme = useTheme();
+  const { strings } = useLanguage();
   const translateY = useRef(new Animated.Value(320)).current;
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, 320],
@@ -852,9 +856,14 @@ export function BottomSheet({
 
   return (
     <Modal animationType="none" onRequestClose={onDismiss} transparent visible={visible}>
-      <View style={styles.bottomSheetRoot}>
-        <Pressable accessibilityRole="button" onPress={onDismiss} style={StyleSheet.absoluteFill}>
-          <Animated.View style={[styles.bottomSheetBackdrop, { opacity: backdropOpacity }]} />
+      <View accessibilityViewIsModal style={styles.bottomSheetRoot}>
+        <Pressable
+          accessibilityHint={title ? `${strings.actions.close}: ${title}` : strings.actions.close}
+          accessibilityLabel={strings.actions.close}
+          accessibilityRole="button"
+          onPress={onDismiss}
+          style={StyleSheet.absoluteFill}>
+          <Animated.View style={[styles.bottomSheetBackdrop, { backgroundColor: Colors.dark.background, opacity: backdropOpacity }]} />
         </Pressable>
         <Animated.View
           style={[
@@ -887,7 +896,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   bottomSheetBackdrop: {
-    backgroundColor: '#020617',
     flex: 1,
   },
   bottomSheetRoot: {

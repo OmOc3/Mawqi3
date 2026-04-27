@@ -9,6 +9,7 @@ import { reviewReportSchema, type ReviewReportValues } from "@/lib/validation/re
 import type { Report } from "@/types";
 
 interface ReviewReportFormProps {
+  instanceId?: string;
   reportId: string;
   reviewNotes?: string;
   reviewStatus: Report["reviewStatus"];
@@ -26,8 +27,9 @@ function toFormData(values: ReviewReportValues): FormData {
   return formData;
 }
 
-export function ReviewReportForm({ reportId, reviewNotes, reviewStatus }: ReviewReportFormProps) {
+export function ReviewReportForm({ instanceId = "table", reportId, reviewNotes, reviewStatus }: ReviewReportFormProps) {
   const [result, setResult] = useState<ReviewReportActionResult | null>(null);
+  const fieldIdPrefix = `${instanceId}-${reportId}`;
   const form = useForm<ReviewReportValues>({
     resolver: zodResolver(reviewReportSchema),
     defaultValues: {
@@ -45,16 +47,24 @@ export function ReviewReportForm({ reportId, reviewNotes, reviewStatus }: Review
 
   return (
     <form className="mt-3 grid gap-3 rounded-lg bg-slate-50 p-3" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
-      {result?.error ? <p className="text-sm font-medium text-red-600">{result.error}</p> : null}
-      {result?.success ? <p className="text-sm font-medium text-green-700">تم حفظ المراجعة.</p> : null}
+      {result?.error ? (
+        <p className="text-sm font-medium text-red-600" role="alert">
+          {result.error}
+        </p>
+      ) : null}
+      {result?.success ? (
+        <p className="text-sm font-medium text-green-700" role="status">
+          تم حفظ المراجعة.
+        </p>
+      ) : null}
 
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-slate-700" htmlFor={`reviewStatus-${reportId}`}>
+        <label className="block text-sm font-medium text-slate-700" htmlFor={`reviewStatus-${fieldIdPrefix}`}>
           حالة المراجعة
         </label>
         <select
           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-teal-500"
-          id={`reviewStatus-${reportId}`}
+          id={`reviewStatus-${fieldIdPrefix}`}
           {...form.register("reviewStatus")}
         >
           <option value="pending">بانتظار المراجعة</option>
@@ -64,12 +74,12 @@ export function ReviewReportForm({ reportId, reviewNotes, reviewStatus }: Review
       </div>
 
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-slate-700" htmlFor={`reviewNotes-${reportId}`}>
+        <label className="block text-sm font-medium text-slate-700" htmlFor={`reviewNotes-${fieldIdPrefix}`}>
           ملاحظات المراجعة
         </label>
         <textarea
           className="min-h-20 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-teal-500"
-          id={`reviewNotes-${reportId}`}
+          id={`reviewNotes-${fieldIdPrefix}`}
           maxLength={500}
           {...form.register("reviewNotes")}
         />

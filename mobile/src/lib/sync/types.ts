@@ -23,6 +23,7 @@ export interface Coordinates {
 export interface ReportPhotoPaths {
   after?: string;
   before?: string;
+  station?: string;
 }
 
 export interface AppUser {
@@ -44,7 +45,9 @@ export interface MobileAppUser {
 }
 
 export interface MobileReviewReport {
+  clientReportId?: string;
   notes?: string;
+  photoCount?: number;
   reportId: string;
   reviewNotes?: string;
   reviewStatus: "pending" | "reviewed" | "rejected";
@@ -72,6 +75,7 @@ export interface Station {
   updatedAt?: string;
   updatedBy?: string;
   lastVisitedAt?: string;
+  lastVisitedBy?: string;
   totalReports: number;
 }
 
@@ -101,8 +105,66 @@ export interface AuditLog {
   action: string;
   entityType: string;
   entityId: string;
-  createdAt: AppTimestamp;
+  createdAt?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface MobileAdminTasks {
+  inactiveStations: Station[];
+  pendingReports: MobileReviewReport[];
+  staleStations: Station[];
+  totals: {
+    inactiveStations: number;
+    pendingReports: number;
+    staleStations: number;
+  };
+  truncatedStationScan: boolean;
+}
+
+export interface MobileAdminAnalytics {
+  rangeDays: number;
+  reportsTruncated: boolean;
+  stationsTruncated: boolean;
+  statusSummary: {
+    count: number;
+    status: StatusOption;
+  }[];
+  technicians: {
+    pending: number;
+    reports: number;
+    technicianName: string;
+    technicianUid: string;
+  }[];
+  zones: {
+    activeStations: number;
+    reports: number;
+    stations: number;
+    zone: string;
+  }[];
+}
+
+export interface MobileManagerDashboardStats {
+  activeStations: number;
+  pendingReviewReports: number;
+  reportsThisWeek: number;
+  technicians: number;
+  totalReports: number;
+  totalStations: number;
+}
+
+export interface MobileSupervisorDashboardStats {
+  activeStations: number;
+  pendingReviewReports: number;
+  reportsToday: number;
+  totalReports: number;
+}
+
+export interface MobileAdminOverview {
+  analytics?: MobileAdminAnalytics;
+  latestReports: MobileReviewReport[];
+  role: "manager" | "supervisor";
+  stats: MobileManagerDashboardStats | MobileSupervisorDashboardStats;
+  tasks: MobileAdminTasks;
 }
 
 export interface ApiErrorResponse {

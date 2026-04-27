@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +14,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { signInWithPassword } from '@/lib/auth';
 import { getMobileHomeRoute } from '@/lib/auth-routes';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
-import { getApiBaseUrl, setApiBaseUrl } from '@/lib/sync/api-client';
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -31,6 +30,7 @@ function LoginField({ icon, label, style, ...props }: TextInputProps & { icon: E
       </ThemedText>
       <View style={[styles.inputShell, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
         <TextInput
+          accessibilityLabel={label}
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text, writingDirection: 'ltr' }, style]}
           textAlign="left"
@@ -45,27 +45,12 @@ function LoginField({ icon, label, style, ...props }: TextInputProps & { icon: E
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [accessCode, setAccessCode] = useState('');
-  const [serverUrl, setServerUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const { strings } = useLanguage();
   const theme = useTheme();
   const { resolvedTheme } = useThemeMode();
   const { showToast } = useToast();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    void getApiBaseUrl().then((value) => {
-      if (isMounted) {
-        setServerUrl(value);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   function mapAuthError(errorValue: unknown): string {
     if (errorValue instanceof TypeError) {
@@ -113,18 +98,10 @@ export default function LoginScreen() {
       return;
     }
 
-    const cleanServerUrl = serverUrl.trim();
-
-    if (!cleanServerUrl) {
-      setError(strings.validation.invalidUrl);
-      return;
-    }
-
     setError(null);
     setIsSigningIn(true);
 
     try {
-      await setApiBaseUrl(cleanServerUrl);
       const profile = await signInWithPassword(cleanEmail, accessCode.trim());
 
       await successHaptic();
@@ -164,20 +141,6 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.loginForm}>
-                <LoginField
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  icon="link"
-                  inputMode="url"
-                  label={strings.auth.serverUrl}
-                  onChangeText={setServerUrl}
-                  placeholder="http://192.168.1.10:3000"
-                  value={serverUrl}
-                />
-                <ThemedText type="small" themeColor="textSecondary">
-                  {strings.auth.serverUrlHint}
-                </ThemedText>
-
                 <LoginField
                   autoCapitalize="none"
                   autoComplete="email"

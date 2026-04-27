@@ -70,7 +70,7 @@ function reportMatchesFilter(report: VisibleReport, filter: ReportFilter): boole
 }
 
 function ReportListItem({ report }: { report: VisibleReport }) {
-  const { language, strings } = useLanguage();
+  const { isRtl, language, strings } = useLanguage();
   const { reviewStatus, syncStatus } = strings;
   const theme = useTheme();
   const locale = languageDateLocales[language];
@@ -89,7 +89,16 @@ function ReportListItem({ report }: { report: VisibleReport }) {
   const iconColor = chipTone === 'success' ? theme.primary : chipTone === 'danger' ? theme.dangerStrong : theme.warningStrong;
 
   return (
-    <View style={[styles.reportCard, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.reportCard,
+        Shadow.sm,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
+          flexDirection: isRtl ? 'row-reverse' : 'row',
+        },
+      ]}>
       <View style={[styles.reportIcon, { backgroundColor: iconBackground }]}>
         <EcoPestIcon color={iconColor} name={iconName} size={28} />
       </View>
@@ -115,7 +124,7 @@ export default function HistoryScreen() {
   const [localReports, setLocalReports] = useState<DraftReport[]>([]);
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState<ReportFilter>('all');
-  const { language, strings } = useLanguage();
+  const { isRtl, language, strings } = useLanguage();
   const theme = useTheme();
   const remoteReports = useMyReports(strings.errors.loadReports);
 
@@ -180,21 +189,36 @@ export default function HistoryScreen() {
             title={strings.history.title}
           />
 
-          <View style={styles.searchRow}>
-            <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <View style={[styles.searchRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <View
+              style={[
+                styles.searchBox,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  flexDirection: isRtl ? 'row-reverse' : 'row',
+                },
+              ]}>
               <EcoPestIcon color={theme.textSecondary} name="search" size={26} />
               <TextInput
                 onChangeText={setSearchText}
                 placeholder={strings.history.searchPlaceholder}
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.searchInput, { color: theme.text, writingDirection: language === 'ar' ? 'rtl' : 'ltr' }]}
+                style={[
+                  styles.searchInput,
+                  {
+                    color: theme.text,
+                    textAlign: isRtl ? 'right' : 'left',
+                    writingDirection: language === 'ar' ? 'rtl' : 'ltr',
+                  },
+                ]}
                 value={searchText}
               />
             </View>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-            <View style={styles.filterPills}>
+            <View style={[styles.filterPills, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               {filters.map((filter) => {
                 const selected = activeFilter === filter.value;
 
@@ -253,7 +277,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterPills: {
-    flexDirection: 'row-reverse',
     gap: Spacing.sm,
     paddingVertical: Spacing.xs,
   },
@@ -265,7 +288,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
     minHeight: 118,
     padding: Spacing.lg,
@@ -301,7 +323,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     flex: 1,
-    flexDirection: 'row-reverse',
     gap: Spacing.sm,
     minHeight: 64,
     paddingHorizontal: Spacing.md,
@@ -311,11 +332,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: Typography.fontSize.md,
     minHeight: TouchTarget,
-    textAlign: 'right',
   },
   searchRow: {
     alignItems: 'center',
-    flexDirection: 'row-reverse',
     gap: Spacing.md,
   },
 });

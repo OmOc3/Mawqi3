@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DashboardNav } from "@/components/layout/nav";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReportMobileCard } from "@/components/reports/report-mobile-card";
 import { ReportPhotoLinks } from "@/components/reports/report-photo-links";
 import { ReportsFilterForm, type ReportsFilterValues } from "@/components/reports/reports-filter-form";
 import { StatusPills } from "@/components/reports/status-pills";
@@ -83,7 +84,11 @@ function timestampToMillis(timestamp?: AppTimestamp): number | null {
 }
 
 function photoCount(report: Report): number {
-  return Number(Boolean(report.photoPaths?.before)) + Number(Boolean(report.photoPaths?.after));
+  return (
+    Number(Boolean(report.photoPaths?.before)) +
+    Number(Boolean(report.photoPaths?.after)) +
+    Number(Boolean(report.photoPaths?.station))
+  );
 }
 
 function buildNextHref(filters: ReportsFilterValues, cursor: string): string {
@@ -175,7 +180,19 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
             />
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="space-y-3">
+            <div className="grid gap-3 md:hidden">
+              {reports.map((report) => (
+                <ReportMobileCard
+                  key={report.reportId}
+                  photoCount={photoCount(report)}
+                  report={report}
+                  reviewBadge={reviewStatusBadge(report.reviewStatus)}
+                  timestamp={formatTimestamp(report.submittedAt)}
+                />
+              ))}
+            </div>
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block">
             <table className="w-full min-w-[980px]">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
@@ -224,6 +241,7 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         )}
 

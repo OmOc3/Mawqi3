@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EcoPestIcon } from '@/components/icons';
 import { EmptyState, MobileTopBar, ScreenShell, StatusChip, SyncBanner } from '@/components/ecopest-ui';
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, Fonts, Radius, Shadow, Spacing, Typography } from '@/constants/theme';
+import { BottomTabInset, Fonts, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useTeamUsers } from '@/hooks/use-team-users';
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.full,
     borderWidth: 1,
-    minHeight: 42,
+    minHeight: TouchTarget,
     minWidth: 88,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,

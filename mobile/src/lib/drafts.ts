@@ -8,6 +8,9 @@ export type ReportSyncStatus = 'draft' | 'failed' | 'queued' | 'submitted' | 'sy
 export interface DraftReport {
   createdAt: string;
   id: string;
+  inspectionPhotoName?: string;
+  inspectionPhotoType?: 'image/jpeg' | 'image/png' | 'image/webp';
+  inspectionPhotoUri?: string;
   notes: string;
   serverReportId?: string;
   stationId: string;
@@ -25,7 +28,11 @@ const key = 'ecopest-report-drafts';
 const maxStoredReports = 50;
 const workingDraftPrefix = 'working-report-';
 
-type DraftInput = Pick<DraftReport, 'notes' | 'stationId' | 'status'>;
+type DraftInput = Pick<
+  DraftReport,
+  'inspectionPhotoName' | 'inspectionPhotoType' | 'inspectionPhotoUri' | 'notes' | 'stationId' | 'status'
+>;
+type ReportSyncBody = FormData | Record<string, unknown>;
 
 interface MobileReportSyncResponse {
   duplicate: boolean;
@@ -58,6 +65,12 @@ function isDraftReport(value: unknown): value is DraftReport {
     typeof draft.createdAt === 'string' &&
     typeof draft.stationId === 'string' &&
     typeof draft.notes === 'string' &&
+    (draft.inspectionPhotoName === undefined || typeof draft.inspectionPhotoName === 'string') &&
+    (draft.inspectionPhotoType === undefined ||
+      draft.inspectionPhotoType === 'image/jpeg' ||
+      draft.inspectionPhotoType === 'image/png' ||
+      draft.inspectionPhotoType === 'image/webp') &&
+    (draft.inspectionPhotoUri === undefined || typeof draft.inspectionPhotoUri === 'string') &&
     (draft.serverReportId === undefined || typeof draft.serverReportId === 'string') &&
     (draft.stationLabel === undefined || typeof draft.stationLabel === 'string') &&
     (draft.submittedAt === undefined || typeof draft.submittedAt === 'string') &&
@@ -69,6 +82,38 @@ function isDraftReport(value: unknown): value is DraftReport {
     Array.isArray(draft.status) &&
     draft.status.every((item) => typeof item === 'string' && StatusOptions.some((option) => option.value === item))
   );
+}
+
+function createReportSyncBody(target: DraftReport): ReportSyncBody {
+  const notes = target.notes.trim();
+
+  if (!target.inspectionPhotoUri) {
+    return {
+      clientReportId: target.id,
+      stationId: target.stationId,
+      status: target.status,
+      ...(notes.length > 0 ? { notes } : {}),
+    };
+  }
+
+  const formData = new FormData();
+  const photo = {
+    name: target.inspectionPhotoName ?? `report-${target.stationId}.jpg`,
+    type: target.inspectionPhotoType ?? 'image/jpeg',
+    uri: target.inspectionPhotoUri,
+  };
+
+  formData.append('clientReportId', target.id);
+  formData.append('stationId', target.stationId);
+  formData.append('status', JSON.stringify(target.status));
+
+  if (notes.length > 0) {
+    formData.append('notes', notes);
+  }
+
+  formData.append('inspectionPhoto', photo as unknown as Blob);
+
+  return formData;
 }
 
 function sortReportsByNewest(reports: DraftReport[]): DraftReport[] {
@@ -232,12 +277,15 @@ export async function syncDraft(draftId: string, fallbackError = 'Could not sync
   );
 
   try {
-    const result = await apiPost<MobileReportSyncResponse, Record<string, unknown>>('/api/mobile/reports/sync', {
-      clientReportId: target.id,
-      stationId: target.stationId,
-      status: target.status,
-      ...(target.notes.trim().length > 0 ? { notes: target.notes.trim() } : {}),
-    });
+    const result = await apiPost<MobileReportSyncResponse, ReportSyncBody>(
+      '/api/mobile/reports/sync',
+      createReportSyncBody(target),
+      {
+        authRequiredMessage: fallbackError,
+        fallbackErrorMessage: fallbackError,
+        networkErrorMessage: fallbackError,
+      },
+    );
     const nextReports = await getStoredReports();
 
     await setStoredReports(

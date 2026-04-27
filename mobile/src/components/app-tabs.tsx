@@ -1,49 +1,82 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 
+import { EcoPestIcon, type EcoPestIconName } from '@/components/icons';
 import { Fonts, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
 import { useThemeMode } from '@/contexts/theme-context';
+import { useCurrentUser } from '@/lib/auth';
+import { isMobileAdminRole } from '@/lib/auth-routes';
+
+const tabIcons: Record<string, EcoPestIconName> = {
+  admin: 'shield',
+  drafts: 'clipboard-check',
+  history: 'file-text',
+  index: 'dashboard',
+  scan: 'qr-code',
+  settings: 'settings',
+  team: 'user',
+};
 
 export default function AppTabs() {
   const { theme } = useThemeMode();
   const { strings } = useLanguage();
+  const currentUser = useCurrentUser();
   const tabs = strings.tabs;
+  const isAdminUser = currentUser ? isMobileAdminRole(currentUser.profile.role) : false;
 
   return (
-    <NativeTabs
-      backgroundColor={theme.backgroundElement}
-      iconColor={{ default: theme.textSecondary, selected: theme.primary }}
-      indicatorColor={theme.backgroundSelected}
-      labelStyle={{
-        default: { color: theme.textSecondary, fontFamily: Fonts.sansBold, fontSize: Typography.fontSize.xs, fontWeight: '700' },
-        selected: { color: theme.primary, fontFamily: Fonts.sansBold, fontSize: Typography.fontSize.xs, fontWeight: '700' },
-      }}
-      tintColor={theme.primary}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>{tabs.home}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="dashboard" sf={{ default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' }} />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="scan">
-        <NativeTabs.Trigger.Label>{tabs.scan}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="qr_code_scanner" sf="qrcode.viewfinder" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="drafts">
-        <NativeTabs.Trigger.Label>{tabs.drafts}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="draft" sf={{ default: 'tray', selected: 'tray.fill' }} />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Label>{tabs.history}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="article" sf={{ default: 'doc.text', selected: 'doc.text.fill' }} />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="settings">
-        <NativeTabs.Trigger.Label>{tabs.settings}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="settings" sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        tabBarIcon: ({ color, focused }) => (
+          <View style={[styles.iconShell, focused ? { backgroundColor: theme.backgroundSelected } : null]}>
+            <EcoPestIcon color={color} name={tabIcons[route.name] ?? 'home'} size={22} />
+          </View>
+        ),
+        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarItemStyle: styles.tabItem,
+        tabBarLabelStyle: {
+          fontFamily: Fonts.sansBold,
+          fontSize: Typography.fontSize.xs,
+          fontWeight: '700',
+        },
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderTopColor: theme.border,
+          },
+        ],
+      })}>
+      <Tabs.Screen name="index" options={{ title: tabs.home }} />
+      <Tabs.Screen name="scan" options={{ title: tabs.scan }} />
+      <Tabs.Screen name="drafts" options={{ title: tabs.drafts }} />
+      <Tabs.Screen name="history" options={{ title: tabs.history }} />
+      <Tabs.Screen name="admin" options={{ href: isAdminUser ? '/(tabs)/admin' : null, title: tabs.admin }} />
+      <Tabs.Screen name="team" options={{ href: null, title: strings.team.title }} />
+      <Tabs.Screen name="settings" options={{ title: tabs.settings }} />
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconShell: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 30,
+    justifyContent: 'center',
+    width: 42,
+  },
+  tabBar: {
+    borderTopWidth: 1,
+    minHeight: Platform.select({ android: 70, ios: 82, default: 70 }),
+    paddingBottom: Platform.select({ android: 10, ios: 20, default: 10 }),
+    paddingTop: 8,
+  },
+  tabItem: {
+    paddingVertical: 2,
+  },
+});
