@@ -4,12 +4,32 @@ import { coordinatesFromRow } from "@/lib/db/schema";
 
 type AuthUserRow = typeof user.$inferSelect;
 
-export function toAppTimestamp(value: Date | null | undefined): AppTimestamp | undefined {
-  if (!value) {
+function asDate(value: Date | number | string | null | undefined): Date | undefined {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? undefined : value;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const next = new Date(value);
+    return Number.isNaN(next.getTime()) ? undefined : next;
+  }
+
+  if (typeof value === "string") {
+    const next = new Date(value);
+    return Number.isNaN(next.getTime()) ? undefined : next;
+  }
+
+  return undefined;
+}
+
+export function toAppTimestamp(value: Date | number | string | null | undefined): AppTimestamp | undefined {
+  const date = asDate(value);
+
+  if (!date) {
     return undefined;
   }
 
-  const millis = value.getTime();
+  const millis = date.getTime();
 
   return {
     seconds: Math.floor(millis / 1000),
@@ -18,7 +38,7 @@ export function toAppTimestamp(value: Date | null | undefined): AppTimestamp | u
   };
 }
 
-export function requiredTimestamp(value: Date | null | undefined): AppTimestamp {
+export function requiredTimestamp(value: Date | number | string | null | undefined): AppTimestamp {
   return toAppTimestamp(value) ?? toAppTimestamp(new Date(0))!;
 }
 

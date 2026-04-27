@@ -9,20 +9,18 @@ export type LogoProps = {
 
 const palettes = {
   light: {
-    eco: '#0f172a',
-    leafDark: '#0b6b3b',
-    leafLight: '#22c55e',
-    pest: '#2f87d8',
-    subtitle: '#475569',
-    vein: '#dcfce7',
+    eco: '#5A9850',
+    leafDark: '#4D8E4A',
+    leafLight: '#5A9850',
+    pest: '#2F4A8A',
+    vein: '#ffffff',
   },
   dark: {
-    eco: '#f8fafc',
-    leafDark: '#16a34a',
-    leafLight: '#4ade80',
-    pest: '#60a5fa',
-    subtitle: '#dbeafe',
-    vein: '#ecfccb',
+    eco: '#5A9850',
+    leafDark: '#4D8E4A',
+    leafLight: '#5A9850',
+    pest: '#2F4A8A',
+    vein: '#ffffff',
   },
 } as const;
 
@@ -77,21 +75,15 @@ export function Logo({ layout = 'horizontal', size = 48, theme, variant }: LogoP
     const width = size * 0.92;
 
     return (
-      <Svg accessibilityLabel="EcoPest Pest Control Team" height={size} role="img" viewBox="0 0 210 260" width={width}>
+      <Svg accessibilityLabel="EcoPest" height={size} role="img" viewBox="0 0 210 220" width={width}>
         <G transform="translate(35 0)">
           <LogoMarkPaths leafDark={palette.leafDark} leafLight={palette.leafLight} vein={palette.vein} />
         </G>
         <SvgText fill={palette.eco} fontFamily="Arial" fontSize="54" fontWeight="700" textAnchor="middle" x="84" y="168">
           eco
         </SvgText>
-        <SvgText fill={palette.pest} fontFamily="Arial" fontSize="54" fontWeight="700" textAnchor="middle" x="150" y="168">
+        <SvgText fill={palette.pest} fontFamily="Arial" fontSize="54" fontWeight="700" textAnchor="middle" x="106" y="214">
           pest
-        </SvgText>
-        <SvgText fill={palette.subtitle} fontFamily="Arial" fontSize="24" fontWeight="700" textAnchor="middle" x="105" y="210">
-          Pest Control
-        </SvgText>
-        <SvgText fill={palette.subtitle} fontFamily="Arial" fontSize="24" fontWeight="700" textAnchor="middle" x="105" y="238">
-          Team
         </SvgText>
       </Svg>
     );
@@ -100,16 +92,13 @@ export function Logo({ layout = 'horizontal', size = 48, theme, variant }: LogoP
   const width = size * 2.8;
 
   return (
-    <Svg accessibilityLabel="EcoPest Pest Control Team" height={size} role="img" viewBox="0 0 390 140" width={width}>
+    <Svg accessibilityLabel="EcoPest" height={size} role="img" viewBox="0 0 390 140" width={width}>
       <LogoMarkPaths leafDark={palette.leafDark} leafLight={palette.leafLight} vein={palette.vein} />
       <SvgText fill={palette.eco} fontFamily="Arial" fontSize="58" fontWeight="700" x="145" y="70">
         eco
       </SvgText>
-      <SvgText fill={palette.pest} fontFamily="Arial" fontSize="58" fontWeight="700" x="232" y="70">
+      <SvgText fill={palette.pest} fontFamily="Arial" fontSize="58" fontWeight="700" x="145" y="126">
         pest
-      </SvgText>
-      <SvgText fill={palette.subtitle} fontFamily="Arial" fontSize="24" fontWeight="700" x="145" y="102">
-        Pest Control Team
       </SvgText>
     </Svg>
   );

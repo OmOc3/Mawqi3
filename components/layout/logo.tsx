@@ -2,14 +2,12 @@ import { cn } from "@/lib/utils";
 
 const BRAND_COLORS = {
   ant: "#ffffff",
-  ecoDark: "#0f172a",
-  ecoLight: "#f8fafc",
-  leafDark: "#0b6b3b",
-  leafLight: "#22c55e",
-  pestBlue: "#2f87d8",
-  subtitleDark: "#475569",
-  subtitleLight: "#dbeafe",
-  vein: "#dcfce7",
+  ecoDark: "#5A9850",
+  ecoLight: "#5A9850",
+  leafDark: "#4D8E4A",
+  leafLight: "#5A9850",
+  pestBlue: "#2F4A8A",
+  vein: "#ffffff",
 } as const;
 
 export function LogoMarkArtwork() {
@@ -79,7 +77,6 @@ export function LogoMarkSvg({ className, title = "EcoPest" }: LogoSvgProps) {
 
 export function LogoLockupSvg({ className, inverse = false, title = "EcoPest Pest Control Team" }: LogoLockupSvgProps) {
   const ecoColor = inverse ? BRAND_COLORS.ecoLight : BRAND_COLORS.ecoDark;
-  const subtitleColor = inverse ? BRAND_COLORS.subtitleLight : BRAND_COLORS.subtitleDark;
 
   return (
     <svg
@@ -100,21 +97,10 @@ export function LogoLockupSvg({ className, inverse = false, title = "EcoPest Pes
         fontFamily="Arial, Helvetica, sans-serif"
         fontSize="58"
         fontWeight="700"
-        x="232"
-        y="70"
+        x="145"
+        y="126"
       >
         pest
-      </text>
-      <text
-        fill={subtitleColor}
-        fontFamily="Arial, Helvetica, sans-serif"
-        fontSize="24"
-        fontWeight="700"
-        letterSpacing="0.6"
-        x="145"
-        y="102"
-      >
-        Pest Control Team
       </text>
     </svg>
   );
