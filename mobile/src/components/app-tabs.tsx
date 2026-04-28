@@ -14,6 +14,7 @@ const tabIcons: Record<string, EcoPestIconName> = {
   drafts: 'clipboard-check',
   history: 'file-text',
   index: 'dashboard',
+  insights: 'brain',
   scan: 'qr-code',
   settings: 'settings',
   team: 'user',
@@ -51,9 +52,10 @@ export default function AppTabs() {
         ],
       })}>
       <Tabs.Screen name="index" options={{ title: tabs.home }} />
-      <Tabs.Screen name="scan" options={{ title: tabs.scan }} />
+      <Tabs.Screen name="scan" options={{ href: isAdminUser ? null : '/(tabs)/scan', title: tabs.scan }} />
       <Tabs.Screen name="drafts" options={{ title: tabs.drafts }} />
       <Tabs.Screen name="history" options={{ title: tabs.history }} />
+      <Tabs.Screen name="insights" options={{ href: isAdminUser ? '/(tabs)/insights' : null, title: strings.insights.title }} />
       <Tabs.Screen name="admin" options={{ href: isAdminUser ? '/(tabs)/admin' : null, title: tabs.admin }} />
       <Tabs.Screen name="team" options={{ href: null, title: strings.team.title }} />
       <Tabs.Screen name="settings" options={{ title: tabs.settings }} />

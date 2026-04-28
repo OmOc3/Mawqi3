@@ -50,6 +50,7 @@ export function appUserFromAuthUser(row: AuthUserRow): AppUser {
     role: row.role,
     createdAt: requiredTimestamp(row.createdAt),
     isActive: row.banned !== true,
+    image: row.image ?? undefined,
   };
 }
 

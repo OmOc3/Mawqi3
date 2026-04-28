@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -13,10 +13,10 @@ import { useLanguage } from '@/contexts/language-context';
 import { useTextScale } from '@/contexts/text-scale-context';
 import { type ThemeMode, useThemeMode } from '@/contexts/theme-context';
 import { useTheme } from '@/hooks/use-theme';
-import { loadMobileUserProfile, signOut, useCurrentUser } from '@/lib/auth';
+import { loadMobileUserProfile, reloadCurrentUser, signOut, useCurrentUser } from '@/lib/auth';
 import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { type Language } from '@/lib/i18n';
-import { pickAndUploadImage } from '@/lib/upload-image';
+import { pickLocalImage, uploadImage } from '@/lib/upload-image';
 import { getApiBaseUrl } from '@/lib/sync/api-client';
 import { readAuthCookieHeader } from '@/lib/auth-client';
 
@@ -64,8 +64,8 @@ function SettingsItem({
 
   const content = (
     <View style={[styles.settingsItem, { flexDirection: 'row' }]}>
-      <View style={[styles.itemIcon, { backgroundColor: theme.surfaceCardDark }]}>
-        <EcoPestIcon color={theme.text} name={icon} size={22} />
+      <View style={[styles.itemIcon, { backgroundColor: theme.backgroundSelected }]}>
+        <EcoPestIcon color={theme.primary} name={icon} size={22} />
       </View>
       <View style={styles.itemCopy}>
         <ThemedText type="default" style={styles.itemTitle}>
@@ -107,6 +107,8 @@ export default function SettingsScreen() {
   const [displayName, setDisplayName] = useState(currentUser?.profile.displayName ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  // Local URI shown immediately after picking before upload finishes
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
 
   async function logout(): Promise<void> {
     try {
@@ -138,8 +140,7 @@ export default function SettingsScreen() {
         showToast("تم تحديث البيانات بنجاح", 'success');
         await successHaptic();
         setIsEditing(false);
-        // Refresh profile in context
-        // In AuthProvider it uses loadMobileUserProfile
+        await reloadCurrentUser();
       } else {
         throw new Error('Update failed');
       }
@@ -153,11 +154,15 @@ export default function SettingsScreen() {
 
   async function handlePickImage() {
     if (!currentUser?.profile.uid) return;
+    // Step 1: pick locally and show preview immediately
+    const localUri = await pickLocalImage();
+    if (!localUri) return;
+    setLocalImageUri(localUri);
     setUploadingImage(true);
     try {
-      const url = await pickAndUploadImage(currentUser.profile.uid);
+      // Step 2: upload to server
+      const url = await uploadImage(localUri, currentUser.profile.uid);
       if (url) {
-        // Also update the user's image in the DB
         const baseUrl = await getApiBaseUrl();
         const cookie = await readAuthCookieHeader();
         await fetch(`${baseUrl}/api/mobile/users/${currentUser.profile.uid}`, {
@@ -168,11 +173,20 @@ export default function SettingsScreen() {
           },
           body: JSON.stringify({ image: url }),
         });
-        showToast("تم تحديث الصورة بنجاح", 'success');
+        showToast('تم تحديث الصورة بنجاح', 'success');
         await successHaptic();
+        await reloadCurrentUser();
+        // Keep the latest image visible instantly until profile refresh settles.
+        setLocalImageUri(url);
+      } else {
+        // Upload failed — revert preview
+        setLocalImageUri(null);
+        showToast('تعذر رفع الصورة', 'error');
+        await errorHaptic();
       }
     } catch {
-      showToast("تعذر رفع الصورة", 'error');
+      setLocalImageUri(null);
+      showToast('تعذر رفع الصورة', 'error');
       await errorHaptic();
     } finally {
       setUploadingImage(false);
@@ -180,6 +194,12 @@ export default function SettingsScreen() {
   }
 
   const profile = currentUser?.profile;
+
+  useEffect(() => {
+    if (localImageUri && profile?.image && localImageUri === profile.image) {
+      setLocalImageUri(null);
+    }
+  }, [localImageUri, profile?.image]);
 
   return (
     <ScreenShell>
@@ -195,8 +215,12 @@ export default function SettingsScreen() {
           <View style={[styles.profileHeader]}>
              <Pressable onPress={() => void handlePickImage()} style={styles.avatarWrapper}>
                 <View style={[styles.avatar, { backgroundColor: theme.primaryLight }]}>
-                  {profile?.image ? (
-                     <Image source={{ uri: profile.image }} style={styles.avatarImage} />
+                  {(localImageUri ?? profile?.image) ? (
+                     <Image
+                       source={{ uri: localImageUri ?? profile!.image! }}
+                       style={styles.avatarImage}
+                       cachePolicy="none"
+                     />
                   ) : (
                      <EcoPestIcon color={theme.onPrimary} name="user" size={40} />
                   )}
@@ -230,14 +254,16 @@ export default function SettingsScreen() {
           </View>
 
           <SettingsSection title={t.appSettingsTitle}>
-            <SettingsItem icon="globe" title={t.languageTitle}>
-               <View style={[styles.segmented, { flexDirection: 'row' }]}>
+            <SettingsItem icon="globe" title={t.languageTitle} />
+            <View style={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }}>
+               <View style={[styles.segmented, { flexDirection: 'row', backgroundColor: theme.backgroundElement, padding: Spacing.xs, borderRadius: Radius.lg, borderWidth: 1, borderColor: theme.border }]}>
                   {languageOptions.map((item) => (
                     <Pressable
                        key={item}
                        onPress={() => void setLanguage(item)}
                        style={[
                          styles.segmentBtn,
+                         { flex: 1, alignItems: 'center' },
                          language === item && { backgroundColor: theme.primary },
                        ]}>
                        <ThemedText type="smallBold" style={{ color: language === item ? theme.onPrimary : theme.text }}>
@@ -246,21 +272,24 @@ export default function SettingsScreen() {
                     </Pressable>
                   ))}
                </View>
-            </SettingsItem>
+            </View>
             {needsRestart ? (
               <ThemedText type="small" themeColor="warning" style={styles.restartHint}>
                 {t.languageRestartHint}
               </ThemedText>
             ) : null}
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <SettingsItem icon="moon" title={t.themeTitle} subtitle={`${t.themeCurrent}: ${resolvedTheme === 'dark' ? t.themeDark : t.themeLight}`}>
-               <View style={[styles.segmented, { flexDirection: 'row' }]}>
+            
+            <SettingsItem icon="moon" title={t.themeTitle} subtitle={`${t.themeCurrent}: ${resolvedTheme === 'dark' ? t.themeDark : t.themeLight}`} />
+            <View style={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }}>
+               <View style={[styles.segmented, { flexDirection: 'row', backgroundColor: theme.backgroundElement, padding: Spacing.xs, borderRadius: Radius.lg, borderWidth: 1, borderColor: theme.border }]}>
                   {modes.map((item) => (
                     <Pressable
                        key={item}
                        onPress={() => setMode(item)}
                        style={[
                          styles.segmentBtn,
+                         { flex: 1, alignItems: 'center' },
                          mode === item && { backgroundColor: theme.primary },
                        ]}>
                        <ThemedText type="smallBold" style={{ color: mode === item ? theme.onPrimary : theme.text }}>
@@ -269,7 +298,7 @@ export default function SettingsScreen() {
                     </Pressable>
                   ))}
                </View>
-            </SettingsItem>
+            </View>
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <SettingsItem icon="type" title={t.largeTextTitle}>
               <Switch
@@ -357,7 +386,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: Radius.full,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

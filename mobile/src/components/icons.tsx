@@ -6,6 +6,7 @@ export type EcoPestIconName =
   | 'alert-circle'
   | 'arrow-left'
   | 'arrow-right'
+  | 'brain'
   | 'camera'
   | 'check'
   | 'check-circle'
@@ -76,6 +77,12 @@ export function EcoPestIcon({ color, name, size = 24, strokeWidth = 2.2 }: EcoPe
         <>
           <Line x1="5" x2="19" y1="12" y2="12" {...common} />
           <Polyline points="12 5 19 12 12 19" {...common} />
+        </>
+      ) : null}
+      {name === 'brain' ? (
+        <>
+          <Path d="M9.2 7.2a3.2 3.2 0 0 1 6.1-.7 2.9 2.9 0 0 1 2.9 2.8c0 .6-.2 1.1-.5 1.6a3.2 3.2 0 0 1-.9 5.7 3.1 3.1 0 0 1-3.1 3h-3.4a3.1 3.1 0 0 1-3.1-3 3.2 3.2 0 0 1-.9-5.7 2.9 2.9 0 0 1 2.9-3.7Z" {...common} />
+          <Path d="M12 7.5v9M9.6 10.2h1.6M12 12h2.4M10 14.6h2M13 9.2h1.5" {...common} />
         </>
       ) : null}
       {name === 'camera' ? (

@@ -101,7 +101,7 @@ export default async function ManagerUsersPage() {
                   </div>
 
                   <div className="mt-4 space-y-3">
-                    <UserProfileForm user={user} disabled={isCurrentUser} />
+                    <UserProfileForm user={{ uid: user.uid, displayName: user.displayName, image: user.image }} disabled={isCurrentUser} />
                     <UserRoleForm disabled={isCurrentUser} targetUid={user.uid} value={user.role} />
                     <form action={toggleActive}>
                       <button

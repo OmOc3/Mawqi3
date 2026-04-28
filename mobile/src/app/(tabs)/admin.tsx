@@ -98,7 +98,7 @@ const adminCopy = {
     codeSaved: 'تم تحديث كود الدخول.',
     createStation: 'إضافة محطة',
     createUser: 'إضافة مستخدم',
-    dashboardBody: 'لوحة موبايل للمدير والمشرف بنفس صلاحيات الويب، لكن بتدفقات مناسبة للموبايل.',
+    dashboardBody: 'ادارة كاملة من الفون',
     dateUnavailable: 'غير متاح',
     editStation: 'تعديل المحطة',
     entity: 'الكيان',

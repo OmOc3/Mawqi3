@@ -2,11 +2,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { getApiBaseUrl } from '@/lib/sync/api-client';
 import { readAuthCookieHeader } from '@/lib/auth-client';
 
-export async function pickAndUploadImage(uid?: string): Promise<string | null> {
-  // Request permission
+/** Pick from gallery only — returns the local file URI without uploading. */
+export async function pickLocalImage(): Promise<string | null> {
   const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (permissionResult.granted === false) {
-    alert("عذرًا، نحتاج إلى إذن للوصول إلى معرض الصور الخاص بك!");
+  if (!permissionResult.granted) {
+    alert('عذرًا، نحتاج إلى إذن للوصول إلى معرض الصور الخاص بك!');
     return null;
   }
 
@@ -22,12 +22,13 @@ export async function pickAndUploadImage(uid?: string): Promise<string | null> {
   }
 
   const asset = result.assets[0];
-  
-  if (!asset.uri) {
-      return null;
-  }
+  return asset?.uri ?? null;
+}
 
-  return await uploadImage(asset.uri, uid);
+export async function pickAndUploadImage(uid?: string): Promise<string | null> {
+  const localUri = await pickLocalImage();
+  if (!localUri) return null;
+  return await uploadImage(localUri, uid);
 }
 
 export async function uploadImage(uri: string, uid?: string): Promise<string | null> {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import type { AppUser } from "@/types";
 
-export function UserProfileForm({ user, disabled }: { user: AppUser; disabled?: boolean }) {
+export function UserProfileForm({ user, disabled }: { user: Pick<AppUser, "uid" | "displayName" | "image">; disabled?: boolean }) {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

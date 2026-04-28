@@ -33,6 +33,7 @@ export interface AppUser {
   role: UserRole;
   createdAt: AppTimestamp;
   isActive: boolean;
+  image?: string | null;
 }
 
 export interface MobileAppUser {
@@ -41,6 +42,7 @@ export interface MobileAppUser {
   displayName: string;
   role: UserRole;
   isActive: boolean;
+  image?: string | null;
   createdAt?: string;
 }
 
@@ -179,6 +181,7 @@ export interface AuthenticatedUserResponse {
   displayName: string;
   role: UserRole;
   isActive: boolean;
+  image?: string | null;
 }
 
 export interface LoginSuccessResponse {

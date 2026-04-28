@@ -16,6 +16,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.physex.ecopest",
       "adaptiveIcon": {
         "backgroundColor": "#031b12",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

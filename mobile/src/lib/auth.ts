@@ -64,7 +64,7 @@ export async function loadMobileUserProfile(): Promise<AuthenticatedUserResponse
     return null;
   }
 
-  const response = await fetch(`${baseUrl}/api/mobile/me`, {
+  const response = await fetch(`${baseUrl}/api/mobile/me?t=${Date.now()}`, {
     headers: {
       Cookie: cookie,
     },
@@ -249,4 +249,11 @@ export async function signOut(): Promise<void> {
   await clearServerSession();
   await clearStoredAuthState();
   notifyAuthListeners(null);
+}
+
+export async function reloadCurrentUser(): Promise<void> {
+  const profile = await loadMobileUserProfile();
+  if (profile) {
+    notifyAuthListeners(profile);
+  }
 }
