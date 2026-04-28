@@ -70,7 +70,8 @@ export default async function ManagerUsersPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3">
                       {user.image ? (
-                        <img src={user.image} alt={user.displayName} className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-slate-200" />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img alt={user.displayName} className="h-14 w-14 shrink-0 rounded-full object-cover ring-1 ring-slate-200" src={user.image} />
                       ) : (
                         <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-slate-100 text-lg font-bold text-slate-500 ring-1 ring-slate-200">
                           {getInitials(user.displayName)}

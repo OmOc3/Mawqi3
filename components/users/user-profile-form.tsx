@@ -48,8 +48,9 @@ export function UserProfileForm({ user, disabled }: { user: AppUser; disabled?: 
         setMessage({ type: "success", text: "تم تحديث الملف الشخصي بنجاح." });
         setImageFile(null);
       }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "حدث خطأ غير متوقع." });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "حدث خطأ غير متوقع.";
+      setMessage({ type: "error", text: errorMessage });
     } finally {
       setIsSubmitting(false);
     }

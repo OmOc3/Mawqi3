@@ -58,10 +58,6 @@ interface StationFormState {
 interface UserFormState {
   displayName: string;
   email: string;
-  password?: string;
-  role: UserRole;
-  image?: string;
-}
   password: string;
   role: UserRole;
   image?: string;
