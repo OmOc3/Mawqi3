@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ROLE_COOKIE_NAME } from "@/lib/auth/constants";
+import { getRoleRedirect } from "@/lib/auth/redirects";
 import { verifySignedRoleCookie } from "@/lib/auth/role-cookie";
 import { assertEnv } from "@/lib/env-check";
 
 const alwaysPublicPrefixes = [
   "/login",
+  "/client/login",
   "/unauthorized",
   "/account-disabled",
   "/scan",
@@ -65,10 +67,40 @@ function isMobileApi(pathname: string): boolean {
   return pathname === mobileApiPrefix || pathname.startsWith(`${mobileApiPrefix}/`);
 }
 
+function isBetterAuthCookieName(name: string): boolean {
+  const unprefixed = name.startsWith("__Secure-")
+    ? name.slice("__Secure-".length)
+    : name.startsWith("__Host-")
+      ? name.slice("__Host-".length)
+      : name;
+
+  return unprefixed.startsWith("better-auth.");
+}
+
+function hasBetterAuthCookie(request: NextRequest): boolean {
+  const cookieHeader = request.headers.get("cookie");
+
+  if (!cookieHeader) {
+    return false;
+  }
+
+  return cookieHeader
+    .split(";")
+    .some((cookie) => {
+      const name = cookie.trim().split("=", 1)[0];
+
+      return isBetterAuthCookieName(name);
+    });
+}
+
+function hasMobileApiSessionCredential(request: NextRequest): boolean {
+  return request.headers.get("authorization")?.startsWith("Bearer ") === true || hasBetterAuthCookie(request);
+}
+
 function redirectToLogin(request: NextRequest): NextResponse {
   const url = request.nextUrl.clone();
 
-  url.pathname = "/login";
+  url.pathname = request.nextUrl.pathname.startsWith("/client") ? "/client/login" : "/login";
 
   return NextResponse.redirect(url);
 }
@@ -83,11 +115,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       return nextWithNonce(request);
     }
 
-    // For mobile API routes, require at least an Authorization header as a first gate.
+    // For mobile API routes, require at least a mobile-supported auth credential as a first gate.
     // Full session validation happens inside each route via requireBearerRole.
     if (isMobileApi(pathname)) {
-      const hasAuth = request.headers.get("authorization")?.startsWith("Bearer ");
-      if (!hasAuth) {
+      if (!hasMobileApiSessionCredential(request)) {
         return NextResponse.json(
           { code: "AUTH_REQUIRED", message: "يلزم تسجيل الدخول." },
           { status: 401 },
@@ -101,6 +132,18 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
     if (!payload) {
       return redirectToLogin(request);
+    }
+
+    if (pathname.startsWith("/client") && payload.role !== "client" && !pathname.startsWith("/client/view")) {
+      const url = request.nextUrl.clone();
+      url.pathname = getRoleRedirect(payload.role);
+      return NextResponse.redirect(url);
+    }
+
+    if ((pathname.startsWith("/dashboard") || pathname.startsWith("/scan")) && payload.role === "client") {
+      const url = request.nextUrl.clone();
+      url.pathname = getRoleRedirect(payload.role);
+      return NextResponse.redirect(url);
     }
 
     return nextWithNonce(request);

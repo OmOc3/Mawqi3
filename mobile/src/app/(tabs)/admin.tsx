@@ -26,12 +26,16 @@ import { useReviewReports } from '@/hooks/use-review-reports';
 import { useTeamUsers } from '@/hooks/use-team-users';
 import { useCurrentUser } from '@/lib/auth';
 import { isMobileAdminRole } from '@/lib/auth-routes';
+import { errorHaptic, successHaptic } from '@/lib/haptics';
 import { apiGet, apiPatch, apiPost } from '@/lib/sync/api-client';
 import { pickAndUploadImage } from '@/lib/upload-image';
 import type {
   AuditLog,
+  ClientOrderStatus,
   MobileAdminOverview,
   MobileAppUser,
+  MobileClientOrder,
+  MobileClientOrdersResponse,
   MobileManagerDashboardStats,
   MobileReviewReport,
   Report,
@@ -39,8 +43,9 @@ import type {
   UserRole,
 } from '@/lib/sync/types';
 
-type AdminSection = 'overview' | 'reports' | 'stations' | 'tasks' | 'team' | 'audit';
+type AdminSection = 'overview' | 'reports' | 'clientOrders' | 'stations' | 'tasks' | 'team' | 'audit';
 type ReviewFilter = Report['reviewStatus'] | 'all';
+type ClientOrderFilter = ClientOrderStatus | 'all';
 type UserRoleFilter = UserRole | 'all';
 type StationSheetMode = 'create' | 'edit';
 
@@ -205,6 +210,40 @@ const adminCopy = {
   },
 } as const;
 
+const clientOrdersCopy = {
+  ar: {
+    clientOrders: 'طلبات العملاء',
+    loadError: 'تعذر تحميل طلبات العملاء.',
+    noOrders: 'لا توجد طلبات عملاء مطابقة.',
+    orderStatusSaved: 'تم تحديث حالة الطلب.',
+    statusFilters: 'حالة الطلب',
+  },
+  en: {
+    clientOrders: 'Client orders',
+    loadError: 'Could not load client orders.',
+    noOrders: 'No matching client orders.',
+    orderStatusSaved: 'Order status updated.',
+    statusFilters: 'Order status',
+  },
+} as const;
+
+const clientOrderStatusLabels = {
+  ar: {
+    all: 'كل الحالات',
+    pending: 'جديد',
+    in_progress: 'قيد التنفيذ',
+    completed: 'مكتمل',
+    cancelled: 'ملغي',
+  },
+  en: {
+    all: 'All statuses',
+    pending: 'New',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  },
+} as const satisfies Record<'ar' | 'en', Record<ClientOrderFilter, string>>;
+
 function isManagerStats(stats: MobileAdminOverview['stats'] | undefined): stats is MobileManagerDashboardStats {
   return Boolean(stats && 'totalStations' in stats);
 }
@@ -262,6 +301,22 @@ function stationHealth(station: Station): { label: string; tone: 'danger' | 'neu
   }
 
   return { label: 'مستقرة', tone: 'success' };
+}
+
+function clientOrderTone(status: ClientOrderStatus): 'danger' | 'info' | 'success' | 'warning' {
+  if (status === 'completed') {
+    return 'success';
+  }
+
+  if (status === 'cancelled') {
+    return 'danger';
+  }
+
+  if (status === 'in_progress') {
+    return 'info';
+  }
+
+  return 'warning';
 }
 
 function buildStationPayload(form: StationFormState):
@@ -397,6 +452,7 @@ export default function AdminScreen() {
   const theme = useTheme();
   const { showToast } = useToast();
   const t = adminCopy[language];
+  const clientT = clientOrdersCopy[language];
   const locale = language === 'ar' ? 'ar-EG' : 'en-US';
   const role = currentUser?.profile.role;
   const isAdminUser = role ? isMobileAdminRole(role) : false;
@@ -412,6 +468,12 @@ export default function AdminScreen() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditFilters, setAuditFilters] = useState({ action: '', actorUid: '', entityType: '' });
+  const [clientOrders, setClientOrders] = useState<MobileClientOrder[]>([]);
+  const [clientOrdersLoading, setClientOrdersLoading] = useState(false);
+  const [clientOrdersError, setClientOrdersError] = useState<string | null>(null);
+  const [clientOrderFilter, setClientOrderFilter] = useState<ClientOrderFilter>('all');
+  const [clientOrderSearch, setClientOrderSearch] = useState('');
+  const [updatingClientOrderId, setUpdatingClientOrderId] = useState<string | null>(null);
   const [reportFilter, setReportFilter] = useState<ReviewFilter>('all');
   const [reportSearch, setReportSearch] = useState('');
   const [stationSearch, setStationSearch] = useState('');
@@ -446,12 +508,13 @@ export default function AdminScreen() {
       [
         { id: 'overview', icon: 'dashboard', label: t.overview },
         { id: 'reports', icon: 'file-text', label: t.reports },
+        { id: 'clientOrders', icon: 'clipboard-check', label: clientT.clientOrders },
         ...(isManager ? [{ id: 'stations', icon: 'target', label: t.stations } as const] : []),
         { id: 'tasks', icon: 'alert-circle', label: t.tasks },
         ...(isManager ? [{ id: 'team', icon: 'user', label: t.team } as const] : []),
         ...(isManager ? [{ id: 'audit', icon: 'shield', label: t.audit } as const] : []),
       ] satisfies { id: AdminSection; icon: EcoPestIconName; label: string }[],
-    [isManager, t],
+    [clientT.clientOrders, isManager, t],
   );
 
   const loadOverview = useCallback(async (): Promise<void> => {
@@ -531,9 +594,33 @@ export default function AdminScreen() {
     }
   }, [auditFilters, isManager, strings.auth.sessionExpired, t.loadAuditError]);
 
+  const loadClientOrders = useCallback(async (): Promise<void> => {
+    if (!isAdminUser) {
+      return;
+    }
+
+    setClientOrdersLoading(true);
+
+    try {
+      const data = await apiGet<MobileClientOrdersResponse>('/api/mobile/client-orders', {
+        authRequiredMessage: strings.auth.sessionExpired,
+        fallbackErrorMessage: clientT.loadError,
+        networkErrorMessage: clientT.loadError,
+      });
+
+      setClientOrders(data.orders);
+      setClientOrdersError(null);
+    } catch (loadError: unknown) {
+      setClientOrders([]);
+      setClientOrdersError(loadError instanceof Error ? loadError.message : clientT.loadError);
+    } finally {
+      setClientOrdersLoading(false);
+    }
+  }, [clientT.loadError, isAdminUser, strings.auth.sessionExpired]);
+
   const refreshAll = useCallback(async (): Promise<void> => {
-    await Promise.all([loadOverview(), reviews.refresh(), team.refresh(), loadStations(), loadAudit()]);
-  }, [loadAudit, loadOverview, loadStations, reviews, team]);
+    await Promise.all([loadOverview(), reviews.refresh(), team.refresh(), loadStations(), loadAudit(), loadClientOrders()]);
+  }, [loadAudit, loadClientOrders, loadOverview, loadStations, reviews, team]);
 
   useEffect(() => {
     if (!isAdminUser) {
@@ -543,7 +630,8 @@ export default function AdminScreen() {
     void loadOverview();
     void loadStations();
     void loadAudit();
-  }, [isAdminUser, loadAudit, loadOverview, loadStations]);
+    void loadClientOrders();
+  }, [isAdminUser, loadAudit, loadClientOrders, loadOverview, loadStations]);
 
   useEffect(() => {
     if (!sections.some((section) => section.id === activeSection)) {
@@ -589,6 +677,23 @@ export default function AdminScreen() {
     });
   }, [stationSearch, stations]);
 
+  const visibleClientOrders = useMemo(() => {
+    const cleanQuery = clientOrderSearch.trim().toLowerCase();
+
+    return clientOrders.filter((order) => {
+      if (clientOrderFilter !== 'all' && order.status !== clientOrderFilter) {
+        return false;
+      }
+
+      if (!cleanQuery) {
+        return true;
+      }
+
+      const haystack = `${order.orderId} ${order.clientName} ${order.clientUid} ${order.stationId} ${order.stationLabel} ${order.stationLocation ?? ''}`.toLowerCase();
+      return haystack.includes(cleanQuery);
+    });
+  }, [clientOrderFilter, clientOrderSearch, clientOrders]);
+
   const visibleUsers = useMemo(() => {
     const cleanQuery = teamSearch.trim().toLowerCase();
 
@@ -632,6 +737,34 @@ export default function AdminScreen() {
       await errorHaptic();
     } finally {
       setReviewingReportId(null);
+    }
+  }
+
+  async function updateClientOrderStatus(order: MobileClientOrder, status: ClientOrderStatus): Promise<void> {
+    if (order.status === status) {
+      return;
+    }
+
+    setUpdatingClientOrderId(order.orderId);
+
+    try {
+      await apiPatch<{ success: true }, { status: ClientOrderStatus }>(
+        `/api/mobile/client-orders/${encodeURIComponent(order.orderId)}`,
+        { status },
+        {
+          authRequiredMessage: strings.auth.sessionExpired,
+          fallbackErrorMessage: clientT.loadError,
+          networkErrorMessage: clientT.loadError,
+        },
+      );
+      await loadClientOrders();
+      showToast(clientT.orderStatusSaved, 'success');
+      await successHaptic();
+    } catch (orderError: unknown) {
+      showToast(orderError instanceof Error ? orderError.message : clientT.loadError, 'error');
+      await errorHaptic();
+    } finally {
+      setUpdatingClientOrderId(null);
     }
   }
 
@@ -968,6 +1101,69 @@ export default function AdminScreen() {
     );
   }
 
+  function renderClientOrders() {
+    return (
+      <View style={styles.sectionStack}>
+        <SectionHeader subtitle={clientT.statusFilters} title={clientT.clientOrders} />
+        {clientOrdersError ? <SyncBanner body={clientOrdersError} title={clientT.loadError} tone="warning" /> : null}
+        <InputField label={t.search} onChangeText={setClientOrderSearch} value={clientOrderSearch} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={[styles.filterRow, { flexDirection: 'row' }]}>
+            {(['all', 'pending', 'in_progress', 'completed', 'cancelled'] as const).map((filter) => (
+              <FilterPill
+                active={clientOrderFilter === filter}
+                key={filter}
+                label={clientOrderStatusLabels[language][filter]}
+                onPress={() => setClientOrderFilter(filter)}
+              />
+            ))}
+          </View>
+        </ScrollView>
+        {clientOrdersLoading ? <ActivityIndicator color={theme.primary} /> : null}
+        {!clientOrdersLoading && visibleClientOrders.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <EmptyState subtitle={clientT.noOrders} title={clientT.clientOrders} />
+          </View>
+        ) : null}
+        <View style={styles.cardList}>
+          {visibleClientOrders.map((order) => (
+            <Card key={order.orderId}>
+              <View style={[styles.headerRow, { flexDirection: 'row' }]}>
+                <View style={styles.summaryCopy}>
+                  <ThemedText type="title">{order.stationLabel}</ThemedText>
+                  <ThemedText selectable type="small" themeColor="textSecondary">
+                    {order.clientName} · #{order.stationId}
+                  </ThemedText>
+                </View>
+                <StatusChip label={clientOrderStatusLabels[language][order.status]} tone={clientOrderTone(order.status)} />
+              </View>
+              <View style={[styles.metaRow, { flexDirection: 'row' }]}>
+                <StatusChip label={formatDate(order.createdAt, locale, t.dateUnavailable)} tone="neutral" />
+                {order.stationLocation ? <StatusChip label={order.stationLocation} tone="info" /> : null}
+              </View>
+              {order.note ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {order.note}
+                </ThemedText>
+              ) : null}
+              <View style={[styles.reviewActions, { flexDirection: 'row' }]}>
+                {(['pending', 'in_progress', 'completed', 'cancelled'] as const).map((status) => (
+                  <SecondaryButton
+                    key={status}
+                    loading={updatingClientOrderId === order.orderId && order.status !== status}
+                    onPress={() => void updateClientOrderStatus(order, status)}
+                    selected={order.status === status}>
+                    {clientOrderStatusLabels[language][status]}
+                  </SecondaryButton>
+                ))}
+              </View>
+            </Card>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   function renderStations() {
     return (
       <View style={styles.sectionStack}>
@@ -1077,7 +1273,7 @@ export default function AdminScreen() {
         <InputField label={t.search} onChangeText={setTeamSearch} value={teamSearch} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={[styles.filterRow, { flexDirection: 'row' }]}>
-            {(['all', 'technician', 'supervisor', 'manager'] as const).map((filter) => (
+            {(['all', 'client', 'technician', 'supervisor', 'manager'] as const).map((filter) => (
               <FilterPill
                 active={teamRoleFilter === filter}
                 key={filter}
@@ -1164,6 +1360,10 @@ export default function AdminScreen() {
   function renderActiveSection() {
     if (activeSection === 'reports') {
       return renderReports();
+    }
+
+    if (activeSection === 'clientOrders') {
+      return renderClientOrders();
     }
 
     if (activeSection === 'stations') {
@@ -1335,7 +1535,7 @@ export default function AdminScreen() {
 
         <BottomSheet onDismiss={() => setUserCreateVisible(false)} title={t.createUser} visible={userCreateVisible}>
           <View style={styles.sheetStack}>
-            <InputField label={strings.auth.account} onChangeText={(value) => setUserForm((current) => ({ ...current, displayName: value }))} value={userForm.displayName} />
+            <InputField label={strings.actions.account} onChangeText={(value) => setUserForm((current) => ({ ...current, displayName: value }))} value={userForm.displayName} />
             <InputField contentDirection="ltr" label={strings.auth.email} onChangeText={(value) => setUserForm((current) => ({ ...current, email: value }))} value={userForm.email} />
             <InputField contentDirection="ltr" label={t.accessCode} onChangeText={(value) => setUserForm((current) => ({ ...current, password: value }))} placeholder={t.accessCodePlaceholder} value={userForm.password} />
             <SecondaryButton icon="camera" onPress={async () => {
@@ -1345,7 +1545,7 @@ export default function AdminScreen() {
               {userForm.image ? 'تم اختيار صورة' : 'إضافة صورة (اختياري)'}
             </SecondaryButton>
             <View style={[styles.filterRow, { flexDirection: 'row' }]}>
-              {(['technician', 'supervisor', 'manager'] as const).map((nextRole) => (
+            {(['client', 'technician', 'supervisor', 'manager'] as const).map((nextRole) => (
                 <FilterPill
                   active={userForm.role === nextRole}
                   key={nextRole}
@@ -1371,7 +1571,7 @@ export default function AdminScreen() {
                 {selectedUser.email}
               </ThemedText>
               <View style={[styles.filterRow, { flexDirection: 'row' }]}>
-                {(['technician', 'supervisor', 'manager'] as const).map((nextRole) => (
+                {(['client', 'technician', 'supervisor', 'manager'] as const).map((nextRole) => (
                   <FilterPill
                     active={selectedUserRole === nextRole}
                     key={nextRole}

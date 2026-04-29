@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportMobileCard } from "@/components/reports/report-mobile-card";
 import { ReportPhotoLinks } from "@/components/reports/report-photo-links";
@@ -95,10 +95,12 @@ function timestampToMillis(timestamp?: AppTimestamp): number | null {
 }
 
 function photoCount(report: Report): number {
+  const galleryCount = report.photos?.length ?? 0;
   return (
+    galleryCount ||
     Number(Boolean(report.photoPaths?.before)) +
-    Number(Boolean(report.photoPaths?.after)) +
-    Number(Boolean(report.photoPaths?.station))
+      Number(Boolean(report.photoPaths?.after)) +
+      Number(Boolean(report.photoPaths?.station))
   );
 }
 
@@ -166,13 +168,12 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
       : null;
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
                 href={buildExportHref(filters)}
               >
                 تصدير CSV
@@ -189,7 +190,6 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
           description="مراجعة تقارير الفنيين وتحديث حالة الاعتماد."
           title="تقارير المدير"
         />
-        <DashboardNav role="manager" />
 
         <ReportsFilterForm basePath="/dashboard/manager/reports" defaultValues={filters} />
 
@@ -199,7 +199,7 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {reports.map((report) => (
                 <ReportMobileCard
                   action={
@@ -218,7 +218,7 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                 />
               ))}
             </div>
-          <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card md:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card lg:block">
             <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px]">
               <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
@@ -289,7 +289,6 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
             </Link>
           </div>
         ) : null}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

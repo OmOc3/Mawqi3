@@ -122,6 +122,10 @@ function isDisabledAuthError(error: unknown): boolean {
 export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorResponse | LoginSuccessResponse>> {
   try {
     const body = (await request.json()) as unknown;
+    const expectedRole =
+      isRecord(body) && typeof body.expectedRole === "string" && validRoles.has(body.expectedRole as UserRole)
+        ? body.expectedRole
+        : undefined;
     const parsed = loginFormSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -177,6 +181,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
         return unauthorizedResponse();
       }
 
+      if (expectedRole && authClassification.profile.role !== expectedRole) {
+        await recordFailedLogin(email, ipAddress);
+        return NextResponse.json(
+          {
+            message: "هذا الحساب غير مسموح له بالدخول من هذه الصفحة.",
+            code: "AUTH_ROLE_MISMATCH",
+          },
+          { status: 403 },
+        );
+      }
+
       await resetLoginRateLimit(email, ipAddress);
 
       const response = NextResponse.json<LoginSuccessResponse>({
@@ -209,7 +224,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
   } catch (error: unknown) {
     console.error("[login] Unexpected error:", error);
 
-    const isDev = process.env.VERCEL_ENV !== "production";
+    const isDev = process.env.NODE_ENV !== "production" && process.env.VERCEL_ENV !== "production";
 
     return NextResponse.json(
       {

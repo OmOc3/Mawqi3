@@ -43,11 +43,11 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
 
   return (
     <form
-      className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card md:grid-cols-5"
+      className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:grid-cols-2 sm:p-6 xl:grid-cols-5"
       dir="rtl"
       onSubmit={form.handleSubmit(onSubmit)}
     >
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="stationId">
           رقم المحطة
         </label>
@@ -57,7 +57,7 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
           {...form.register("stationId")}
         />
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="technicianUid">
           رقم الفني
         </label>
@@ -67,7 +67,7 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
           {...form.register("technicianUid")}
         />
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="dateFrom">
           من تاريخ
         </label>
@@ -78,7 +78,7 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
           {...form.register("dateFrom")}
         />
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="dateTo">
           إلى تاريخ
         </label>
@@ -89,7 +89,7 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
           {...form.register("dateTo")}
         />
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="reviewStatus">
           المراجعة
         </label>
@@ -104,7 +104,7 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
           <option value="rejected">مرفوض</option>
         </select>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row md:col-span-5">
+      <div className="flex flex-col gap-3 pt-1 sm:col-span-2 sm:flex-row xl:col-span-5">
         <Button className="sm:w-auto" type="submit">
           تطبيق الفلاتر
         </Button>

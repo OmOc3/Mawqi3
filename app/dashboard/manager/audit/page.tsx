@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
@@ -78,50 +78,78 @@ export default async function ManagerAuditPage({ searchParams }: AuditPageProps)
   });
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           backHref="/dashboard/manager"
           description="قراءة أثر العمليات الحساسة حسب المستخدم، الإجراء، ونوع الكيان."
           title="سجل العمليات"
         />
-        <DashboardNav role="manager" />
 
-        <form className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-control md:grid-cols-5" dir="rtl">
-          <input
-            className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
-            defaultValue={params.action ?? ""}
-            name="action"
-            placeholder="الإجراء"
-          />
-          <input
-            className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
-            defaultValue={params.entityType ?? ""}
-            name="entityType"
-            placeholder="نوع الكيان"
-          />
-          <input
-            className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
-            defaultValue={params.actorUid ?? ""}
-            name="actorUid"
-            placeholder="UID المستخدم"
-          />
-          <input
-            className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
-            defaultValue={params.dateFrom ?? ""}
-            name="dateFrom"
-            type="date"
-          />
-          <div className="flex gap-2">
+        <form className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-control sm:grid-cols-2 sm:p-6 xl:grid-cols-5" dir="rtl">
+          <div className="space-y-1.5 sm:col-span-2 xl:col-span-1">
+            <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="audit-action">
+              الإجراء
+            </label>
             <input
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
-              defaultValue={params.dateTo ?? ""}
-              name="dateTo"
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
+              defaultValue={params.action ?? ""}
+              id="audit-action"
+              name="action"
+              placeholder="الإجراء"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="audit-entity-type">
+              نوع الكيان
+            </label>
+            <input
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
+              defaultValue={params.entityType ?? ""}
+              id="audit-entity-type"
+              name="entityType"
+              placeholder="نوع الكيان"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="audit-actor-uid">
+              UID المستخدم
+            </label>
+            <input
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
+              defaultValue={params.actorUid ?? ""}
+              id="audit-actor-uid"
+              name="actorUid"
+              placeholder="UID المستخدم"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="audit-date-from">
+              من تاريخ
+            </label>
+            <input
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
+              defaultValue={params.dateFrom ?? ""}
+              id="audit-date-from"
+              name="dateFrom"
               type="date"
             />
-            <button className="rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--primary-hover)]" type="submit">
-              فلترة
-            </button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="audit-date-to">
+              إلى تاريخ
+            </label>
+            <div className="flex gap-3">
+              <input
+                className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)]"
+                defaultValue={params.dateTo ?? ""}
+                id="audit-date-to"
+                name="dateTo"
+                type="date"
+              />
+              <button className="min-h-11 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-bold text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)]" type="submit">
+                فلترة
+              </button>
+            </div>
           </div>
         </form>
 
@@ -130,7 +158,7 @@ export default async function ManagerAuditPage({ searchParams }: AuditPageProps)
             <EmptyState description="لا توجد عمليات مطابقة للفلاتر الحالية." title="لا توجد سجلات" />
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-control">
+          <div className="-mx-4 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-control sm:mx-0">
             <table className="w-full min-w-[980px]">
               <thead className="border-b border-[var(--border)] bg-[var(--surface-subtle)]">
                 <tr>
@@ -159,7 +187,6 @@ export default async function ManagerAuditPage({ searchParams }: AuditPageProps)
             </table>
           </div>
         )}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

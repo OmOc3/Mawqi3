@@ -179,7 +179,7 @@ export function ReportNotificationListener({ role }: ReportNotificationListenerP
             {toast.stationLabel} - {toast.technicianName}
           </p>
           <Link
-            className="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
+            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
             href={targetHref}
             onClick={() => setToast(null)}
           >

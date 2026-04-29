@@ -1,7 +1,9 @@
 import { randomBytes, createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { mobileApiErrorResponse } from "@/lib/api/mobile";
+import { auth } from "@/lib/auth/better-auth";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
+import { extractPortableBetterAuthCookieHeader, sealMobileWebSessionCookieHeader } from "@/lib/auth/mobile-web-session-cookies";
 import { getRoleRedirect } from "@/lib/auth/redirects";
 import { createMobileWebSessionRecord } from "@/lib/db/repositories";
 import { AppError } from "@/lib/errors";
@@ -19,13 +21,21 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<MobileWebSessionResponse | ApiErrorResponse>> {
   try {
-    const cookieHeader = request.headers.get("cookie");
+    const cookieHeader = extractPortableBetterAuthCookieHeader(request.headers.get("cookie") ?? "");
 
     if (!cookieHeader) {
       throw new AppError("سجل الدخول قبل فتح بوابة الإدارة.", "AUTH_REQUIRED", 401);
     }
 
     const session = await requireBearerRole(request, ["manager", "supervisor"]);
+    const cookieBackedSession = await auth.api.getSession({
+      headers: new Headers({ cookie: cookieHeader }),
+    });
+
+    if (!cookieBackedSession || cookieBackedSession.user.id !== session.uid) {
+      throw new AppError("Ø³Ø¬Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù‚Ø¨Ù„ ÙØªØ­ Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©.", "AUTH_REQUIRED", 401);
+    }
+
     const expiresAtMs = Date.now() + MOBILE_WEB_SESSION_TTL_MS;
     const redirectTo = getRoleRedirect(session.role);
     const handoffToken = randomBytes(32).toString("base64url");
@@ -36,7 +46,7 @@ export async function POST(
       uid: session.uid,
       role: session.role,
       redirectTo,
-      cookieHeader,
+      cookieHeader: sealMobileWebSessionCookieHeader(cookieHeader),
       expiresAt: new Date(expiresAtMs),
     });
 

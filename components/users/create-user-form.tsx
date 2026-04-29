@@ -88,7 +88,7 @@ export function CreateUserForm() {
   return (
     <form className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:grid-cols-2" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="sm:col-span-2">
-        <h2 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">إنشاء مستخدم جديد</h2>
+        <h2 className="section-heading text-base">إنشاء مستخدم جديد</h2>
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">إنشاء مستخدم جديد في قاعدة البيانات.</p>
       </div>
 

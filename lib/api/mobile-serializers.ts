@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AppTimestamp, AppUser, AuditLog, Report, Station } from "@/types";
+import type { AppTimestamp, AppUser, AuditLog, ClientOrder, Report, Station } from "@/types";
 
 export interface MobileStationResponse {
   coordinates?: {
@@ -49,6 +49,21 @@ export interface MobileAuditLogResponse {
   entityType: string;
   logId: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface MobileClientOrderResponse {
+  clientName: string;
+  clientUid: string;
+  createdAt?: string;
+  note?: string;
+  orderId: string;
+  photoUrl?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  stationId: string;
+  stationLabel: string;
+  stationLocation?: string;
+  status: ClientOrder["status"];
 }
 
 export interface MobileUserResponse {
@@ -123,6 +138,23 @@ export function mobileAuditLogResponse(log: AuditLog): MobileAuditLogResponse {
     entityId: log.entityId,
     ...(log.metadata ? { metadata: log.metadata } : {}),
     ...(timestampToIso(log.createdAt) ? { createdAt: timestampToIso(log.createdAt) } : {}),
+  };
+}
+
+export function mobileClientOrderResponse(order: ClientOrder, stationLocation?: string): MobileClientOrderResponse {
+  return {
+    orderId: order.orderId,
+    clientUid: order.clientUid,
+    clientName: order.clientName,
+    stationId: order.stationId,
+    stationLabel: order.stationLabel,
+    status: order.status,
+    ...(order.note ? { note: order.note } : {}),
+    ...(order.photoUrl ? { photoUrl: order.photoUrl } : {}),
+    ...(stationLocation ? { stationLocation } : {}),
+    ...(order.reviewedBy ? { reviewedBy: order.reviewedBy } : {}),
+    ...(timestampToIso(order.createdAt) ? { createdAt: timestampToIso(order.createdAt) } : {}),
+    ...(timestampToIso(order.reviewedAt) ? { reviewedAt: timestampToIso(order.reviewedAt) } : {}),
   };
 }
 

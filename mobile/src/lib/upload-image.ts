@@ -47,7 +47,7 @@ export async function uploadImage(uri: string, uid?: string): Promise<string | n
       uri,
       name: filename,
       type,
-    } as any);
+    } as unknown as Blob);
 
     if (uid) {
       formData.append('uid', uid);

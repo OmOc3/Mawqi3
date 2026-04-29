@@ -108,7 +108,12 @@ export async function POST(
       technicianName: session.user.displayName,
       status: parsed.data.status,
       notes: parsed.data.notes,
-      ...(stationPhotoUrl ? { photoPaths: { station: stationPhotoUrl } } : {}),
+      ...(stationPhotoUrl
+        ? {
+            photoPaths: { station: stationPhotoUrl },
+            photos: [{ category: "station" as const, url: stationPhotoUrl }],
+          }
+        : {}),
     });
 
     revalidatePath("/dashboard/manager");

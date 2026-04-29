@@ -122,6 +122,7 @@ export default function HomeScreen() {
   const [recentReports, setRecentReports] = useState<DraftReport[]>([]);
   const displayName = currentUser?.profile.displayName?.trim() || t.defaultUser;
   const isTechnician = currentUser?.profile.role === 'technician';
+  const isClient = currentUser?.profile.role === 'client';
 
   const refreshLocalCounts = useCallback(async () => {
     const [drafts, queue, submitted] = await Promise.all([getDrafts(), getSyncQueueReports(), getSubmittedReports()]);
@@ -145,6 +146,63 @@ export default function HomeScreen() {
       : lastSyncedAt
         ? `${t.lastSyncPrefix} ${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastSyncedAt))}`
         : t.readySyncBody;
+
+  if (isClient) {
+    const clientTitle = language === 'ar' ? 'بوابة العميل' : 'Client portal';
+    const clientBody =
+      language === 'ar'
+        ? 'تابع طلبات فحص المحطات، المحطات المرتبطة بك، وتقارير الزيارات من نفس بيانات الويب.'
+        : 'Track inspection requests, linked stations, and visit reports from the same web data.';
+    const ordersCta = language === 'ar' ? 'فتح طلبات العملاء' : 'Open client orders';
+
+    return (
+      <ScreenShell>
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
+            <MobileTopBar
+              leftIcon="menu"
+              leftLabel={strings.actions.menu}
+              onLeftPress={() => router.push('/orders' as never)}
+              onRightPress={() => router.push('/(tabs)/settings')}
+              rightIcon="user"
+              rightLabel={strings.tabs.settings}
+              title={strings.appName}
+            />
+
+            <View style={styles.heroCopy}>
+              <ThemedText type="subtitle" style={styles.greeting}>
+                {t.greetingPrefix} {displayName}
+              </ThemedText>
+              <ThemedText themeColor="textSecondary">{clientBody}</ThemedText>
+            </View>
+
+            <View
+              style={[
+                styles.clientPortalCard,
+                Shadow.sm,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  flexDirection: 'row',
+                },
+              ]}>
+              <View style={[styles.clientPortalIcon, { backgroundColor: theme.primarySoft }]}>
+                <EcoPestIcon color={theme.primary} name="clipboard-check" size={32} />
+              </View>
+              <View style={styles.syncCopy}>
+                <ThemedText type="subtitle">{clientTitle}</ThemedText>
+                <ThemedText themeColor="textSecondary">{clientBody}</ThemedText>
+              </View>
+            </View>
+
+            <PrimaryButton icon="clipboard-check" onPress={() => router.push('/orders' as never)}>
+              {ordersCta}
+            </PrimaryButton>
+          </ScrollView>
+        </SafeAreaView>
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell>
@@ -252,6 +310,21 @@ const styles = StyleSheet.create({
   heroCopy: {
     gap: Spacing.xs,
     paddingTop: Spacing.sm,
+  },
+  clientPortalCard: {
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    minHeight: 132,
+    padding: Spacing.lg,
+  },
+  clientPortalIcon: {
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
   },
   reportCopy: {
     flex: 1,

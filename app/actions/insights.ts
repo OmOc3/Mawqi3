@@ -1,130 +1,141 @@
 "use server";
 
+import { buildFallbackManagerReport, buildManagerAiReportData } from "@/lib/ai/manager-report";
 import { requireRole } from "@/lib/auth/server-session";
-import { buildStatusCounts, buildTechnicianStats, buildZoneStats } from "@/lib/analytics";
+import { writeAuditLogRecord } from "@/lib/db/repositories";
 import { generateGeminiInsights, hasGeminiConfigured } from "@/lib/gemini";
-import { i18n, statusOptionLabels } from "@/lib/i18n";
-import { ANALYTICS_DEFAULT_RANGE_DAYS, getBoundedReportStatsInput } from "@/lib/stats/report-stats";
+import { i18n } from "@/lib/i18n";
 import { getErrorMessage } from "@/lib/utils";
-import type { AiInsightsResult, Report, Station } from "@/types";
+import type { AiDataCoverageItem, AiInsightsResult } from "@/types";
 
 export interface GenerateManagerInsightsActionResult {
   error?: string;
   insights?: AiInsightsResult;
 }
 
-function buildFallbackInsights(stations: Station[], reports: Report[]): AiInsightsResult {
-  const zones = buildZoneStats(stations, reports);
-  const technicians = buildTechnicianStats(reports);
-  const statusSummary = buildStatusCounts(reports);
-  const pendingCount = reports.filter((report) => report.reviewStatus === "pending").length;
-  const activeStations = stations.filter((station) => station.isActive).length;
-  const topZone = zones[0];
-  const topTechnician = technicians[0];
-  const topStatus = statusSummary[0];
-  const alerts = [
-    pendingCount > 0 ? `يوجد ${pendingCount} تقريرًا بانتظار المراجعة ويحتاج إلى إغلاق أسرع.` : null,
-    topZone ? `المنطقة ${topZone.zone} تسجل أعلى نشاط بعدد ${topZone.reports} تقرير.` : null,
-    topTechnician && topTechnician.pending > 0
-      ? `${topTechnician.technicianName} لديه ${topTechnician.pending} تقريرًا ما زال بانتظار المراجعة.`
-      : null,
-  ].filter((value): value is string => Boolean(value));
-  const recommendations = [
-    pendingCount > 0 ? "خصص نافذة مراجعة يومية ثابتة لتقارير الفنيين المفتوحة." : "استمر على نفس وتيرة المراجعة الحالية.",
-    topZone ? `راجع توزيع المحطات في ${topZone.zone} إذا استمر الحجم أعلى من باقي المناطق.` : null,
-    topStatus ? `تابع سبب تكرار حالة "${statusOptionLabels[topStatus.status]}" وقيّم الحاجة لإجراء وقائي.` : null,
-    activeStations < stations.length ? "راجع أسباب تعطيل المحطات غير النشطة وأعد تفعيل القابل منها." : null,
-  ].filter((value): value is string => Boolean(value));
+function generatedAtLabel(): string {
+  return new Intl.DateTimeFormat("ar-EG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date());
+}
 
+function buildUnavailableFallback(note: string): AiInsightsResult {
   return {
-    alerts,
-    generatedAt: new Intl.DateTimeFormat("ar-EG", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date()),
-    note: hasGeminiConfigured() ? undefined : i18n.insights.missingKey,
-    recommendations,
+    summary: "تعذر تجهيز تقرير Gemini الشامل من بيانات النظام في هذه المحاولة.",
+    fullReport: "لم يتمكن النظام من قراءة البيانات أو تجهيزها للتقرير. راجع الملاحظة الفنية ثم حاول مرة أخرى.",
+    alerts: [note],
+    recommendations: ["تحقق من الاتصال بقاعدة البيانات وإعدادات Gemini ثم أعد توليد التقرير."],
+    sections: [
+      {
+        title: "حالة التقرير",
+        body: "لم يكتمل توليد التقرير بسبب خطأ أثناء تجهيز البيانات.",
+        items: [note],
+      },
+    ],
+    dataQualityNotes: [note],
+    dataCoverage: [],
+    generatedAt: generatedAtLabel(),
+    note,
     source: "fallback",
-    summary: `لديك ${stations.length} محطة، منها ${activeStations} نشطة، مع ${reports.length} تقريرًا ضمن آخر ${ANALYTICS_DEFAULT_RANGE_DAYS} يوم.`,
   };
 }
 
+async function writeAiReportAuditLog(input: {
+  actorRole: "manager";
+  actorUid: string;
+  coverage: AiDataCoverageItem[];
+  error?: string;
+  source: AiInsightsResult["source"];
+}): Promise<void> {
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "ai.manager_report.generate",
+    entityType: "ai_report",
+    entityId: crypto.randomUUID(),
+    metadata: {
+      source: input.source,
+      error: input.error,
+      coverage: input.coverage.map((item) => ({
+        key: item.key,
+        includedRows: item.includedRows,
+        totalRows: item.totalRows,
+        truncated: item.truncated,
+      })),
+    },
+  });
+}
+
 export async function generateManagerInsightsAction(): Promise<GenerateManagerInsightsActionResult> {
-  await requireRole(["manager"]);
+  const session = await requireRole(["manager"]);
 
   try {
-    const { reports, reportsTruncated, stations, stationsTruncated } = await getBoundedReportStatsInput();
-    const fallback = buildFallbackInsights(stations, reports);
+    const reportData = await buildManagerAiReportData({ requestedBy: session.user });
+    const fallback = buildFallbackManagerReport(reportData.payload);
 
-    if (reports.length === 0) {
-      return {
-        insights: {
-          ...fallback,
-          note: "لا توجد تقارير كافية ضمن النطاق الحالي لبناء توصيات دقيقة.",
-        },
-      };
+    if (!hasGeminiConfigured()) {
+      await writeAiReportAuditLog({
+        actorUid: session.uid,
+        actorRole: "manager",
+        coverage: reportData.coverage,
+        source: "fallback",
+      });
+
+      return { insights: fallback };
     }
-
-    const aiPayload = {
-      activeStations: stations.filter((station) => station.isActive).length,
-      analyticsRangeDays: ANALYTICS_DEFAULT_RANGE_DAYS,
-      limits: {
-        reportsTruncated,
-        stationsTruncated,
-      },
-      pendingReviewReports: reports.filter((report) => report.reviewStatus === "pending").length,
-      topStatuses: buildStatusCounts(reports).slice(0, 4).map((item) => ({
-        count: item.count,
-        label: statusOptionLabels[item.status],
-        status: item.status,
-      })),
-      topTechnicians: buildTechnicianStats(reports)
-        .slice(0, 4)
-        .map((technician) => ({
-          pending: technician.pending,
-          reports: technician.reports,
-          technicianName: technician.technicianName,
-        })),
-      topZones: buildZoneStats(stations, reports).slice(0, 4),
-      totalReports: reports.length,
-      totalStations: stations.length,
-    };
-
-    let geminiInsights: AiInsightsResult | null = null;
 
     try {
-      geminiInsights = await generateGeminiInsights({
-        payload: aiPayload,
+      const geminiInsights = await generateGeminiInsights({
+        payload: { ...reportData.payload },
         prompt:
-          "اعرض موجزًا عربيًا قصيرًا للمدير. لخص الوضع التشغيلي الحالي، ثم قدم حتى 3 تنبيهات وحتى 4 توصيات عملية مباشرة قابلة للتنفيذ هذا الأسبوع.",
+          "اكتب تقريرًا إداريًا عربيًا كاملًا لمدير EcoPest من كل بيانات النظام المرسلة. " +
+          "يجب أن يغطي التقرير المستخدمين، العملاء، المحطات، التقارير، طلبات العملاء، الحضور، المهام، وسجل العمليات. " +
+          "اذكر نطاق البيانات المقروء، المؤشرات الرئيسية، المخاطر، جودة البيانات، وأولويات التنفيذ. " +
+          "إذا كانت أي مجموعة بيانات مقلمة حسب coverage فاذكر ذلك بوضوح ولا تفترض أرقامًا خارج totalRows.",
       });
-    } catch (error: unknown) {
-      return {
-        error: i18n.insights.unavailable,
-        insights: {
-          ...fallback,
-          note: getErrorMessage(error),
-        },
-      };
-    }
 
-    return {
-      insights: geminiInsights
+      const insights = geminiInsights
         ? {
             ...geminiInsights,
-            note: fallback.note,
+            dataCoverage: reportData.coverage,
           }
-        : fallback,
-    };
+        : fallback;
+
+      await writeAiReportAuditLog({
+        actorUid: session.uid,
+        actorRole: "manager",
+        coverage: reportData.coverage,
+        source: insights.source,
+      });
+
+      return { insights };
+    } catch (error: unknown) {
+      const note = getErrorMessage(error);
+      const insights: AiInsightsResult = {
+        ...fallback,
+        note,
+      };
+
+      await writeAiReportAuditLog({
+        actorUid: session.uid,
+        actorRole: "manager",
+        coverage: reportData.coverage,
+        error: note,
+        source: "fallback",
+      });
+
+      return {
+        error: i18n.insights.unavailable,
+        insights,
+      };
+    }
   } catch (error: unknown) {
-    const message = getErrorMessage(error);
+    const note = getErrorMessage(error);
 
     return {
-      insights: {
-        ...buildFallbackInsights([], []),
-        note: message,
-      },
       error: i18n.insights.unavailable,
+      insights: buildUnavailableFallback(note),
     };
   }
 }

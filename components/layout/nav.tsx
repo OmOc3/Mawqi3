@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactElement, type SVGProps } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type SVGProps } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandMark } from "@/components/layout/brand";
 import { ReportNotificationListener } from "@/components/notifications/report-notification-listener";
@@ -20,6 +20,8 @@ interface NavItem {
 }
 
 const managerItems: NavItem[] = [
+  { href: "/dashboard/manager/attendance", icon: "attendance", label: "الحضور والانصراف" },
+  { href: "/dashboard/manager/daily-reports", icon: "reports", label: "التقارير اليومية" },
   { href: "/dashboard/manager", icon: "dashboard", label: "لوحة القيادة" },
   { href: "/dashboard/manager/tasks", icon: "tasks", label: "مهام اليوم" },
   { href: "/dashboard/manager/stations", icon: "stations", label: "المحطات" },
@@ -33,13 +35,15 @@ const managerItems: NavItem[] = [
 ];
 
 const supervisorItems: NavItem[] = [
+  { href: "/dashboard/supervisor/attendance", icon: "attendance", label: "الحضور والانصراف" },
+  { href: "/dashboard/supervisor/daily-reports", icon: "reports", label: "التقارير اليومية" },
   { href: "/dashboard/supervisor", icon: "dashboard", label: "لوحة المشرف" },
   { href: "/dashboard/supervisor/tasks", icon: "tasks", label: "مهام اليوم" },
   { href: "/dashboard/supervisor/reports", icon: "reports", label: "التقارير" },
   { href: "/dashboard/supervisor/client-orders", icon: "team", label: "طلبات العملاء" },
 ];
 
-type IconName = "analytics" | "audit" | "dashboard" | "map" | "reports" | "stations" | "supervisor" | "tasks" | "team";
+type IconName = "analytics" | "attendance" | "audit" | "dashboard" | "map" | "reports" | "stations" | "supervisor" | "tasks" | "team";
 
 const SIDEBAR_STORAGE_KEY = "ecopest-dashboard-sidebar";
 
@@ -131,6 +135,16 @@ function TasksIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function AttendanceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <IconFrame {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+      <path d="M8 17h8" />
+    </IconFrame>
+  );
+}
+
 function AnalyticsIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <IconFrame {...props}>
@@ -192,6 +206,7 @@ function MobileMenuIcon({ isOpen }: { isOpen: boolean }) {
 
 const icons: Record<IconName, (props: SVGProps<SVGSVGElement>) => ReactElement> = {
   analytics: AnalyticsIcon,
+  attendance: AttendanceIcon,
   audit: AuditIcon,
   dashboard: DashboardIcon,
   map: MapIcon,
@@ -237,6 +252,8 @@ export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
   const items = role === "manager" ? managerItems : supervisorItems;
   const currentPathname = pathname ?? "";
   const toggleLabel = isSidebarOpen ? "إغلاق القائمة" : "فتح القائمة";
@@ -253,6 +270,72 @@ export function DashboardNav({ role }: DashboardNavProps) {
   useEffect(() => {
     setIsMobileNavOpen(false);
   }, [currentPathname]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const focusTimer = window.setTimeout(() => mobileCloseButtonRef.current?.focus(), 0);
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [isMobileNavOpen]);
+
+  function closeMobileNav(restoreFocus = true): void {
+    setIsMobileNavOpen(false);
+
+    if (restoreFocus) {
+      window.setTimeout(() => mobileMenuButtonRef.current?.focus(), 0);
+    }
+  }
+
+  function handleMobileDrawerKeyDown(event: KeyboardEvent<HTMLElement>): void {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMobileNav();
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",");
+    const focusableElements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (element) => element.offsetParent !== null,
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements.at(-1);
+
+    if (!firstElement || !lastElement) {
+      event.preventDefault();
+      return;
+    }
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+      return;
+    }
+
+    if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
 
   function toggleSidebar(): void {
     setIsSidebarOpen((currentState) => {
@@ -274,6 +357,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
         aria-label={mobileToggleLabel}
         className="fixed bottom-24 right-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-card-lg transition-all duration-150 hover:bg-[var(--sidebar-surface)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] lg:hidden"
         onClick={() => setIsMobileNavOpen((currentState) => !currentState)}
+        ref={mobileMenuButtonRef}
         title={mobileToggleLabel}
         type="button"
       >
@@ -286,14 +370,19 @@ export function DashboardNav({ role }: DashboardNavProps) {
           <button
             aria-label="إغلاق القائمة"
             className="fixed inset-0 z-50 bg-[rgb(2_6_23_/_0.8)] backdrop-blur-md lg:hidden"
-            onClick={() => setIsMobileNavOpen(false)}
+            onClick={() => closeMobileNav()}
+            tabIndex={-1}
             type="button"
           />
           <aside
+            aria-label="القائمة الرئيسية"
+            aria-modal="true"
             className="fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[calc(100vw-3rem)] flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl lg:hidden"
             data-dashboard-nav="mobile-drawer"
             dir="rtl"
             id="dashboard-mobile-sidebar"
+            onKeyDown={handleMobileDrawerKeyDown}
+            role="dialog"
           >
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(255_255_255_/_0.05),transparent_40%)]" />
             <div className="relative border-b border-[var(--sidebar-border)] px-5 py-5">
@@ -310,8 +399,9 @@ export function DashboardNav({ role }: DashboardNavProps) {
                 </Link>
                 <button
                   aria-label="إغلاق القائمة"
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-                  onClick={() => setIsMobileNavOpen(false)}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                  onClick={() => closeMobileNav()}
+                  ref={mobileCloseButtonRef}
                   title="إغلاق القائمة"
                   type="button"
                 >
@@ -321,7 +411,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
               </div>
             </div>
 
-            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
+            <nav className="sidebar-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
               {items.map((item) => {
                 const isActive = isItemActive(currentPathname, item.href);
                 const Icon = icons[item.icon];
@@ -331,14 +421,14 @@ export function DashboardNav({ role }: DashboardNavProps) {
                     className={cn(
                       "relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive
-                        ? "border-r-2 border-teal-300 bg-teal-600/90 text-white"
+                        ? "bg-teal-300 text-[var(--sidebar)] ring-1 ring-inset ring-teal-200/70"
                         : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-surface)] hover:text-[var(--sidebar-text)]",
                     )}
                     href={item.href}
                     key={item.href}
-                    onClick={() => setIsMobileNavOpen(false)}
+                    onClick={() => closeMobileNav(false)}
                   >
-                    <Icon className={cn(isActive ? "text-white" : "text-[var(--sidebar-muted)]")} />
+                    <Icon className={cn(isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
                     <span className="truncate">{item.label}</span>
                   </Link>
                 );
@@ -359,7 +449,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width] duration-200 ease-out lg:flex",
+          "fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width,background-color,color] duration-200 ease-out lg:flex",
           isSidebarOpen ? "w-64" : "w-20",
         )}
         data-dashboard-nav={isSidebarOpen ? "expanded" : "collapsed"}
@@ -383,7 +473,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
               aria-controls="dashboard-sidebar"
               aria-expanded={isSidebarOpen}
               aria-label={toggleLabel}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
               onClick={toggleSidebar}
               title={toggleLabel}
               type="button"
@@ -395,7 +485,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
         </div>
 
         <nav
-          className={cn("relative min-h-0 flex-1 space-y-1 overflow-y-auto py-5", isSidebarOpen ? "px-3" : "px-2")}
+          className={cn("sidebar-scrollbar relative min-h-0 flex-1 space-y-1 overflow-y-auto py-5", isSidebarOpen ? "px-3" : "px-2")}
           aria-label="التنقل الرئيسي"
         >
           {items.map((item) => {
@@ -409,14 +499,14 @@ export function DashboardNav({ role }: DashboardNavProps) {
                   "relative flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors",
                   isSidebarOpen ? "px-3" : "justify-center px-2",
                   isActive
-                    ? "border-r-2 border-teal-300 bg-teal-600/90 text-white"
+                    ? "bg-teal-300 text-[var(--sidebar)] ring-1 ring-inset ring-teal-200/70"
                     : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-surface)] hover:text-[var(--sidebar-text)]",
                 )}
                 href={item.href}
                 key={item.href}
                 title={item.label}
               >
-                <Icon className={cn(isActive ? "text-white" : "text-[var(--sidebar-muted)]")} />
+                <Icon className={cn(isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
                 <span className={cn("truncate", isSidebarOpen ? "block" : "sr-only")}>{item.label}</span>
               </Link>
             );

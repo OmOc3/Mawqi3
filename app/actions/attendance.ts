@@ -19,12 +19,49 @@ function optionalString(formData: FormData, key: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function requiredString(formData: FormData, key: string): string {
+  const value = optionalString(formData, key);
+
+  if (!value) {
+    throw new Error("بيانات الموقع غير مكتملة.");
+  }
+
+  return value;
+}
+
+function requiredNumber(formData: FormData, key: string): number {
+  const value = Number(requiredString(formData, key));
+
+  if (!Number.isFinite(value)) {
+    throw new Error("بيانات الموقع غير صالحة.");
+  }
+
+  return value;
+}
+
+function optionalNumber(formData: FormData, key: string): number | undefined {
+  const value = optionalString(formData, key);
+
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export async function clockInAction(formData: FormData): Promise<AttendanceActionResult> {
   const session = await requireRole(["technician", "manager"]);
 
   try {
     await clockInAttendanceSession({
       actorRole: session.role,
+      clientUid: requiredString(formData, "clientUid"),
+      location: {
+        accuracyMeters: optionalNumber(formData, "accuracyMeters"),
+        lat: requiredNumber(formData, "lat"),
+        lng: requiredNumber(formData, "lng"),
+      },
       technicianUid: session.uid,
       technicianName: session.user.displayName,
       notes: optionalString(formData, "notes"),
@@ -42,6 +79,12 @@ export async function clockOutAction(formData: FormData): Promise<AttendanceActi
   try {
     await clockOutAttendanceSession({
       actorRole: session.role,
+      clientUid: requiredString(formData, "clientUid"),
+      location: {
+        accuracyMeters: optionalNumber(formData, "accuracyMeters"),
+        lat: requiredNumber(formData, "lat"),
+        lng: requiredNumber(formData, "lng"),
+      },
       technicianUid: session.uid,
       technicianName: session.user.displayName,
       notes: optionalString(formData, "notes"),

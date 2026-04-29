@@ -1,4 +1,7 @@
 // Typed API client for mobile-to-web sync with Better Auth cookie authentication.
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 import { WebBaseUrl } from '@/constants/theme';
 import { readAuthCookieHeader } from '@/lib/auth-client';
 import type { MobileWebSessionResponse } from '@/lib/sync/types';
@@ -56,6 +59,85 @@ async function readResponseBody(response: Response): Promise<unknown> {
 const defaultFallbackErrorMessage = 'Could not complete the request. Check your connection and try again.';
 const defaultAuthRequiredMessage = 'Sign in before syncing data.';
 const defaultNetworkErrorMessage = 'Could not reach the server. Check your connection and try again.';
+const androidEmulatorHost = '10.0.2.2';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function stringProperty(value: unknown, key: string): string | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const property = value[key];
+
+  return typeof property === 'string' && property.trim().length > 0 ? property : null;
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  const normalized = hostname.toLowerCase();
+
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1' || normalized === '[::1]';
+}
+
+function hostFromUri(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value.includes('://') ? value : `http://${value}`);
+
+    return url.hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function getExpoDevelopmentHost(): string | null {
+  const hostCandidates = [
+    Constants.expoConfig?.hostUri,
+    stringProperty(Constants.manifest, 'hostUri'),
+    stringProperty(Constants.manifest, 'debuggerHost'),
+  ];
+
+  for (const candidate of hostCandidates) {
+    const host = hostFromUri(candidate);
+
+    if (host && !isLoopbackHost(host)) {
+      return host;
+    }
+  }
+
+  return null;
+}
+
+function resolveReachableBaseUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+
+    if (Platform.OS === 'web' || !isLoopbackHost(url.hostname)) {
+      return trimTrailingSlash(url.toString());
+    }
+
+    const developmentHost = getExpoDevelopmentHost();
+
+    if (developmentHost) {
+      url.hostname = developmentHost;
+      return trimTrailingSlash(url.toString());
+    }
+
+    if (Platform.OS === 'android') {
+      url.hostname = androidEmulatorHost;
+      return trimTrailingSlash(url.toString());
+    }
+
+    return trimTrailingSlash(url.toString());
+  } catch {
+    return trimTrailingSlash(baseUrl);
+  }
+}
 
 function errorMessageFromBody(body: unknown, fallbackMessage: string): string {
   if (typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string') {
@@ -74,7 +156,7 @@ function errorCodeFromBody(body: unknown): string {
 }
 
 export async function getApiBaseUrl(): Promise<string> {
-  return trimTrailingSlash(WebBaseUrl);
+  return resolveReachableBaseUrl(WebBaseUrl);
 }
 
 export async function setApiBaseUrl(_baseUrl: string): Promise<void> {

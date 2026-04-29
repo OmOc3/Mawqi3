@@ -58,7 +58,7 @@ export function UserProfileForm({ user, disabled }: { user: Pick<AppUser, "uid" 
 
   return (
     <form className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card" onSubmit={handleSubmit}>
-      <h3 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">تحديث الملف الشخصي</h3>
+      <h3 className="section-heading text-base">تحديث الملف الشخصي</h3>
       
       {message && (
         <div className={`rounded-lg border px-3 py-2 text-sm ${message.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-900/30 dark:text-emerald-300" : "border-[var(--danger-muted)] bg-[var(--danger-soft)] text-[var(--danger)]"}`}>

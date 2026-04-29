@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/server-session";
-import { getReportById } from "@/lib/db/repositories";
+import { getReportById, hasClientStationAccess } from "@/lib/db/repositories";
 import { getSignedReportPhotoUrls } from "@/lib/report-photos";
 
 interface ReportPhotosRouteProps {
@@ -29,13 +29,16 @@ export async function GET(
   }
 
   const canAccess =
-    session.role === "manager" || session.role === "supervisor" || report.technicianUid === session.uid;
+    session.role === "manager" ||
+    session.role === "supervisor" ||
+    report.technicianUid === session.uid ||
+    (session.role === "client" && (await hasClientStationAccess(session.uid, report.stationId)));
 
   if (!canAccess) {
     return NextResponse.json({ message: "غير مصرح بالوصول للصور.", code: "REPORT_FORBIDDEN" }, { status: 403 });
   }
 
-  const photos = await getSignedReportPhotoUrls(report.photoPaths);
+  const photos = await getSignedReportPhotoUrls(report.photoPaths, report.photos);
 
   return NextResponse.json({ photos });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { Coordinates } from "@/types";
 
@@ -9,6 +9,8 @@ const defaultMapCenter: Coordinates = { lat: 30.0444, lng: 31.2357 };
 const emptyMarkers: StationMapMarker[] = [];
 const minZoom = 3;
 const maxZoom = 18;
+const keyboardStep = 32;
+const keyboardFastStep = 96;
 
 export interface StationMapMarker {
   coordinates: Coordinates;
@@ -159,6 +161,7 @@ export function StationMap({
   selected,
   zoom = 14,
 }: StationMapProps) {
+  const instructionsId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>({ height: 320, width: 640 });
   const [currentZoom, setCurrentZoom] = useState(clamp(Math.round(zoom), minZoom, maxZoom));
@@ -233,12 +236,62 @@ export function StationMap({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
-    if (!onSelect || (event.key !== "Enter" && event.key !== " ")) {
+    if (!onSelect) {
       return;
     }
 
-    event.preventDefault();
-    selectCoordinates(center);
+    const step = event.shiftKey ? keyboardFastStep : keyboardStep;
+
+    switch (event.key) {
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        selectCoordinates(center);
+        return;
+      case "ArrowUp":
+        event.preventDefault();
+        moveCenterByPixels(0, -step);
+        return;
+      case "ArrowDown":
+        event.preventDefault();
+        moveCenterByPixels(0, step);
+        return;
+      case "ArrowLeft":
+        event.preventDefault();
+        moveCenterByPixels(-step, 0);
+        return;
+      case "ArrowRight":
+        event.preventDefault();
+        moveCenterByPixels(step, 0);
+        return;
+      case "+":
+      case "=":
+      case "PageUp":
+        event.preventDefault();
+        zoomBy(1);
+        return;
+      case "-":
+      case "_":
+      case "PageDown":
+        event.preventDefault();
+        zoomBy(-1);
+        return;
+      default:
+        return;
+    }
+  }
+
+  function moveCenterByPixels(deltaX: number, deltaY: number): void {
+    const centerWorld = latLngToWorld(center, currentZoom);
+    const nextCenter = worldToLatLng(
+      {
+        x: centerWorld.x + deltaX,
+        y: centerWorld.y + deltaY,
+      },
+      currentZoom,
+    );
+
+    setCenter(nextCenter);
   }
 
   function zoomBy(delta: number): void {
@@ -248,15 +301,16 @@ export function StationMap({
   return (
     <div className={cn("space-y-3", className)} dir="rtl">
       <div
+        aria-describedby={onSelect ? instructionsId : undefined}
         aria-label={onSelect ? "خريطة اختيار موقع المحطة" : "خريطة مواقع المحطات"}
         className={cn(
-          "relative h-80 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] shadow-card",
+          "relative h-80 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
           onSelect ? "cursor-crosshair" : "cursor-default",
         )}
         onClick={handleSelect}
         onKeyDown={handleKeyDown}
         ref={containerRef}
-        role={onSelect ? "application" : "region"}
+        role={onSelect ? "group" : "region"}
         tabIndex={onSelect ? 0 : undefined}
       >
         {tiles.map((tile) => (
@@ -272,7 +326,15 @@ export function StationMap({
           />
         ))}
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgb(255_255_255_/_0.1)] via-transparent to-[var(--foreground)]/10" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgb(255_255_255_/_0.1)] via-transparent to-[var(--foreground)]/10" />
+
+        {onSelect ? (
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-20 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center">
+            <span className="absolute h-px w-12 bg-[var(--primary)]" />
+            <span className="absolute h-12 w-px bg-[var(--primary)]" />
+            <span className="h-4 w-4 rounded-full border-2 border-[var(--primary)] bg-[var(--surface)] shadow-control" />
+          </div>
+        ) : null}
 
         {displayedMarkers.map((marker) => {
           const position = markerPosition(marker.coordinates, center, currentZoom, size);
@@ -319,7 +381,7 @@ export function StationMap({
         <div className="absolute left-3 top-3 z-30 flex overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-card">
           <button
             aria-label="تكبير الخريطة"
-            className="grid h-10 w-10 place-items-center text-lg font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] disabled:text-[var(--muted)]"
+            className="grid h-11 w-11 place-items-center text-lg font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] disabled:text-[var(--muted)]"
             disabled={currentZoom >= maxZoom}
             onClick={(event) => {
               event.stopPropagation();
@@ -331,7 +393,7 @@ export function StationMap({
           </button>
           <button
             aria-label="تصغير الخريطة"
-            className="grid h-10 w-10 place-items-center border-s-0 border-[var(--border)] text-lg font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] disabled:text-[var(--muted)]"
+            className="grid h-11 w-11 place-items-center border-s-0 border-[var(--border)] text-lg font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] disabled:text-[var(--muted)]"
             disabled={currentZoom <= minZoom}
             onClick={(event) => {
               event.stopPropagation();
@@ -344,7 +406,19 @@ export function StationMap({
         </div>
       </div>
 
-      {selected ? (
+      {onSelect ? (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-[var(--muted)]" id={instructionsId}>
+            استخدم مفاتيح الأسهم لتحريك نقطة الاختيار، و Enter أو Space لتثبيت الموقع، و + أو - للتكبير والتصغير.
+          </p>
+          <p aria-live="polite" className="text-xs font-medium text-[var(--muted)]">
+            نقطة الاختيار الحالية:{" "}
+            <span dir="ltr">
+              {formatCoordinate(center.lat)}, {formatCoordinate(center.lng)}
+            </span>
+          </p>
+        </div>
+      ) : selected ? (
         <p className="text-xs font-medium text-[var(--muted)]" dir="ltr">
           {formatCoordinate(selected.lat)}, {formatCoordinate(selected.lng)}
         </p>

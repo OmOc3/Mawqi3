@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement, SVGProps } from "react";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusPills } from "@/components/reports/status-pills";
 import { requireRole } from "@/lib/auth/server-session";
@@ -137,22 +137,19 @@ export default async function ManagerDashboardPage() {
   const [stats, latestReports] = await Promise.all([getManagerDashboardStats(), getLatestReports(5)]);
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           action={
             <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              href="/client/view"
-              target="_blank"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)]"
+              href="/dashboard/manager/client-orders"
             >
-              شاشة العميل (عرض فقط)
+              إدارة العملاء
             </Link>
           }
           description="نظرة تشغيلية على المحطات والتقارير والفنيين."
           title={i18n.dashboard.managerTitle}
         />
-        <DashboardNav role="manager" />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard href="/dashboard/manager/stations" label="إجمالي المحطات" tone="teal" value={stats.totalStations} />
@@ -171,7 +168,7 @@ export default async function ManagerDashboardPage() {
 
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface)] px-5 py-4">
-            <h2 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">آخر التقارير</h2>
+            <h2 className="section-heading text-base">آخر التقارير</h2>
             <Link className="text-sm font-semibold text-[var(--primary)] transition-colors hover:text-[var(--primary-hover)]" href="/dashboard/manager/reports">
               عرض الكل
             </Link>
@@ -209,7 +206,6 @@ export default async function ManagerDashboardPage() {
             </table>
           </div>
         </div>
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

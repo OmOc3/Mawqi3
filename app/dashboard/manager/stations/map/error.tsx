@@ -7,7 +7,7 @@ export default function StationsMapError({ reset }: { error: Error & { digest?: 
         <h1 className="text-xl font-bold text-[var(--foreground)]">تعذر تحميل خريطة المحطات</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">أعد المحاولة أو ارجع لقائمة المحطات.</p>
         <button
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
           onClick={reset}
           type="button"
         >

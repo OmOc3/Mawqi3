@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StationForm } from "@/components/stations/station-form";
 import { requireRole } from "@/lib/auth/server-session";
@@ -37,18 +37,15 @@ export default async function EditStationPage({ params }: EditStationPageProps) 
   };
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-3xl">
+    <DashboardShell contentClassName="max-w-3xl" role="manager">
         <PageHeader
           backHref={`/dashboard/manager/stations/${station.stationId}`}
           description="حدّث بيانات المحطة دون تغيير رمز QR الخاص بها."
           title="تعديل محطة"
         />
-        <DashboardNav role="manager" />
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-control sm:p-6">
           <StationForm mode="edit" station={station} />
         </div>
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

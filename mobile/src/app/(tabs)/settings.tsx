@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
 import { EcoPestIcon, type EcoPestIconName } from '@/components/icons';
-import { InputField, MobileTopBar, PrimaryButton, ScreenShell, useToast } from '@/components/ecopest-ui';
+import { InputField, MobileTopBar, PrimaryButton, ScreenShell, SecondaryButton, useToast } from '@/components/ecopest-ui';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { useKeepAwakeMode } from '@/contexts/keep-awake-context';
@@ -239,7 +239,7 @@ export default function SettingsScreen() {
                   <InputField label="الاسم" value={displayName} onChangeText={setDisplayName} />
                   <View style={[styles.editActions, { flexDirection: 'row' }]}>
                     <PrimaryButton loading={isSaving} onPress={() => void handleUpdateProfile()} icon="check">حفظ</PrimaryButton>
-                    <PrimaryButton variant="ghost" onPress={() => setIsEditing(false)}>إلغاء</PrimaryButton>
+                    <SecondaryButton onPress={() => setIsEditing(false)}>إلغاء</SecondaryButton>
                   </View>
                </View>
              ) : (

@@ -43,6 +43,10 @@ function isCloudinaryUploadResponse(value: unknown): value is { secure_url: stri
   return isRecord(value) && typeof value.secure_url === "string";
 }
 
+function safePublicIdPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, 80) || "profile";
+}
+
 export async function uploadProfileImageToCloudinary(
   file: File,
   uid: string
@@ -66,7 +70,7 @@ export async function uploadProfileImageToCloudinary(
   }
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const publicId = `profile-${uid.replace(/[^A-Za-z0-9_-]/g, "-")}-${crypto.randomUUID()}`;
+  const publicId = `profile-${safePublicIdPart(uid)}-${crypto.randomUUID()}`;
   const params = {
     folder: config.folder,
     public_id: publicId,

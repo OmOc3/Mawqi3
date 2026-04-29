@@ -21,7 +21,7 @@ function ErrorMessage({ message }: { message: string }) {
       <section className="mx-auto w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 text-center sm:p-6">
         <h1 className="text-xl font-bold text-[var(--foreground)]">{message}</h1>
         <Link
-          className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-3 text-base font-medium text-white transition-colors hover:bg-[var(--primary-hover)]"
+          className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-3 text-base font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
           href="/scan"
         >
           العودة للمسح

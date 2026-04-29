@@ -49,7 +49,7 @@ export default function InsightsScreen() {
     }
 
     if (!isMobileAdminRole(currentUser.profile.role)) {
-      router.replace('/(tabs)/');
+      router.replace('/(tabs)');
       return;
     }
 
@@ -96,7 +96,7 @@ export default function InsightsScreen() {
             <View style={[styles.card, { backgroundColor: theme.surfaceCard, borderColor: theme.border }]}>
               <View style={styles.cardHeader}>
                 <EcoPestIcon color={theme.primary} name="dashboard" size={20} />
-                <ThemedText style={styles.cardTitle} type="defaultSemiBold">نظرة عامة</ThemedText>
+                <ThemedText style={styles.cardTitle} type="smallBold">نظرة عامة</ThemedText>
               </View>
               <ThemedText>{insights.summary}</ThemedText>
             </View>
@@ -105,7 +105,7 @@ export default function InsightsScreen() {
               <View style={[styles.card, { backgroundColor: theme.surfaceCard, borderColor: theme.border }]}>
                 <View style={styles.cardHeader}>
                   <EcoPestIcon color={theme.dangerStrong} name="alert-circle" size={20} />
-                  <ThemedText style={[styles.cardTitle, { color: theme.dangerStrong }]} type="defaultSemiBold">{t.alerts}</ThemedText>
+                  <ThemedText style={[styles.cardTitle, { color: theme.dangerStrong }]} type="smallBold">{t.alerts}</ThemedText>
                 </View>
                 {insights.alerts.map((alert, i) => (
                   <View key={`alert-${i}`} style={styles.listItem}>
@@ -120,7 +120,7 @@ export default function InsightsScreen() {
               <View style={[styles.card, { backgroundColor: theme.surfaceCard, borderColor: theme.border }]}>
                 <View style={styles.cardHeader}>
                   <EcoPestIcon color={theme.successStrong} name="check-circle" size={20} />
-                  <ThemedText style={[styles.cardTitle, { color: theme.successStrong }]} type="defaultSemiBold">{t.recommendations}</ThemedText>
+                  <ThemedText style={[styles.cardTitle, { color: theme.successStrong }]} type="smallBold">{t.recommendations}</ThemedText>
                 </View>
                 {insights.recommendations.map((rec, i) => (
                   <View key={`rec-${i}`} style={styles.listItem}>

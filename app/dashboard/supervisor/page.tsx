@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireRole } from "@/lib/auth/server-session";
 import { i18n } from "@/lib/i18n";
@@ -44,13 +44,12 @@ export default async function SupervisorDashboardPage() {
   const stats = await getSupervisorDashboardStats();
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl">
+    <DashboardShell role="supervisor">
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
                 href="/dashboard/supervisor/reports"
               >
                 عرض التقارير
@@ -66,7 +65,6 @@ export default async function SupervisorDashboardPage() {
           description="متابعة التقارير اليومية وحالات المراجعة للمحطات النشطة."
           title={i18n.dashboard.supervisorTitle}
         />
-        <DashboardNav role="supervisor" />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard href="/dashboard/supervisor/reports" label="إجمالي التقارير" tone="blue" value={stats.totalReports} />
@@ -95,7 +93,6 @@ export default async function SupervisorDashboardPage() {
             value={stats.pendingReviewReports}
           />
         </div>
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

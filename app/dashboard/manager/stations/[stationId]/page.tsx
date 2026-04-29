@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { notFound } from "next/navigation";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StationMap } from "@/components/maps/station-map";
 import { requireRole } from "@/lib/auth/server-session";
@@ -58,8 +58,7 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
   });
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-5xl">
+    <DashboardShell contentClassName="max-w-5xl" role="manager">
         <PageHeader
           action={
             <Link
@@ -73,7 +72,6 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
           description="بيانات المحطة ورمز QR المستخدم في الزيارات الميدانية."
           title={station.label}
         />
-        <DashboardNav role="manager" />
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-control sm:p-6">
@@ -225,7 +223,7 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
               <Image alt={`رمز QR للمحطة ${station.label}`} height={320} src={qrDataUrl} unoptimized width={320} />
             </div>
             <a
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
               download={`station-${station.stationId}-qr.png`}
               href={qrDataUrl}
             >
@@ -236,7 +234,6 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
             </p>
           </div>
         </div>
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

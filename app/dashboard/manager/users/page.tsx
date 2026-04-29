@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { toggleUserActiveAction } from "@/app/actions/users";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { CreateUserForm } from "@/components/users/create-user-form";
 import { UserAccessCodeForm } from "@/components/users/user-access-code-form";
@@ -32,8 +32,7 @@ export default async function ManagerUsersPage() {
   const users = await listAppUsers();
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           action={
             <Link
@@ -47,7 +46,6 @@ export default async function ManagerUsersPage() {
           description="إنشاء المستخدمين، تفعيلهم، وتعديل أدوارهم من خلال الباك اند."
           title="إدارة المستخدمين"
         />
-        <DashboardNav role="manager" />
 
         <CreateUserForm />
 
@@ -105,7 +103,7 @@ export default async function ManagerUsersPage() {
                     <UserRoleForm disabled={isCurrentUser} targetUid={user.uid} value={user.role} />
                     <form action={toggleActive}>
                       <button
-                        className="inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] disabled:cursor-not-allowed disabled:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                        className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] disabled:cursor-not-allowed disabled:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
                         disabled={isCurrentUser}
                         type="submit"
                       >
@@ -122,7 +120,6 @@ export default async function ManagerUsersPage() {
             })}
           </div>
         )}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

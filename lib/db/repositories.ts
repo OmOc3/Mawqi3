@@ -7,7 +7,13 @@ import {
   attendanceSessions,
   auditLogs,
   clientOrders,
+  clientProfiles,
+  clientStationAccess,
+  dailyReportPhotos,
+  dailyWorkReports,
+  dailyWorkReportStations,
   loginRateLimit,
+  reportPhotos,
   mobileWebSessions,
   reportStatuses,
   reports,
@@ -18,12 +24,21 @@ import { appUserFromAuthUser, auditLogFromRow, reportFromRow, requiredTimestamp,
 import { AppError } from "@/lib/errors";
 import type {
   AppUser,
+  AppTimestamp,
+  AttendanceLocation,
   AttendanceSession,
   AuditLog,
   ClientOrder,
+  ClientOrderWithStation,
+  ClientProfile,
+  ClientStationAccess,
   ClientOrderStatus,
   Coordinates,
+  DailyReportPhoto,
+  DailyWorkReport,
   Report,
+  ReportPhoto,
+  ReportPhotoCategory,
   ReportPhotoPaths,
   Station,
   StatusOption,
@@ -78,11 +93,18 @@ export interface SubmitReportInput {
   actorUid: string;
   clientReportId?: string;
   notes?: string;
+  photos?: SubmitReportPhotoInput[];
   photoPaths?: ReportPhotoPaths;
   reportId?: string;
   stationId: string;
   status: StatusOption[];
   technicianName: string;
+}
+
+export interface SubmitReportPhotoInput {
+  category: ReportPhotoCategory;
+  sortOrder?: number;
+  url: string;
 }
 
 export interface SubmitReportResult {
@@ -127,9 +149,53 @@ export interface PendingReviewNotificationSnapshot {
 
 export interface ClockAttendanceInput {
   actorRole: UserRole;
+  clientUid: string;
+  location: Coordinates & {
+    accuracyMeters?: number;
+  };
   notes?: string;
   technicianName: string;
   technicianUid: string;
+}
+
+export interface AttendanceFilters {
+  clientUid?: string;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  stationId?: string;
+  technicianUid?: string;
+}
+
+export interface ClientStationAccessInput {
+  actorUid: string;
+  clientUid: string;
+  stationIds: string[];
+}
+
+export interface ClientAttendanceSite {
+  clientName: string;
+  clientUid: string;
+  locatedStationCount: number;
+  stationCount: number;
+}
+
+export interface CreateDailyWorkReportInput {
+  actorRole: UserRole;
+  photos?: string[];
+  notes?: string;
+  reportDate: Date;
+  stationIds: string[];
+  summary: string;
+  technicianName: string;
+  technicianUid: string;
+}
+
+export interface DailyWorkReportFilters {
+  clientUid?: string;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  stationId?: string;
+  technicianUid?: string;
 }
 
 export interface CreateClientOrderInput {
@@ -138,7 +204,40 @@ export interface CreateClientOrderInput {
   clientName: string;
   note?: string;
   photoUrl?: string;
-  stationId: string;
+  stationDescription?: string;
+  stationLabel: string;
+  stationLocation: string;
+}
+
+export interface ClientDirectoryEntry {
+  cancelledOrders: number;
+  client: AppUser;
+  completedOrders: number;
+  inProgressOrders: number;
+  latestOrderAt?: AppTimestamp;
+  latestStationLocation?: string;
+  pendingOrders: number;
+  profile?: ClientProfile;
+  stationCount: number;
+  totalOrders: number;
+}
+
+export interface ClientAccountDetail {
+  access: ClientStationAccess[];
+  client: AppUser;
+  dailyReports: DailyWorkReport[];
+  orders: ClientOrderWithStation[];
+  profile?: ClientProfile;
+  reports: Report[];
+  stations: Station[];
+}
+
+export interface UpsertClientProfileInput {
+  actorRole: UserRole;
+  actorUid: string;
+  addresses: string[];
+  clientUid: string;
+  phone?: string;
 }
 
 function now(): Date {
@@ -362,6 +461,48 @@ async function statusesByReportId(reportIds: string[]): Promise<Map<string, Stat
   return grouped;
 }
 
+function reportPhotoFromRow(row: typeof reportPhotos.$inferSelect): ReportPhoto {
+  return {
+    category: row.category,
+    photoId: row.photoId,
+    reportId: row.reportId,
+    sortOrder: row.sortOrder,
+    uploadedAt: requiredTimestamp(row.uploadedAt),
+    uploadedBy: row.uploadedBy,
+    url: row.url,
+  };
+}
+
+async function photosByReportId(reportIds: string[]): Promise<Map<string, ReportPhoto[]>> {
+  const uniqueReportIds = Array.from(new Set(reportIds.filter(Boolean)));
+
+  if (uniqueReportIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select()
+    .from(reportPhotos)
+    .where(inArray(reportPhotos.reportId, uniqueReportIds))
+    .orderBy(reportPhotos.sortOrder, reportPhotos.uploadedAt);
+  const grouped = new Map<string, ReportPhoto[]>();
+
+  rows.forEach((row) => {
+    const values = grouped.get(row.reportId) ?? [];
+    values.push(reportPhotoFromRow(row));
+    grouped.set(row.reportId, values);
+  });
+
+  return grouped;
+}
+
+function withReportPhotos(report: Report, photos: ReportPhoto[] | undefined): Report {
+  return {
+    ...report,
+    photos: photos && photos.length > 0 ? photos : undefined,
+  };
+}
+
 export async function listReports(input: ReportPageInput): Promise<Report[]> {
   const filters = input.filters ?? {};
   const cursorDate = input.cursor ? new Date(input.cursor.submittedAtMs) : null;
@@ -385,9 +526,10 @@ export async function listReports(input: ReportPageInput): Promise<Report[]> {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(reports.submittedAt), desc(reports.reportId))
     .limit(input.limit);
-  const statuses = await statusesByReportId(rows.map((row) => row.reportId));
+  const reportIds = rows.map((row) => row.reportId);
+  const [statuses, photos] = await Promise.all([statusesByReportId(reportIds), photosByReportId(reportIds)]);
 
-  return rows.map((row) => reportFromRow(row, statuses.get(row.reportId) ?? []));
+  return rows.map((row) => withReportPhotos(reportFromRow(row, statuses.get(row.reportId) ?? []), photos.get(row.reportId)));
 }
 
 export async function getPendingReviewNotificationSnapshot(): Promise<PendingReviewNotificationSnapshot> {
@@ -421,9 +563,9 @@ export async function getReportById(reportId: string): Promise<Report | null> {
     return null;
   }
 
-  const statuses = await statusesByReportId([reportId]);
+  const [statuses, photos] = await Promise.all([statusesByReportId([reportId]), photosByReportId([reportId])]);
 
-  return reportFromRow(row, statuses.get(reportId) ?? []);
+  return withReportPhotos(reportFromRow(row, statuses.get(reportId) ?? []), photos.get(reportId));
 }
 
 export async function listReportsForTechnician(technicianUid: string, limit: number): Promise<Report[]> {
@@ -433,15 +575,175 @@ export async function listReportsForTechnician(technicianUid: string, limit: num
   });
 }
 
+const attendanceRadiusMeters = 100;
+const maxAttendanceAccuracyMeters = 100;
+
+function distanceMeters(left: Coordinates, right: Coordinates): number {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const deltaLat = toRadians(right.lat - left.lat);
+  const deltaLng = toRadians(right.lng - left.lng);
+  const lat1 = toRadians(left.lat);
+  const lat2 = toRadians(right.lat);
+  const haversine =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function attendanceLocationFromRow(
+  row: typeof attendanceSessions.$inferSelect,
+  prefix: "clockIn" | "clockOut",
+): AttendanceLocation | undefined {
+  const lat = prefix === "clockIn" ? row.clockInLat : row.clockOutLat;
+  const lng = prefix === "clockIn" ? row.clockInLng : row.clockOutLng;
+  const stationId = prefix === "clockIn" ? row.clockInStationId : row.clockOutStationId;
+  const stationLabel = prefix === "clockIn" ? row.clockInStationLabel : row.clockOutStationLabel;
+  const clientUid = prefix === "clockIn" ? row.clockInClientUid : row.clockOutClientUid;
+  const clientName = prefix === "clockIn" ? row.clockInClientName : row.clockOutClientName;
+  const accuracyMeters = prefix === "clockIn" ? row.clockInAccuracyMeters : row.clockOutAccuracyMeters;
+  const distance = prefix === "clockIn" ? row.clockInDistanceMeters : row.clockOutDistanceMeters;
+
+  if (
+    typeof lat !== "number" ||
+    typeof lng !== "number" ||
+    !stationId ||
+    !stationLabel ||
+    !clientUid ||
+    typeof distance !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    accuracyMeters: typeof accuracyMeters === "number" ? accuracyMeters : undefined,
+    clientName: clientName ?? undefined,
+    clientUid,
+    coordinates: { lat, lng },
+    distanceMeters: distance,
+    stationId,
+    stationLabel,
+  };
+}
+
 function attendanceFromRow(row: typeof attendanceSessions.$inferSelect): AttendanceSession {
   return {
     attendanceId: row.attendanceId,
     technicianUid: row.technicianUid,
     technicianName: row.technicianName,
     clockInAt: row.clockInAt ? requiredTimestamp(row.clockInAt) : requiredTimestamp(new Date()),
+    clockInLocation: attendanceLocationFromRow(row, "clockIn"),
     clockOutAt: row.clockOutAt ? requiredTimestamp(row.clockOutAt) : undefined,
+    clockOutLocation: attendanceLocationFromRow(row, "clockOut"),
     notes: row.notes ?? undefined,
   };
+}
+
+async function verifyAttendanceLocation(input: ClockAttendanceInput): Promise<AttendanceLocation> {
+  const coordinates = {
+    lat: input.location.lat,
+    lng: input.location.lng,
+  };
+
+  if (
+    !Number.isFinite(coordinates.lat) ||
+    !Number.isFinite(coordinates.lng) ||
+    coordinates.lat < -90 ||
+    coordinates.lat > 90 ||
+    coordinates.lng < -180 ||
+    coordinates.lng > 180
+  ) {
+    throw new AppError("إحداثيات الموقع غير صالحة.", "ATTENDANCE_LOCATION_INVALID", 400);
+  }
+
+  if (
+    typeof input.location.accuracyMeters === "number" &&
+    input.location.accuracyMeters > maxAttendanceAccuracyMeters
+  ) {
+    throw new AppError(
+      "دقة الموقع ضعيفة. اقترب من الموقع أو فعّل GPS ثم حاول مرة أخرى.",
+      "ATTENDANCE_LOCATION_ACCURACY_LOW",
+      400,
+    );
+  }
+
+  const candidateRows = await db
+    .select({
+      clientName: user.name,
+      clientUid: clientStationAccess.clientUid,
+      lat: stations.lat,
+      lng: stations.lng,
+      stationId: stations.stationId,
+      stationLabel: stations.label,
+    })
+    .from(clientStationAccess)
+    .innerJoin(stations, eq(clientStationAccess.stationId, stations.stationId))
+    .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
+    .where(and(eq(clientStationAccess.clientUid, input.clientUid), eq(stations.isActive, true)));
+
+  if (candidateRows.length === 0) {
+    throw new AppError("لا توجد محطات مخصصة لهذا العميل.", "ATTENDANCE_CLIENT_STATIONS_NOT_FOUND", 404);
+  }
+
+  const locatedStations = candidateRows.filter(
+    (row): row is typeof row & { lat: number; lng: number } =>
+      typeof row.lat === "number" && typeof row.lng === "number",
+  );
+
+  if (locatedStations.length === 0) {
+    throw new AppError(
+      "محطات هذا العميل لا تحتوي على إحداثيات، لا يمكن احتساب الحضور.",
+      "ATTENDANCE_STATIONS_WITHOUT_COORDINATES",
+      409,
+    );
+  }
+
+  const nearest = locatedStations
+    .map((row) => ({
+      ...row,
+      distanceMeters: distanceMeters(coordinates, { lat: row.lat, lng: row.lng }),
+    }))
+    .sort((left, right) => left.distanceMeters - right.distanceMeters)[0];
+
+  if (!nearest || nearest.distanceMeters > attendanceRadiusMeters) {
+    throw new AppError("أنت خارج نطاق الموقع المحدد لهذا العميل.", "ATTENDANCE_OUT_OF_RANGE", 403);
+  }
+
+  return {
+    accuracyMeters: input.location.accuracyMeters,
+    clientName: nearest.clientName,
+    clientUid: nearest.clientUid,
+    coordinates,
+    distanceMeters: Math.round(nearest.distanceMeters),
+    stationId: nearest.stationId,
+    stationLabel: nearest.stationLabel,
+  };
+}
+
+async function writeRejectedAttendanceAudit(
+  input: ClockAttendanceInput,
+  action: "attendance.clock_in_rejected" | "attendance.clock_out_rejected",
+  error: unknown,
+): Promise<void> {
+  const code = error instanceof AppError ? error.code : "ATTENDANCE_REJECTED";
+  const message = error instanceof Error ? error.message : "Attendance rejected";
+
+  await writeAuditLogRecord({
+    actorUid: input.technicianUid,
+    actorRole: input.actorRole,
+    action,
+    entityType: "attendance",
+    entityId: input.technicianUid,
+    metadata: {
+      accuracyMeters: input.location.accuracyMeters,
+      clientUid: input.clientUid,
+      code,
+      lat: input.location.lat,
+      lng: input.location.lng,
+      message,
+    },
+  });
 }
 
 export async function getOpenAttendanceSession(technicianUid: string): Promise<AttendanceSession | null> {
@@ -460,12 +762,38 @@ export async function clockInAttendanceSession(input: ClockAttendanceInput): Pro
     throw new AppError("يوجد حضور مفتوح بالفعل، يجب تسجيل الانصراف أولًا.", "ATTENDANCE_ALREADY_OPEN", 409);
   }
 
+  let verifiedLocation: AttendanceLocation;
+
+  try {
+    verifiedLocation = await verifyAttendanceLocation(input);
+  } catch (error: unknown) {
+    await writeRejectedAttendanceAudit(input, "attendance.clock_in_rejected", error);
+    throw error;
+  }
+
+  const clockInAt = now();
   const record = {
     attendanceId: crypto.randomUUID(),
     technicianUid: input.technicianUid,
     technicianName: input.technicianName,
-    clockInAt: now(),
+    clockInAt,
+    clockInLat: verifiedLocation.coordinates.lat,
+    clockInLng: verifiedLocation.coordinates.lng,
+    clockInAccuracyMeters: verifiedLocation.accuracyMeters ?? null,
+    clockInStationId: verifiedLocation.stationId,
+    clockInStationLabel: verifiedLocation.stationLabel,
+    clockInClientUid: verifiedLocation.clientUid,
+    clockInClientName: verifiedLocation.clientName ?? null,
+    clockInDistanceMeters: verifiedLocation.distanceMeters,
     clockOutAt: null,
+    clockOutLat: null,
+    clockOutLng: null,
+    clockOutAccuracyMeters: null,
+    clockOutStationId: null,
+    clockOutStationLabel: null,
+    clockOutClientUid: null,
+    clockOutClientName: null,
+    clockOutDistanceMeters: null,
     notes: input.notes ?? null,
     createdAt: now(),
   };
@@ -477,9 +805,21 @@ export async function clockInAttendanceSession(input: ClockAttendanceInput): Pro
     action: "attendance.clock_in",
     entityType: "attendance",
     entityId: record.attendanceId,
+    metadata: {
+      clientUid: verifiedLocation.clientUid,
+      distanceMeters: verifiedLocation.distanceMeters,
+      stationId: verifiedLocation.stationId,
+    },
   });
 
-  return attendanceFromRow(record);
+  return {
+    attendanceId: record.attendanceId,
+    technicianUid: record.technicianUid,
+    technicianName: record.technicianName,
+    clockInAt: requiredTimestamp(clockInAt),
+    clockInLocation: verifiedLocation,
+    notes: input.notes,
+  };
 }
 
 export async function clockOutAttendanceSession(input: ClockAttendanceInput): Promise<AttendanceSession> {
@@ -489,11 +829,32 @@ export async function clockOutAttendanceSession(input: ClockAttendanceInput): Pr
     throw new AppError("لا يوجد حضور مفتوح لتسجيل الانصراف.", "ATTENDANCE_NOT_FOUND", 404);
   }
 
+  if (openSession.clockInLocation?.clientUid && openSession.clockInLocation.clientUid !== input.clientUid) {
+    throw new AppError("يجب تسجيل الانصراف من نفس عميل/موقع الحضور.", "ATTENDANCE_CLIENT_MISMATCH", 409);
+  }
+
+  let verifiedLocation: AttendanceLocation;
+
+  try {
+    verifiedLocation = await verifyAttendanceLocation(input);
+  } catch (error: unknown) {
+    await writeRejectedAttendanceAudit(input, "attendance.clock_out_rejected", error);
+    throw error;
+  }
+
   const clockOutAt = now();
   await db
     .update(attendanceSessions)
     .set({
       clockOutAt,
+      clockOutLat: verifiedLocation.coordinates.lat,
+      clockOutLng: verifiedLocation.coordinates.lng,
+      clockOutAccuracyMeters: verifiedLocation.accuracyMeters ?? null,
+      clockOutStationId: verifiedLocation.stationId,
+      clockOutStationLabel: verifiedLocation.stationLabel,
+      clockOutClientUid: verifiedLocation.clientUid,
+      clockOutClientName: verifiedLocation.clientName ?? null,
+      clockOutDistanceMeters: verifiedLocation.distanceMeters,
       notes: input.notes ?? openSession.notes ?? null,
     })
     .where(eq(attendanceSessions.attendanceId, openSession.attendanceId));
@@ -504,11 +865,17 @@ export async function clockOutAttendanceSession(input: ClockAttendanceInput): Pr
     action: "attendance.clock_out",
     entityType: "attendance",
     entityId: openSession.attendanceId,
+    metadata: {
+      clientUid: verifiedLocation.clientUid,
+      distanceMeters: verifiedLocation.distanceMeters,
+      stationId: verifiedLocation.stationId,
+    },
   });
 
   return {
     ...openSession,
     clockOutAt: requiredTimestamp(clockOutAt),
+    clockOutLocation: verifiedLocation,
     notes: input.notes ?? openSession.notes,
   };
 }
@@ -519,6 +886,28 @@ export async function listAttendanceSessions(technicianUid: string, limit = 30):
     .select()
     .from(attendanceSessions)
     .where(eq(attendanceSessions.technicianUid, technicianUid))
+    .orderBy(desc(attendanceSessions.clockInAt))
+    .limit(safeLimit);
+
+  return rows.map(attendanceFromRow);
+}
+
+export async function listAttendanceSessionsForAdmin(
+  filters: AttendanceFilters = {},
+  limit = 1000,
+): Promise<AttendanceSession[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 5000);
+  const conditions = [
+    filters.clientUid ? eq(attendanceSessions.clockInClientUid, filters.clientUid) : undefined,
+    filters.stationId ? eq(attendanceSessions.clockInStationId, filters.stationId) : undefined,
+    filters.technicianUid ? eq(attendanceSessions.technicianUid, filters.technicianUid) : undefined,
+    filters.dateFrom ? gte(attendanceSessions.clockInAt, filters.dateFrom) : undefined,
+    filters.dateTo ? lte(attendanceSessions.clockInAt, filters.dateTo) : undefined,
+  ].filter((condition) => condition !== undefined);
+  const rows = await db
+    .select()
+    .from(attendanceSessions)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(attendanceSessions.clockInAt))
     .limit(safeLimit);
 
@@ -541,18 +930,431 @@ function clientOrderFromRow(row: typeof clientOrders.$inferSelect): ClientOrder 
   };
 }
 
-export async function createClientOrder(input: CreateClientOrderInput): Promise<ClientOrder> {
-  const station = await getStationById(input.stationId);
-  if (!station) {
-    throw new AppError("المحطة غير موجودة.", "STATION_NOT_FOUND", 404);
+function clientProfileFromRow(row: typeof clientProfiles.$inferSelect): ClientProfile {
+  return {
+    clientUid: row.clientUid,
+    phone: row.phone ?? undefined,
+    addresses: row.addresses ?? [],
+    createdAt: requiredTimestamp(row.createdAt),
+    updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
+  };
+}
+
+function normalizeClientAddresses(addresses: string[]): string[] {
+  const uniqueAddresses = new Set<string>();
+
+  addresses.forEach((address) => {
+    const trimmed = address.trim();
+
+    if (trimmed.length > 0) {
+      uniqueAddresses.add(trimmed);
+    }
+  });
+
+  return Array.from(uniqueAddresses).slice(0, 8);
+}
+
+async function clientProfilesByUid(clientUids: string[]): Promise<Map<string, ClientProfile>> {
+  const uniqueClientUids = Array.from(new Set(clientUids.filter(Boolean)));
+
+  if (uniqueClientUids.length === 0) {
+    return new Map();
   }
+
+  const rows = await db.select().from(clientProfiles).where(inArray(clientProfiles.clientUid, uniqueClientUids));
+
+  return new Map(rows.map((row) => [row.clientUid, clientProfileFromRow(row)]));
+}
+
+function clientStationAccessFromRow(row: typeof clientStationAccess.$inferSelect & {
+  clientName?: string | null;
+  stationLabel?: string | null;
+}): ClientStationAccess {
+  return {
+    accessId: row.accessId,
+    clientName: row.clientName ?? undefined,
+    clientUid: row.clientUid,
+    createdAt: requiredTimestamp(row.createdAt),
+    createdBy: row.createdBy,
+    stationId: row.stationId,
+    stationLabel: row.stationLabel ?? undefined,
+  };
+}
+
+async function clientStationIds(clientUid: string): Promise<string[]> {
+  const rows = await db
+    .select({ stationId: clientStationAccess.stationId })
+    .from(clientStationAccess)
+    .where(eq(clientStationAccess.clientUid, clientUid));
+
+  return Array.from(new Set(rows.map((row) => row.stationId)));
+}
+
+export async function hasClientStationAccess(clientUid: string, stationId: string): Promise<boolean> {
+  const row = await db.query.clientStationAccess.findFirst({
+    where: and(eq(clientStationAccess.clientUid, clientUid), eq(clientStationAccess.stationId, stationId)),
+  });
+
+  return Boolean(row);
+}
+
+export async function listClientStationAccess(clientUid: string): Promise<ClientStationAccess[]> {
+  const rows = await db
+    .select({
+      accessId: clientStationAccess.accessId,
+      clientName: user.name,
+      clientUid: clientStationAccess.clientUid,
+      createdAt: clientStationAccess.createdAt,
+      createdBy: clientStationAccess.createdBy,
+      stationId: clientStationAccess.stationId,
+      stationLabel: stations.label,
+    })
+    .from(clientStationAccess)
+    .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
+    .innerJoin(stations, eq(clientStationAccess.stationId, stations.stationId))
+    .where(eq(clientStationAccess.clientUid, clientUid))
+    .orderBy(stations.label);
+
+  return rows.map(clientStationAccessFromRow);
+}
+
+export async function listClientAttendanceSites(): Promise<ClientAttendanceSite[]> {
+  const rows = await db
+    .select({
+      clientName: user.name,
+      clientUid: clientStationAccess.clientUid,
+      lat: stations.lat,
+      lng: stations.lng,
+      stationId: stations.stationId,
+    })
+    .from(clientStationAccess)
+    .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
+    .innerJoin(stations, eq(clientStationAccess.stationId, stations.stationId))
+    .where(eq(stations.isActive, true))
+    .orderBy(user.name, stations.label);
+  const grouped = new Map<string, ClientAttendanceSite>();
+
+  rows.forEach((row) => {
+    const entry =
+      grouped.get(row.clientUid) ??
+      {
+        clientName: row.clientName,
+        clientUid: row.clientUid,
+        locatedStationCount: 0,
+        stationCount: 0,
+      };
+
+    entry.stationCount += 1;
+
+    if (typeof row.lat === "number" && typeof row.lng === "number") {
+      entry.locatedStationCount += 1;
+    }
+
+    grouped.set(row.clientUid, entry);
+  });
+
+  return Array.from(grouped.values());
+}
+
+export async function replaceClientStationAccess(input: ClientStationAccessInput): Promise<void> {
+  const targetClient = await getAppUser(input.clientUid);
+
+  if (!targetClient || targetClient.role !== "client") {
+    throw new AppError("العميل غير موجود.", "CLIENT_NOT_FOUND", 404);
+  }
+
+  const uniqueStationIds = Array.from(new Set(input.stationIds.map((stationId) => stationId.trim()).filter(Boolean)));
+
+  if (uniqueStationIds.length > 0) {
+    const existingStations = await db
+      .select({ stationId: stations.stationId })
+      .from(stations)
+      .where(inArray(stations.stationId, uniqueStationIds));
+
+    if (existingStations.length !== uniqueStationIds.length) {
+      throw new AppError("بعض المحطات المحددة غير موجودة.", "CLIENT_STATIONS_INVALID", 400);
+    }
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(clientStationAccess).where(eq(clientStationAccess.clientUid, input.clientUid));
+
+    if (uniqueStationIds.length > 0) {
+      const createdAt = now();
+      await tx.insert(clientStationAccess).values(
+        uniqueStationIds.map((stationId) => ({
+          accessId: crypto.randomUUID(),
+          clientUid: input.clientUid,
+          createdAt,
+          createdBy: input.actorUid,
+          stationId,
+        })),
+      );
+    }
+
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
+      actorUid: input.actorUid,
+      actorRole: "manager",
+      action: "client_station_access.replace",
+      entityType: "client",
+      entityId: input.clientUid,
+      createdAt: now(),
+      metadata: {
+        stationCount: uniqueStationIds.length,
+        stationIds: uniqueStationIds,
+      },
+    });
+  });
+}
+
+export async function listClientDirectory(): Promise<ClientDirectoryEntry[]> {
+  const clientRows = await db.select().from(user).where(eq(user.role, "client")).orderBy(user.name);
+  const clients = clientRows.map(appUserFromAuthUser);
+
+  if (clients.length === 0) {
+    return [];
+  }
+
+  const clientUids = clients.map((client) => client.uid);
+  const [profileMap, orderRows, accessRows] = await Promise.all([
+    clientProfilesByUid(clientUids),
+    db.select().from(clientOrders).where(inArray(clientOrders.clientUid, clientUids)).orderBy(desc(clientOrders.createdAt)),
+    db.select().from(clientStationAccess).where(inArray(clientStationAccess.clientUid, clientUids)),
+  ]);
+  const stationIds = Array.from(new Set([...orderRows.map((order) => order.stationId), ...accessRows.map((access) => access.stationId)]));
+  const stationLocationRows =
+    stationIds.length > 0
+      ? await db
+          .select({
+            location: stations.location,
+            stationId: stations.stationId,
+          })
+          .from(stations)
+          .where(inArray(stations.stationId, stationIds))
+      : [];
+  const stationLocations = new Map(stationLocationRows.map((station) => [station.stationId, station.location]));
+  const latestStationByClient = new Map<string, string>();
+  const stationIdsByClient = new Map<string, Set<string>>();
+  const directory = new Map<string, ClientDirectoryEntry>(
+    clients.map((client) => [
+      client.uid,
+      {
+        cancelledOrders: 0,
+        client,
+        completedOrders: 0,
+        inProgressOrders: 0,
+        pendingOrders: 0,
+        profile: profileMap.get(client.uid),
+        stationCount: 0,
+        totalOrders: 0,
+      },
+    ]),
+  );
+
+  accessRows.forEach((row) => {
+    const stationSet = stationIdsByClient.get(row.clientUid) ?? new Set<string>();
+    stationSet.add(row.stationId);
+    stationIdsByClient.set(row.clientUid, stationSet);
+  });
+
+  orderRows.forEach((row) => {
+    const entry = directory.get(row.clientUid);
+
+    if (!entry) {
+      return;
+    }
+
+    entry.totalOrders += 1;
+
+    if (row.status === "pending") {
+      entry.pendingOrders += 1;
+    } else if (row.status === "in_progress") {
+      entry.inProgressOrders += 1;
+    } else if (row.status === "completed") {
+      entry.completedOrders += 1;
+    } else if (row.status === "cancelled") {
+      entry.cancelledOrders += 1;
+    }
+
+    if (!entry.latestOrderAt) {
+      entry.latestOrderAt = requiredTimestamp(row.createdAt);
+      latestStationByClient.set(row.clientUid, row.stationId);
+    }
+
+    const stationSet = stationIdsByClient.get(row.clientUid) ?? new Set<string>();
+    stationSet.add(row.stationId);
+    stationIdsByClient.set(row.clientUid, stationSet);
+  });
+
+  directory.forEach((entry, clientUid) => {
+    entry.stationCount = stationIdsByClient.get(clientUid)?.size ?? 0;
+
+    const latestStationId = latestStationByClient.get(clientUid);
+    entry.latestStationLocation = latestStationId ? stationLocations.get(latestStationId) : undefined;
+  });
+
+  return clients.map((client) => directory.get(client.uid)).filter((entry) => entry !== undefined);
+}
+
+export async function getClientAccountDetail(clientUid: string): Promise<ClientAccountDetail | null> {
+  const [clientRow, profileRows, orderRows, clientReports, accessRows, assignedStations, dailyReports] = await Promise.all([
+    db.query.user.findFirst({
+      where: and(eq(user.id, clientUid), eq(user.role, "client")),
+    }),
+    db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, clientUid)).limit(1),
+    db
+      .select({
+        clientName: clientOrders.clientName,
+        clientUid: clientOrders.clientUid,
+        createdAt: clientOrders.createdAt,
+        note: clientOrders.note,
+        orderId: clientOrders.orderId,
+        photoUrl: clientOrders.photoUrl,
+        reviewedAt: clientOrders.reviewedAt,
+        reviewedBy: clientOrders.reviewedBy,
+        stationCreatedAt: stations.createdAt,
+        stationDescription: stations.description,
+        stationId: clientOrders.stationId,
+        stationIsActive: stations.isActive,
+        stationLabel: clientOrders.stationLabel,
+        stationLastVisitedAt: stations.lastVisitedAt,
+        stationLat: stations.lat,
+        stationLng: stations.lng,
+        stationLocation: stations.location,
+        stationTotalReports: stations.totalReports,
+        stationZone: stations.zone,
+        status: clientOrders.status,
+      })
+      .from(clientOrders)
+      .leftJoin(stations, eq(clientOrders.stationId, stations.stationId))
+      .where(eq(clientOrders.clientUid, clientUid))
+      .orderBy(desc(clientOrders.createdAt)),
+    listReportsForClientOrderedStations(clientUid, 200),
+    listClientStationAccess(clientUid),
+    listOrderedStationsForClient(clientUid),
+    listDailyWorkReports({ clientUid }, 200),
+  ]);
+
+  if (!clientRow) {
+    return null;
+  }
+
+  const orders: ClientOrderWithStation[] = orderRows.map((row) => {
+    const order = clientOrderFromRow({
+      clientName: row.clientName,
+      clientUid: row.clientUid,
+      createdAt: row.createdAt,
+      note: row.note,
+      orderId: row.orderId,
+      photoUrl: row.photoUrl,
+      reviewedAt: row.reviewedAt,
+      reviewedBy: row.reviewedBy,
+      stationId: row.stationId,
+      stationLabel: row.stationLabel,
+      status: row.status,
+    });
+    const station =
+      row.stationLocation && row.stationCreatedAt && typeof row.stationIsActive === "boolean" && typeof row.stationTotalReports === "number"
+        ? {
+            coordinates:
+              typeof row.stationLat === "number" && typeof row.stationLng === "number"
+                ? { lat: row.stationLat, lng: row.stationLng }
+                : undefined,
+            createdAt: requiredTimestamp(row.stationCreatedAt),
+            description: row.stationDescription ?? undefined,
+            isActive: row.stationIsActive,
+            lastVisitedAt: row.stationLastVisitedAt ? requiredTimestamp(row.stationLastVisitedAt) : undefined,
+            location: row.stationLocation,
+            totalReports: row.stationTotalReports,
+            zone: row.stationZone ?? undefined,
+          }
+        : undefined;
+
+    return {
+      ...order,
+      station,
+    };
+  });
+
+  return {
+    access: accessRows,
+    client: appUserFromAuthUser(clientRow),
+    dailyReports,
+    orders,
+    profile: profileRows[0] ? clientProfileFromRow(profileRows[0]) : undefined,
+    reports: clientReports,
+    stations: assignedStations,
+  };
+}
+
+export async function upsertClientProfile(input: UpsertClientProfileInput): Promise<ClientProfile> {
+  const targetClient = await getAppUser(input.clientUid);
+
+  if (!targetClient || targetClient.role !== "client") {
+    throw new AppError("العميل غير موجود.", "CLIENT_NOT_FOUND", 404);
+  }
+
+  const timestamp = now();
+  const phone = input.phone?.trim();
+  const addresses = normalizeClientAddresses(input.addresses);
+  const record = {
+    addresses,
+    clientUid: input.clientUid,
+    createdAt: timestamp,
+    phone: phone && phone.length > 0 ? phone : null,
+    updatedAt: null,
+  };
+
+  await db
+    .insert(clientProfiles)
+    .values(record)
+    .onConflictDoUpdate({
+      target: clientProfiles.clientUid,
+      set: {
+        addresses,
+        phone: record.phone,
+        updatedAt: timestamp,
+      },
+    });
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "client_profile.upsert",
+    entityType: "client_profile",
+    entityId: input.clientUid,
+    metadata: {
+      addressCount: addresses.length,
+      hasPhone: Boolean(record.phone),
+    },
+  });
+
+  const [profileRow] = await db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, input.clientUid)).limit(1);
+
+  return profileRow ? clientProfileFromRow(profileRow) : clientProfileFromRow(record);
+}
+
+export async function createClientOrder(input: CreateClientOrderInput): Promise<ClientOrder> {
+  const stationId = await generateNextStationId();
+  const qrCodeValue = `client-station:${stationId}:${crypto.randomUUID()}`;
+
+  await createStationRecord({
+    stationId,
+    label: input.stationLabel,
+    location: input.stationLocation,
+    description: input.stationDescription,
+    photoUrls: input.photoUrl ? [input.photoUrl] : undefined,
+    qrCodeValue,
+    createdBy: input.clientUid,
+  });
 
   const record = {
     orderId: crypto.randomUUID(),
     clientUid: input.clientUid,
     clientName: input.clientName,
-    stationId: input.stationId,
-    stationLabel: station.label,
+    stationId,
+    stationLabel: input.stationLabel,
     note: input.note ?? null,
     photoUrl: input.photoUrl ?? null,
     status: "pending" as ClientOrderStatus,
@@ -562,13 +1364,23 @@ export async function createClientOrder(input: CreateClientOrderInput): Promise<
   };
 
   await db.insert(clientOrders).values(record);
+  await db
+    .insert(clientStationAccess)
+    .values({
+      accessId: crypto.randomUUID(),
+      clientUid: input.clientUid,
+      createdAt: now(),
+      createdBy: input.clientUid,
+      stationId,
+    })
+    .onConflictDoNothing();
   await writeAuditLogRecord({
     actorUid: input.clientUid,
     actorRole: input.actorRole,
     action: "client_order.create",
     entityType: "client_order",
     entityId: record.orderId,
-    metadata: { stationId: input.stationId },
+    metadata: { stationId },
   });
 
   return clientOrderFromRow(record);
@@ -587,7 +1399,7 @@ export async function listClientOrdersForClient(clientUid: string, limit = 100):
 }
 
 export async function listClientOrders(limit = 200): Promise<ClientOrder[]> {
-  const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const safeLimit = Math.min(Math.max(limit, 1), 5000);
   const rows = await db.select().from(clientOrders).orderBy(desc(clientOrders.createdAt)).limit(safeLimit);
   return rows.map(clientOrderFromRow);
 }
@@ -597,7 +1409,17 @@ export async function updateClientOrderStatus(
   status: ClientOrderStatus,
   reviewerUid: string,
   actorRole: UserRole,
-): Promise<void> {
+): Promise<string> {
+  const [existingOrder] = await db
+    .select({ clientUid: clientOrders.clientUid })
+    .from(clientOrders)
+    .where(eq(clientOrders.orderId, orderId))
+    .limit(1);
+
+  if (!existingOrder) {
+    throw new AppError("الطلب غير موجود.", "CLIENT_ORDER_NOT_FOUND", 404);
+  }
+
   await db
     .update(clientOrders)
     .set({
@@ -615,14 +1437,12 @@ export async function updateClientOrderStatus(
     entityId: orderId,
     metadata: { status },
   });
+
+  return existingOrder.clientUid;
 }
 
 export async function listReportsForClientOrderedStations(clientUid: string, limit = 100): Promise<Report[]> {
-  const stationRows = await db
-    .select({ stationId: clientOrders.stationId })
-    .from(clientOrders)
-    .where(eq(clientOrders.clientUid, clientUid));
-  const stationIds = Array.from(new Set(stationRows.map((row) => row.stationId)));
+  const stationIds = await clientStationIds(clientUid);
 
   if (stationIds.length === 0) {
     return [];
@@ -636,8 +1456,20 @@ export async function listReportsForClientOrderedStations(clientUid: string, lim
     .orderBy(desc(reports.submittedAt), desc(reports.reportId))
     .limit(safeLimit);
 
-  const statuses = await statusesByReportId(rows.map((row) => row.reportId));
-  return rows.map((row) => reportFromRow(row, statuses.get(row.reportId) ?? []));
+  const reportIds = rows.map((row) => row.reportId);
+  const [statuses, photos] = await Promise.all([statusesByReportId(reportIds), photosByReportId(reportIds)]);
+  return rows.map((row) => withReportPhotos(reportFromRow(row, statuses.get(row.reportId) ?? []), photos.get(row.reportId)));
+}
+
+export async function listOrderedStationsForClient(clientUid: string): Promise<Station[]> {
+  const stationIds = await clientStationIds(clientUid);
+
+  if (stationIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db.select().from(stations).where(inArray(stations.stationId, stationIds)).orderBy(desc(stations.createdAt));
+  return rows.map(stationFromRow);
 }
 
 export async function submitReportRecord(input: SubmitReportInput): Promise<SubmitReportResult> {
@@ -686,6 +1518,20 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       reviewStatus: "pending",
     });
 
+    if (input.photos && input.photos.length > 0) {
+      await tx.insert(reportPhotos).values(
+        input.photos.map((photo, index) => ({
+          category: photo.category,
+          photoId: crypto.randomUUID(),
+          reportId,
+          sortOrder: photo.sortOrder ?? index,
+          uploadedAt: submittedAt,
+          uploadedBy: input.actorUid,
+          url: photo.url,
+        })),
+      );
+    }
+
     await tx.insert(reportStatuses).values(input.status.map((status) => ({ reportId, status })));
 
     await tx
@@ -719,6 +1565,232 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
     reportId,
     stationLabel,
   };
+}
+
+function dailyReportPhotoFromRow(row: typeof dailyReportPhotos.$inferSelect): DailyReportPhoto {
+  return {
+    dailyReportId: row.dailyReportId,
+    photoId: row.photoId,
+    sortOrder: row.sortOrder,
+    uploadedAt: requiredTimestamp(row.uploadedAt),
+    uploadedBy: row.uploadedBy,
+    url: row.url,
+  };
+}
+
+async function dailyReportPhotosById(dailyReportIds: string[]): Promise<Map<string, DailyReportPhoto[]>> {
+  const uniqueIds = Array.from(new Set(dailyReportIds.filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select()
+    .from(dailyReportPhotos)
+    .where(inArray(dailyReportPhotos.dailyReportId, uniqueIds))
+    .orderBy(dailyReportPhotos.sortOrder, dailyReportPhotos.uploadedAt);
+  const grouped = new Map<string, DailyReportPhoto[]>();
+
+  rows.forEach((row) => {
+    const values = grouped.get(row.dailyReportId) ?? [];
+    values.push(dailyReportPhotoFromRow(row));
+    grouped.set(row.dailyReportId, values);
+  });
+
+  return grouped;
+}
+
+async function dailyReportStationsById(dailyReportIds: string[]): Promise<Map<string, { ids: string[]; labels: string[] }>> {
+  const uniqueIds = Array.from(new Set(dailyReportIds.filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      dailyReportId: dailyWorkReportStations.dailyReportId,
+      stationId: dailyWorkReportStations.stationId,
+      stationLabel: stations.label,
+    })
+    .from(dailyWorkReportStations)
+    .innerJoin(stations, eq(dailyWorkReportStations.stationId, stations.stationId))
+    .where(inArray(dailyWorkReportStations.dailyReportId, uniqueIds))
+    .orderBy(stations.label);
+  const grouped = new Map<string, { ids: string[]; labels: string[] }>();
+
+  rows.forEach((row) => {
+    const entry = grouped.get(row.dailyReportId) ?? { ids: [], labels: [] };
+    entry.ids.push(row.stationId);
+    entry.labels.push(row.stationLabel);
+    grouped.set(row.dailyReportId, entry);
+  });
+
+  return grouped;
+}
+
+function dailyWorkReportFromRow(
+  row: typeof dailyWorkReports.$inferSelect,
+  stationsForReport?: { ids: string[]; labels: string[] },
+  photos?: DailyReportPhoto[],
+): DailyWorkReport {
+  return {
+    createdAt: requiredTimestamp(row.createdAt),
+    dailyReportId: row.dailyReportId,
+    notes: row.notes ?? undefined,
+    photos: photos && photos.length > 0 ? photos : undefined,
+    reportDate: requiredTimestamp(row.reportDate),
+    stationIds: stationsForReport?.ids ?? [],
+    stationLabels: stationsForReport?.labels ?? [],
+    summary: row.summary,
+    technicianName: row.technicianName,
+    technicianUid: row.technicianUid,
+    updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
+  };
+}
+
+async function hydrateDailyWorkReports(rows: (typeof dailyWorkReports.$inferSelect)[]): Promise<DailyWorkReport[]> {
+  const reportIds = rows.map((row) => row.dailyReportId);
+  const [stationsByReport, photosByReport] = await Promise.all([
+    dailyReportStationsById(reportIds),
+    dailyReportPhotosById(reportIds),
+  ]);
+
+  return rows.map((row) =>
+    dailyWorkReportFromRow(row, stationsByReport.get(row.dailyReportId), photosByReport.get(row.dailyReportId)),
+  );
+}
+
+export async function createDailyWorkReport(input: CreateDailyWorkReportInput): Promise<DailyWorkReport> {
+  const stationIds = Array.from(new Set(input.stationIds.map((stationId) => stationId.trim()).filter(Boolean)));
+
+  if (stationIds.length > 0) {
+    const existingStations = await db
+      .select({ stationId: stations.stationId })
+      .from(stations)
+      .where(inArray(stations.stationId, stationIds));
+
+    if (existingStations.length !== stationIds.length) {
+      throw new AppError("بعض المحطات المحددة في التقرير اليومي غير موجودة.", "DAILY_REPORT_STATIONS_INVALID", 400);
+    }
+  }
+
+  const createdAt = now();
+  const dailyReportId = crypto.randomUUID();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(dailyWorkReports).values({
+      createdAt,
+      dailyReportId,
+      notes: input.notes ?? null,
+      reportDate: input.reportDate,
+      summary: input.summary,
+      technicianName: input.technicianName,
+      technicianUid: input.technicianUid,
+      updatedAt: null,
+    });
+
+    if (stationIds.length > 0) {
+      await tx.insert(dailyWorkReportStations).values(
+        stationIds.map((stationId) => ({
+          dailyReportId,
+          stationId,
+        })),
+      );
+    }
+
+    if (input.photos && input.photos.length > 0) {
+      await tx.insert(dailyReportPhotos).values(
+        input.photos.map((url, index) => ({
+          dailyReportId,
+          photoId: crypto.randomUUID(),
+          sortOrder: index,
+          uploadedAt: createdAt,
+          uploadedBy: input.technicianUid,
+          url,
+        })),
+      );
+    }
+
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
+      actorUid: input.technicianUid,
+      actorRole: input.actorRole,
+      action: "daily_report.create",
+      entityType: "daily_work_report",
+      entityId: dailyReportId,
+      createdAt,
+      metadata: {
+        photoCount: input.photos?.length ?? 0,
+        stationCount: stationIds.length,
+        stationIds,
+      },
+    });
+  });
+
+  const row = await db.query.dailyWorkReports.findFirst({
+    where: eq(dailyWorkReports.dailyReportId, dailyReportId),
+  });
+
+  return (await hydrateDailyWorkReports(row ? [row] : [])).at(0) ?? {
+    createdAt: requiredTimestamp(createdAt),
+    dailyReportId,
+    notes: input.notes,
+    reportDate: requiredTimestamp(input.reportDate),
+    stationIds,
+    stationLabels: [],
+    summary: input.summary,
+    technicianName: input.technicianName,
+    technicianUid: input.technicianUid,
+  };
+}
+
+export async function listDailyWorkReports(
+  filters: DailyWorkReportFilters = {},
+  limit = 100,
+): Promise<DailyWorkReport[]> {
+  let scopedDailyReportIds: string[] | undefined;
+
+  if (filters.clientUid || filters.stationId) {
+    const allowedStationIds = filters.clientUid ? await clientStationIds(filters.clientUid) : [];
+    if (filters.clientUid && filters.stationId && !allowedStationIds.includes(filters.stationId)) {
+      return [];
+    }
+    const stationScope = filters.stationId
+      ? [filters.stationId]
+      : allowedStationIds;
+
+    if (filters.clientUid && stationScope.length === 0) {
+      return [];
+    }
+
+    const rows = await db
+      .select({ dailyReportId: dailyWorkReportStations.dailyReportId })
+      .from(dailyWorkReportStations)
+      .where(inArray(dailyWorkReportStations.stationId, stationScope));
+    scopedDailyReportIds = Array.from(new Set(rows.map((row) => row.dailyReportId)));
+
+    if (scopedDailyReportIds.length === 0) {
+      return [];
+    }
+  }
+
+  const conditions = [
+    filters.technicianUid ? eq(dailyWorkReports.technicianUid, filters.technicianUid) : undefined,
+    filters.dateFrom ? gte(dailyWorkReports.reportDate, filters.dateFrom) : undefined,
+    filters.dateTo ? lte(dailyWorkReports.reportDate, filters.dateTo) : undefined,
+    scopedDailyReportIds ? inArray(dailyWorkReports.dailyReportId, scopedDailyReportIds) : undefined,
+  ].filter((condition) => condition !== undefined);
+  const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const rows = await db
+    .select()
+    .from(dailyWorkReports)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(dailyWorkReports.reportDate), desc(dailyWorkReports.createdAt))
+    .limit(safeLimit);
+
+  return hydrateDailyWorkReports(rows);
 }
 
 export async function updateReportReviewRecord(
@@ -766,7 +1838,28 @@ export async function getStationLocations(stationIds: string[]): Promise<Map<str
   return new Map(rows.map((row) => [row.stationId, row.location]));
 }
 
-export async function countRows(table: "reports" | "stations" | "users", condition?: SQL): Promise<number> {
+export async function countRows(
+  table: "attendanceSessions" | "auditLogs" | "clientOrders" | "reports" | "stations" | "users",
+  condition?: SQL,
+): Promise<number> {
+  if (table === "attendanceSessions") {
+    const [row] = await db.select({ value: count() }).from(attendanceSessions).where(condition);
+
+    return row?.value ?? 0;
+  }
+
+  if (table === "auditLogs") {
+    const [row] = await db.select({ value: count() }).from(auditLogs).where(condition);
+
+    return row?.value ?? 0;
+  }
+
+  if (table === "clientOrders") {
+    const [row] = await db.select({ value: count() }).from(clientOrders).where(condition);
+
+    return row?.value ?? 0;
+  }
+
   if (table === "reports") {
     const [row] = await db.select({ value: count() }).from(reports).where(condition);
 

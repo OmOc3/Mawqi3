@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server-session";
-import { uploadReportImageToCloudinary } from "@/lib/cloudinary/report-images";
-import { createClientOrder, updateClientOrderStatus } from "@/lib/db/repositories";
-import { createClientOrderSchema, updateClientOrderStatusSchema } from "@/lib/validation/client-orders";
+import { replaceClientStationAccess, updateClientOrderStatus, upsertClientProfile } from "@/lib/db/repositories";
+import {
+  clientAddressLinesFromText,
+  createClientOrderSchema,
+  updateClientOrderStatusSchema,
+  updateClientProfileSchema,
+  updateClientStationAccessSchema,
+} from "@/lib/validation/client-orders";
 
 export interface ClientOrderActionResult {
   error?: string;
@@ -13,22 +18,21 @@ export interface ClientOrderActionResult {
 
 function optionalString(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
+
   if (typeof value !== "string") {
     return undefined;
   }
+
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function getImageFile(formData: FormData, key: string): File | undefined {
-  const value = formData.get(key);
-  return value instanceof File && value.size > 0 ? value : undefined;
-}
-
 export async function createClientOrderAction(formData: FormData): Promise<ClientOrderActionResult> {
-  const session = await requireRole(["client"]);
+  await requireRole(["client"]);
   const parsed = createClientOrderSchema.safeParse({
-    stationId: formData.get("stationId"),
+    stationDescription: optionalString(formData, "stationDescription"),
+    stationLabel: formData.get("stationLabel"),
+    stationLocation: formData.get("stationLocation"),
     note: optionalString(formData, "note"),
   });
 
@@ -36,27 +40,7 @@ export async function createClientOrderAction(formData: FormData): Promise<Clien
     return { error: "تحقق من بيانات الطلب." };
   }
 
-  try {
-    const photoFile = getImageFile(formData, "photo");
-    const photoUrl = photoFile
-      ? await uploadReportImageToCloudinary(photoFile, parsed.data.stationId, `client-order-${crypto.randomUUID()}`)
-      : undefined;
-    await createClientOrder({
-      actorRole: session.role,
-      clientUid: session.uid,
-      clientName: session.user.displayName,
-      stationId: parsed.data.stationId,
-      note: parsed.data.note,
-      photoUrl,
-    });
-
-    revalidatePath("/client/portal");
-    revalidatePath("/dashboard/manager/client-orders");
-    revalidatePath("/dashboard/supervisor/client-orders");
-    return { success: true };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "تعذر إنشاء الطلب." };
-  }
+  return { error: "بوابة العميل للعرض فقط. تواصل مع الإدارة لإضافة أو تعديل المحطات." };
 }
 
 export async function updateClientOrderStatusAction(formData: FormData): Promise<ClientOrderActionResult> {
@@ -71,12 +55,69 @@ export async function updateClientOrderStatusAction(formData: FormData): Promise
   }
 
   try {
-    await updateClientOrderStatus(parsed.data.orderId, parsed.data.status, session.uid, session.role);
+    const clientUid = await updateClientOrderStatus(parsed.data.orderId, parsed.data.status, session.uid, session.role);
     revalidatePath("/dashboard/manager/client-orders");
+    revalidatePath(`/dashboard/manager/client-orders/${clientUid}`);
     revalidatePath("/dashboard/supervisor/client-orders");
     revalidatePath("/client/portal");
     return { success: true };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "تعذر تحديث حالة الطلب." };
+  }
+}
+
+export async function updateClientProfileAction(formData: FormData): Promise<ClientOrderActionResult> {
+  const session = await requireRole(["manager"]);
+  const parsed = updateClientProfileSchema.safeParse({
+    addressesText: formData.get("addressesText"),
+    clientUid: formData.get("clientUid"),
+    phone: formData.get("phone"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "تحقق من بيانات العميل." };
+  }
+
+  try {
+    await upsertClientProfile({
+      actorRole: session.role,
+      actorUid: session.uid,
+      addresses: clientAddressLinesFromText(parsed.data.addressesText),
+      clientUid: parsed.data.clientUid,
+      phone: parsed.data.phone || undefined,
+    });
+
+    revalidatePath("/dashboard/manager/client-orders");
+    revalidatePath(`/dashboard/manager/client-orders/${parsed.data.clientUid}`);
+    return { success: true };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "تعذر تحديث بيانات العميل." };
+  }
+}
+
+export async function updateClientStationAccessAction(formData: FormData): Promise<ClientOrderActionResult> {
+  const session = await requireRole(["manager"]);
+  const parsed = updateClientStationAccessSchema.safeParse({
+    clientUid: formData.get("clientUid"),
+    stationIds: formData.getAll("stationIds").filter((value): value is string => typeof value === "string"),
+  });
+
+  if (!parsed.success) {
+    return { error: "تحقق من محطات العميل المحددة." };
+  }
+
+  try {
+    await replaceClientStationAccess({
+      actorUid: session.uid,
+      clientUid: parsed.data.clientUid,
+      stationIds: parsed.data.stationIds,
+    });
+
+    revalidatePath("/dashboard/manager/client-orders");
+    revalidatePath(`/dashboard/manager/client-orders/${parsed.data.clientUid}`);
+    revalidatePath("/client/portal");
+    return { success: true };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "تعذر تحديث محطات العميل." };
   }
 }

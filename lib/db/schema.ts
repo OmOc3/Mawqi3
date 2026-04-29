@@ -1,6 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import type { ClientOrderStatus, Coordinates, ReportPhotoPaths, StatusOption, UserRole } from "@/types";
+import type { ClientOrderStatus, Coordinates, ReportPhotoCategory, ReportPhotoPaths, StatusOption, UserRole } from "@/types";
 import type { SharedReviewStatus } from "@ecopest/shared/constants";
 
 const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
@@ -170,6 +170,26 @@ export const reportStatuses = sqliteTable(
   ],
 );
 
+export const reportPhotos = sqliteTable(
+  "report_photos",
+  {
+    photoId: text("photo_id").primaryKey(),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => reports.reportId, { onDelete: "cascade" }),
+    category: text("category").$type<ReportPhotoCategory>().notNull(),
+    url: text("url").notNull(),
+    uploadedAt: timestamp("uploaded_at").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    index("report_photos_report_id_idx").on(table.reportId),
+    index("report_photos_category_idx").on(table.category),
+    index("report_photos_uploaded_at_idx").on(table.uploadedAt),
+  ],
+);
+
 export const auditLogs = sqliteTable(
   "audit_logs",
   {
@@ -199,7 +219,23 @@ export const attendanceSessions = sqliteTable(
       .references(() => user.id, { onDelete: "restrict" }),
     technicianName: text("technician_name").notNull(),
     clockInAt: timestamp("clock_in_at").notNull(),
+    clockInLat: real("clock_in_lat"),
+    clockInLng: real("clock_in_lng"),
+    clockInAccuracyMeters: real("clock_in_accuracy_meters"),
+    clockInStationId: text("clock_in_station_id").references(() => stations.stationId, { onDelete: "restrict" }),
+    clockInStationLabel: text("clock_in_station_label"),
+    clockInClientUid: text("clock_in_client_uid").references(() => user.id, { onDelete: "restrict" }),
+    clockInClientName: text("clock_in_client_name"),
+    clockInDistanceMeters: real("clock_in_distance_meters"),
     clockOutAt: timestamp("clock_out_at"),
+    clockOutLat: real("clock_out_lat"),
+    clockOutLng: real("clock_out_lng"),
+    clockOutAccuracyMeters: real("clock_out_accuracy_meters"),
+    clockOutStationId: text("clock_out_station_id").references(() => stations.stationId, { onDelete: "restrict" }),
+    clockOutStationLabel: text("clock_out_station_label"),
+    clockOutClientUid: text("clock_out_client_uid").references(() => user.id, { onDelete: "restrict" }),
+    clockOutClientName: text("clock_out_client_name"),
+    clockOutDistanceMeters: real("clock_out_distance_meters"),
     notes: text("notes"),
     createdAt: timestamp("created_at").notNull(),
   },
@@ -207,6 +243,8 @@ export const attendanceSessions = sqliteTable(
     index("attendance_sessions_technician_uid_idx").on(table.technicianUid),
     index("attendance_sessions_clock_in_idx").on(table.clockInAt),
     index("attendance_sessions_clock_out_idx").on(table.clockOutAt),
+    index("attendance_sessions_clock_in_client_idx").on(table.clockInClientUid),
+    index("attendance_sessions_clock_in_station_idx").on(table.clockInStationId),
   ],
 );
 
@@ -237,6 +275,96 @@ export const clientOrders = sqliteTable(
   ],
 );
 
+export const clientProfiles = sqliteTable(
+  "client_profiles",
+  {
+    clientUid: text("client_uid")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    phone: text("phone"),
+    addresses: text("addresses", { mode: "json" }).$type<string[]>(),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [index("client_profiles_updated_at_idx").on(table.updatedAt)],
+);
+
+export const clientStationAccess = sqliteTable(
+  "client_station_access",
+  {
+    accessId: text("access_id").primaryKey(),
+    clientUid: text("client_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    stationId: text("station_id")
+      .notNull()
+      .references(() => stations.stationId, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull(),
+    createdBy: text("created_by").notNull(),
+  },
+  (table) => [
+    uniqueIndex("client_station_access_unique").on(table.clientUid, table.stationId),
+    index("client_station_access_client_uid_idx").on(table.clientUid),
+    index("client_station_access_station_id_idx").on(table.stationId),
+  ],
+);
+
+export const dailyWorkReports = sqliteTable(
+  "daily_work_reports",
+  {
+    dailyReportId: text("daily_report_id").primaryKey(),
+    technicianUid: text("technician_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    technicianName: text("technician_name").notNull(),
+    reportDate: timestamp("report_date").notNull(),
+    summary: text("summary").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    index("daily_work_reports_technician_uid_idx").on(table.technicianUid),
+    index("daily_work_reports_report_date_idx").on(table.reportDate),
+    index("daily_work_reports_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const dailyWorkReportStations = sqliteTable(
+  "daily_work_report_stations",
+  {
+    dailyReportId: text("daily_report_id")
+      .notNull()
+      .references(() => dailyWorkReports.dailyReportId, { onDelete: "cascade" }),
+    stationId: text("station_id")
+      .notNull()
+      .references(() => stations.stationId, { onDelete: "restrict" }),
+  },
+  (table) => [
+    uniqueIndex("daily_work_report_stations_unique").on(table.dailyReportId, table.stationId),
+    index("daily_work_report_stations_report_idx").on(table.dailyReportId),
+    index("daily_work_report_stations_station_idx").on(table.stationId),
+  ],
+);
+
+export const dailyReportPhotos = sqliteTable(
+  "daily_report_photos",
+  {
+    photoId: text("photo_id").primaryKey(),
+    dailyReportId: text("daily_report_id")
+      .notNull()
+      .references(() => dailyWorkReports.dailyReportId, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    uploadedAt: timestamp("uploaded_at").notNull(),
+    uploadedBy: text("uploaded_by").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (table) => [
+    index("daily_report_photos_report_idx").on(table.dailyReportId),
+    index("daily_report_photos_uploaded_at_idx").on(table.uploadedAt),
+  ],
+);
+
 export const mobileWebSessions = sqliteTable("mobile_web_sessions", {
   tokenHash: text("token_hash").primaryKey(),
   uid: text("uid").notNull(),
@@ -248,15 +376,23 @@ export const mobileWebSessions = sqliteTable("mobile_web_sessions", {
 });
 
 export const stationRelations = relations(stations, ({ many }) => ({
+  clientAccess: many(clientStationAccess),
+  dailyReports: many(dailyWorkReportStations),
   reports: many(reports),
 }));
 
 export const reportRelations = relations(reports, ({ many, one }) => ({
+  photos: many(reportPhotos),
   station: one(stations, {
     fields: [reports.stationId],
     references: [stations.stationId],
   }),
   statuses: many(reportStatuses),
+}));
+
+export const dailyWorkReportRelations = relations(dailyWorkReports, ({ many }) => ({
+  photos: many(dailyReportPhotos),
+  stations: many(dailyWorkReportStations),
 }));
 
 export function coordinatesFromRow(row: { lat: number | null; lng: number | null }): Coordinates | undefined {

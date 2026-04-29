@@ -37,6 +37,16 @@ function toFormData(values: SubmitReportValues): FormData {
   if (values.stationPhoto instanceof File) {
     formData.set("stationPhoto", values.stationPhoto);
   }
+  values.duringPhotos?.forEach((file) => {
+    if (file instanceof File) {
+      formData.append("duringPhotos", file);
+    }
+  });
+  values.otherPhotos?.forEach((file) => {
+    if (file instanceof File) {
+      formData.append("otherPhotos", file);
+    }
+  });
 
   return formData;
 }
@@ -86,7 +96,7 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
           }).format(submittedAt ?? new Date())}
         </p>
         <Link
-          className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-3 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-3 text-base font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
           href="/scan"
         >
           مسح محطة أخرى
@@ -97,6 +107,8 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
 
   const statusError = form.formState.errors.status?.message ?? getFieldError(actionResult, "status");
   const notesError = form.formState.errors.notes?.message ?? getFieldError(actionResult, "notes");
+  const duringPhotosError = form.formState.errors.duringPhotos?.message ?? getFieldError(actionResult, "duringPhotos");
+  const otherPhotosError = form.formState.errors.otherPhotos?.message ?? getFieldError(actionResult, "otherPhotos");
 
   return (
     <form className="space-y-5" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
@@ -156,37 +168,61 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
       </div>
 
       <div className="space-y-2">
-        <p className="text-base font-bold text-slate-900">صور التقرير (اختياري)</p>
+        <p className="text-base font-bold text-[var(--foreground)]">صور التقرير (اختياري)</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="beforePhoto">قبل</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]" htmlFor="beforePhoto">قبل</label>
             <input
               accept="image/*"
-              className="block w-full text-xs text-slate-600 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700"
+              className="block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)] file:me-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700 dark:file:bg-teal-900/30 dark:file:text-teal-300"
               id="beforePhoto"
               type="file"
               onChange={(event) => form.setValue("beforePhoto", event.target.files?.[0])}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="afterPhoto">بعد</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]" htmlFor="afterPhoto">بعد</label>
             <input
               accept="image/*"
-              className="block w-full text-xs text-slate-600 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700"
+              className="block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)] file:me-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700 dark:file:bg-teal-900/30 dark:file:text-teal-300"
               id="afterPhoto"
               type="file"
               onChange={(event) => form.setValue("afterPhoto", event.target.files?.[0])}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="stationPhoto">المحطة</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]" htmlFor="stationPhoto">المحطة</label>
             <input
               accept="image/*"
-              className="block w-full text-xs text-slate-600 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700"
+              className="block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)] file:me-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700 dark:file:bg-teal-900/30 dark:file:text-teal-300"
               id="stationPhoto"
               type="file"
               onChange={(event) => form.setValue("stationPhoto", event.target.files?.[0])}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]" htmlFor="duringPhotos">أثناء العمل</label>
+            <input
+              accept="image/*"
+              className="block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)] file:me-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700 dark:file:bg-teal-900/30 dark:file:text-teal-300"
+              id="duringPhotos"
+              multiple
+              type="file"
+              onChange={(event) => form.setValue("duringPhotos", Array.from(event.target.files ?? []), { shouldValidate: true })}
+            />
+            {duringPhotosError ? <p className="mt-1 text-xs text-[var(--danger)]">{duringPhotosError}</p> : null}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-[var(--foreground)]" htmlFor="otherPhotos">صور إضافية</label>
+            <input
+              accept="image/*"
+              className="block min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)] file:me-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-2 file:py-1.5 file:font-semibold file:text-teal-700 dark:file:bg-teal-900/30 dark:file:text-teal-300"
+              id="otherPhotos"
+              multiple
+              type="file"
+              onChange={(event) => form.setValue("otherPhotos", Array.from(event.target.files ?? []), { shouldValidate: true })}
+            />
+            {otherPhotosError ? <p className="mt-1 text-xs text-[var(--danger)]">{otherPhotosError}</p> : null}
           </div>
         </div>
       </div>

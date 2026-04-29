@@ -21,6 +21,8 @@ export interface ReportPhotoPaths {
   station?: string;
 }
 
+export type ReportPhotoCategory = "after" | "before" | "during" | "other" | "station";
+
 export interface AppUser {
   uid: string;
   email: string;
@@ -60,6 +62,7 @@ export interface Report {
   status: StatusOption[];
   clientReportId?: string;
   notes?: string;
+  photos?: ReportPhoto[];
   photoPaths?: ReportPhotoPaths;
   submittedAt: AppTimestamp;
   reviewStatus: SharedReviewStatus;
@@ -86,8 +89,63 @@ export interface AttendanceSession {
   technicianUid: string;
   technicianName: string;
   clockInAt: AppTimestamp;
+  clockInLocation?: AttendanceLocation;
   clockOutAt?: AppTimestamp;
+  clockOutLocation?: AttendanceLocation;
   notes?: string;
+}
+
+export interface AttendanceLocation {
+  accuracyMeters?: number;
+  clientName?: string;
+  clientUid: string;
+  coordinates: Coordinates;
+  distanceMeters: number;
+  stationId: string;
+  stationLabel: string;
+}
+
+export interface ClientStationAccess {
+  accessId: string;
+  clientName?: string;
+  clientUid: string;
+  createdAt: AppTimestamp;
+  createdBy: string;
+  stationId: string;
+  stationLabel?: string;
+}
+
+export interface ReportPhoto {
+  category: ReportPhotoCategory;
+  photoId: string;
+  reportId: string;
+  sortOrder: number;
+  uploadedAt: AppTimestamp;
+  uploadedBy: string;
+  url: string;
+}
+
+export interface DailyReportPhoto {
+  dailyReportId: string;
+  photoId: string;
+  sortOrder: number;
+  uploadedAt: AppTimestamp;
+  uploadedBy: string;
+  url: string;
+}
+
+export interface DailyWorkReport {
+  createdAt: AppTimestamp;
+  dailyReportId: string;
+  notes?: string;
+  photos?: DailyReportPhoto[];
+  reportDate: AppTimestamp;
+  stationIds: string[];
+  stationLabels: string[];
+  summary: string;
+  technicianName: string;
+  technicianUid: string;
+  updatedAt?: AppTimestamp;
 }
 
 export type ClientOrderStatus = "pending" | "in_progress" | "completed" | "cancelled";
@@ -104,6 +162,29 @@ export interface ClientOrder {
   createdAt: AppTimestamp;
   reviewedAt?: AppTimestamp;
   reviewedBy?: string;
+}
+
+export interface ClientProfile {
+  clientUid: string;
+  phone?: string;
+  addresses: string[];
+  createdAt: AppTimestamp;
+  updatedAt?: AppTimestamp;
+}
+
+export interface ClientOrderStationSnapshot {
+  coordinates?: Coordinates;
+  createdAt: AppTimestamp;
+  description?: string;
+  isActive: boolean;
+  lastVisitedAt?: AppTimestamp;
+  location: string;
+  totalReports: number;
+  zone?: string;
+}
+
+export interface ClientOrderWithStation extends ClientOrder {
+  station?: ClientOrderStationSnapshot;
 }
 
 export interface ApiErrorResponse {
@@ -139,10 +220,28 @@ export interface MobileWebSessionResponse {
 
 export interface AiInsightsResult {
   summary: string;
+  fullReport?: string;
   alerts: string[];
   recommendations: string[];
+  sections?: AiReportSection[];
+  dataQualityNotes?: string[];
+  dataCoverage?: AiDataCoverageItem[];
   generatedAt: string;
   source: "gemini" | "fallback";
   model?: string;
   note?: string;
+}
+
+export interface AiReportSection {
+  title: string;
+  body: string;
+  items: string[];
+}
+
+export interface AiDataCoverageItem {
+  includedRows: number;
+  key: string;
+  label: string;
+  totalRows: number;
+  truncated: boolean;
 }

@@ -9,7 +9,7 @@ import { TextField } from "@/components/ui/text-field";
 import { i18n } from "@/lib/i18n";
 import { isRecord } from "@/lib/utils";
 import { loginFormSchema, type LoginFormValues } from "@/lib/validation/auth";
-import type { ApiErrorResponse, LoginSuccessResponse } from "@/types";
+import type { ApiErrorResponse, LoginSuccessResponse, UserRole } from "@/types";
 
 function isAuthenticatedUserResponse(value: unknown): boolean {
   return (
@@ -17,7 +17,7 @@ function isAuthenticatedUserResponse(value: unknown): boolean {
     typeof value.uid === "string" &&
     typeof value.email === "string" &&
     typeof value.displayName === "string" &&
-    (value.role === "technician" || value.role === "supervisor" || value.role === "manager") &&
+    (value.role === "client" || value.role === "technician" || value.role === "supervisor" || value.role === "manager") &&
     value.isActive === true
   );
 }
@@ -42,7 +42,11 @@ function formatApiErrorMessage(payload: ApiErrorResponse): string {
   return payload.message;
 }
 
-export function LoginForm() {
+interface LoginFormProps {
+  expectedRole?: UserRole;
+}
+
+export function LoginForm({ expectedRole }: LoginFormProps = {}) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -65,7 +69,7 @@ export function LoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, expectedRole }),
       });
       const payload = (await response.json()) as unknown;
 

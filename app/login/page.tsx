@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
@@ -52,6 +53,13 @@ export default async function LoginPage() {
                 <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{i18n.auth.loginSubtitle}</p>
               </div>
               <LoginForm />
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--muted)]">
+                لو حسابك عميل، استخدم{" "}
+                <Link className="font-semibold text-teal-700 hover:underline" href="/client/login">
+                  صفحة دخول العملاء
+                </Link>
+                .
+              </div>
             </div>
           </div>
           <CopyrightFooter className="px-0" />

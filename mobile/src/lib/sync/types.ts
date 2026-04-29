@@ -3,6 +3,7 @@ import type { SharedReviewStatus, SharedStatusOption, SharedUserRole } from '@ec
 export type UserRole = SharedUserRole;
 export type StatusOption = SharedStatusOption;
 export type ReviewStatus = SharedReviewStatus;
+export type ClientOrderStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface AppTimestamp {
   seconds: number;
@@ -104,6 +105,27 @@ export interface AuditLog {
   entityId: string;
   createdAt?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface MobileClientOrder {
+  clientName: string;
+  clientUid: string;
+  createdAt?: string;
+  note?: string;
+  orderId: string;
+  photoUrl?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  stationId: string;
+  stationLabel: string;
+  stationLocation?: string;
+  status: ClientOrderStatus;
+}
+
+export interface MobileClientOrdersResponse {
+  orders: MobileClientOrder[];
+  reports?: MobileReviewReport[];
+  stations?: Station[];
 }
 
 export interface MobileAdminTasks {

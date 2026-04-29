@@ -3,6 +3,28 @@ import { userRoles } from "../shared/constants";
 
 const displayNameSchema = z.string().trim().min(1).max(100);
 
+function isAllowedProfileImageUrl(value: string): boolean {
+  if (value.length === 0) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com";
+  } catch {
+    return false;
+  }
+}
+
+const profileImageUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(isAllowedProfileImageUrl, "Profile image URL must be a secure Cloudinary URL.");
+
+const optionalProfileImageUrlSchema = profileImageUrlSchema.optional();
+
 const accessCodeSchema = z
   .string()
   .trim()
@@ -15,7 +37,7 @@ export const createUserSchema = z.object({
   email: z.string().trim().email(),
   password: accessCodeSchema,
   role: z.enum(userRoles),
-  image: z.string().url().optional().or(z.literal("")),
+  image: optionalProfileImageUrlSchema,
 });
 
 export const updateUserRoleSchema = z.object({
@@ -32,7 +54,12 @@ export const updateUserAccessCodeSchema = z.object({
 
 export const updateUserProfileSchema = z.object({
   displayName: displayNameSchema,
-  image: z.string().url().optional().or(z.literal("")),
+  image: optionalProfileImageUrlSchema,
+});
+
+export const updateUserProfilePatchSchema = z.object({
+  displayName: displayNameSchema.optional(),
+  image: optionalProfileImageUrlSchema,
 });
 
 export type CreateUserValues = z.infer<typeof createUserSchema>;
@@ -40,3 +67,4 @@ export type UpdateUserRoleValues = z.infer<typeof updateUserRoleSchema>;
 export type UpdateUserActiveValues = z.infer<typeof updateUserActiveSchema>;
 export type UpdateUserAccessCodeValues = z.infer<typeof updateUserAccessCodeSchema>;
 export type UpdateUserProfileValues = z.infer<typeof updateUserProfileSchema>;
+export type UpdateUserProfilePatchValues = z.infer<typeof updateUserProfilePatchSchema>;

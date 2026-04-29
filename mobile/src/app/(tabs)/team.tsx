@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTeamUsers } from '@/hooks/use-team-users';
 import type { MobileAppUser, UserRole } from '@/lib/sync/types';
 
-const roleFilters: ('all' | UserRole)[] = ['all', 'technician', 'supervisor', 'manager'];
+const roleFilters: ('all' | UserRole)[] = ['all', 'client', 'technician', 'supervisor', 'manager'];
 
 function initialsFromName(value: string, fallback: string): string {
   const letters = value

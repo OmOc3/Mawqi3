@@ -8,8 +8,9 @@ import { getAppUser } from "@/lib/db/repositories";
 import { db } from "@/lib/db/client";
 import { user as usersTable } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { updateUserAccessCodeSchema, updateUserActiveSchema, updateUserRoleSchema } from "@/lib/validation/users";
-import type { ApiErrorResponse, UserRole } from "@/types";
+import { isRecord } from "@/lib/utils";
+import { updateUserAccessCodeSchema, updateUserActiveSchema, updateUserProfilePatchSchema, updateUserRoleSchema } from "@/lib/validation/users";
+import type { ApiErrorResponse } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -19,14 +20,6 @@ interface MobileUserRouteContext {
   }>;
 }
 
-interface UpdateMobileUserBody {
-  isActive?: boolean;
-  password?: string;
-  role?: UserRole;
-  displayName?: string;
-  image?: string;
-}
-
 export async function PATCH(
   request: NextRequest,
   { params }: MobileUserRouteContext,
@@ -34,7 +27,18 @@ export async function PATCH(
   try {
     const session = await requireBearerRole(request, ["manager", "supervisor", "technician"]);
     const { uid } = await params;
-    const body = (await request.json()) as UpdateMobileUserBody;
+    const body = (await request.json()) as unknown;
+
+    if (!isRecord(body)) {
+      return NextResponse.json(
+        {
+          code: "MOBILE_USER_INVALID",
+          message: "Invalid request body.",
+        },
+        { status: 400 },
+      );
+    }
+
     const targetUser = await getAppUser(uid);
 
     if (!targetUser) {
@@ -68,7 +72,7 @@ export async function PATCH(
     }
 
     // Prevent supervisors from editing users with equal or higher role
-    const roleRank: Record<string, number> = { technician: 1, supervisor: 2, manager: 3 };
+    const roleRank: Record<string, number> = { client: 0, technician: 1, supervisor: 2, manager: 3 };
     const actorRank = roleRank[session.role] ?? 0;
     const targetRank = roleRank[targetUser.role] ?? 0;
 
@@ -80,9 +84,34 @@ export async function PATCH(
     }
 
     if (body.displayName !== undefined || body.image !== undefined) {
+      const parsedProfile = updateUserProfilePatchSchema.safeParse({
+        displayName: body.displayName,
+        image: body.image,
+      });
+
+      if (!parsedProfile.success) {
+        return NextResponse.json(
+          {
+            code: "MOBILE_USER_PROFILE_INVALID",
+            message: "تحقق من بيانات الملف الشخصي وحاول مرة أخرى.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const profileUpdate: { image?: string | null; name?: string } = {};
+
+      if (parsedProfile.data.displayName !== undefined) {
+        profileUpdate.name = parsedProfile.data.displayName;
+      }
+
+      if (parsedProfile.data.image !== undefined) {
+        profileUpdate.image = parsedProfile.data.image.length > 0 ? parsedProfile.data.image : null;
+      }
+
       await db.update(usersTable).set({
-        name: body.displayName !== undefined ? body.displayName : targetUser.displayName,
-        image: body.image !== undefined ? body.image : targetUser.image,
+        name: profileUpdate.name ?? targetUser.displayName,
+        image: profileUpdate.image !== undefined ? profileUpdate.image : targetUser.image,
       }).where(eq(usersTable.id, uid));
 
       await writeAuditLog({

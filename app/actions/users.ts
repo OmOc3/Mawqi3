@@ -76,6 +76,7 @@ export async function createUserAccountAction(formData: FormData): Promise<UserA
     });
 
     revalidatePath("/dashboard/manager/users");
+    revalidatePath("/dashboard/manager/client-orders");
 
     return {
       createdUid,

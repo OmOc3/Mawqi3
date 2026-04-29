@@ -1,12 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { router, useSegments } from 'expo-router';
 import { Stack } from 'expo-router/stack';
-import {
-  IBMPlexSansArabic_400Regular,
-  IBMPlexSansArabic_500Medium,
-  IBMPlexSansArabic_600SemiBold,
-  IBMPlexSansArabic_700Bold,
-} from '@expo-google-fonts/ibm-plex-sans-arabic';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
@@ -38,10 +32,10 @@ export default function TabLayout() {
 function EcoPestLayout() {
   const { resolvedTheme } = useThemeMode();
   const [fontsLoaded, fontError] = useFonts({
-    Tajawal: IBMPlexSansArabic_400Regular,
-    'Tajawal-Medium': IBMPlexSansArabic_500Medium,
-    'Tajawal-Bold': IBMPlexSansArabic_600SemiBold,
-    'Tajawal-ExtraBold': IBMPlexSansArabic_700Bold,
+    Tajawal: require('../../assets/fonts/Tajawal-Regular.ttf'),
+    'Tajawal-Medium': require('../../assets/fonts/Tajawal-Medium.ttf'),
+    'Tajawal-Bold': require('../../assets/fonts/Tajawal-Bold.ttf'),
+    'Tajawal-ExtraBold': require('../../assets/fonts/Tajawal-ExtraBold.ttf'),
   });
 
   return (

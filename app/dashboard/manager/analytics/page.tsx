@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AIInsightsCard } from "@/components/analytics/ai-insights-card";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusPills } from "@/components/reports/status-pills";
 import {
@@ -84,7 +84,7 @@ function RangeFilter({ dateFrom, dateTo }: { dateFrom: Date; dateTo: Date }) {
         />
       </label>
       <button
-        className="inline-flex min-h-11 items-center justify-center self-end rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+        className="inline-flex min-h-11 items-center justify-center self-end rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
         type="submit"
       >
         تحديث
@@ -227,14 +227,12 @@ export default async function ManagerAnalyticsPage({ searchParams }: ManagerAnal
   const hasTruncatedData = reportsTruncated || previousReportsTruncated || stationsTruncated;
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           backHref="/dashboard/manager"
           description={`ملخصات تشغيلية من ${formatDate(rangeFrom)} إلى ${formatDate(rangeTo)} مقارنة بالفترة السابقة من ${formatDate(previousRangeFrom)} إلى ${formatDate(previousRangeTo)}.`}
           title="التحليلات"
         />
-        <DashboardNav role="manager" />
         <RangeFilter dateFrom={rangeFrom} dateTo={rangeTo} />
         <AIInsightsCard />
 
@@ -334,7 +332,6 @@ export default async function ManagerAnalyticsPage({ searchParams }: ManagerAnal
             ))}
           </div>
         </div>
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

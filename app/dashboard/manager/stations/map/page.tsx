@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StationMap } from "@/components/maps/station-map";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -23,8 +23,7 @@ export default async function ManagerStationsMapPage() {
   const missingCoordinates = stations.filter((station) => !station.coordinates);
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
@@ -35,7 +34,7 @@ export default async function ManagerStationsMapPage() {
                 قائمة المحطات
               </Link>
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-control transition-colors hover:bg-[var(--primary-hover)]"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-control transition-colors hover:bg-[var(--primary-hover)]"
                 href="/dashboard/manager/stations/new"
               >
                 إضافة محطة
@@ -46,7 +45,6 @@ export default async function ManagerStationsMapPage() {
           description="عرض المحطات ذات الإحداثيات على خريطة واحدة ومتابعة المحطات التي تحتاج تحديد موقع."
           title="خريطة المحطات"
         />
-        <DashboardNav role="manager" />
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-control">
@@ -81,7 +79,7 @@ export default async function ManagerStationsMapPage() {
             <EmptyState
               action={
                 <Link
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
                   href="/dashboard/manager/stations/new"
                 >
                   إضافة إحداثيات لمحطة
@@ -139,7 +137,6 @@ export default async function ManagerStationsMapPage() {
             </div>
           </div>
         ) : null}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

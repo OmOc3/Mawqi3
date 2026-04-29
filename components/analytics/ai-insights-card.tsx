@@ -5,6 +5,15 @@ import { generateManagerInsightsAction } from "@/app/actions/insights";
 import { i18n } from "@/lib/i18n";
 import type { AiInsightsResult } from "@/types";
 
+function SourceBadge({ source }: { source: AiInsightsResult["source"] | undefined }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary)]">
+      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--primary)]" />
+      {source === "gemini" ? i18n.insights.sourceGemini : i18n.insights.sourceFallback}
+    </div>
+  );
+}
+
 export function AIInsightsCard() {
   const [insights, setInsights] = useState<AiInsightsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -14,17 +23,14 @@ export function AIInsightsCard() {
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary)]">
-            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--primary)]" />
-            {insights?.source === "gemini" ? i18n.insights.sourceGemini : i18n.insights.sourceFallback}
-          </div>
+          <SourceBadge source={insights?.source} />
           <div>
-            <h2 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">{i18n.insights.title}</h2>
+            <h2 className="section-heading text-base">{i18n.insights.title}</h2>
             <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{i18n.insights.subtitle}</p>
           </div>
         </div>
         <button
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] hover:shadow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] hover:shadow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
           disabled={isPending}
           onClick={() => {
             startTransition(async () => {
@@ -60,7 +66,7 @@ export function AIInsightsCard() {
       ) : null}
 
       {insights ? (
-        <div className="mt-5 space-y-5 border-t border-[var(--border)] pt-5" aria-live="polite" role="status">
+        <div className="mt-5 space-y-6 border-t border-[var(--border)] pt-5" aria-live="polite" role="status">
           <div className="space-y-2">
             <p className="text-sm leading-7 text-[var(--foreground)]">{insights.summary}</p>
             <p className="text-xs font-medium text-[var(--muted)]">
@@ -68,6 +74,53 @@ export function AIInsightsCard() {
             </p>
             {insights.note ? <p className="text-xs font-medium text-[var(--warning)]">{insights.note}</p> : null}
           </div>
+
+          {insights.dataCoverage?.length ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.dataCoverage}</h3>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {insights.dataCoverage.map((item) => (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2" key={item.key}>
+                    <p className="text-xs font-semibold text-[var(--muted)]">{item.label}</p>
+                    <p className="mt-1 text-sm font-bold text-[var(--foreground)]">
+                      {item.includedRows} / {item.totalRows}
+                    </p>
+                    {item.truncated ? <p className="mt-1 text-xs font-semibold text-[var(--warning)]">تم تقليم البيانات</p> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {insights.fullReport ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.fullReport}</h3>
+              <p className="whitespace-pre-line rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-4 text-sm leading-7 text-[var(--foreground)]">
+                {insights.fullReport}
+              </p>
+            </div>
+          ) : null}
+
+          {insights.sections?.length ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {insights.sections.map((section) => (
+                <article className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-4" key={section.title}>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">{section.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{section.body}</p>
+                  {section.items.length ? (
+                    <ul className="mt-3 space-y-2 text-sm leading-6 text-[var(--foreground)]">
+                      {section.items.map((item) => (
+                        <li className="flex gap-3" key={item}>
+                          <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
 
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-3">
@@ -94,6 +147,20 @@ export function AIInsightsCard() {
               </ul>
             </div>
           </div>
+
+          {insights.dataQualityNotes?.length ? (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.dataQuality}</h3>
+              <ul className="space-y-2 text-sm leading-6 text-[var(--muted)]">
+                {insights.dataQualityNotes.map((item) => (
+                  <li className="flex gap-3" key={item}>
+                    <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--muted)]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

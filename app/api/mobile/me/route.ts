@@ -10,7 +10,7 @@ export async function GET(
   request: NextRequest,
 ): Promise<NextResponse<AuthenticatedUserResponse | ApiErrorResponse>> {
   try {
-    const session = await requireBearerRole(request, ["technician", "supervisor", "manager"]);
+    const session = await requireBearerRole(request, ["client", "technician", "supervisor", "manager"]);
 
     return NextResponse.json(toAuthenticatedUserResponse(session.user));
   } catch (error: unknown) {

@@ -47,7 +47,7 @@ export const Colors = {
     dangerStrong: '#dc2626',
     info: '#38bdf8',
     infoSoft: '#082f49',
-    onPrimary: '#f8fafc',
+    onPrimary: '#042f2e',
     primary: '#14b8a6',
     primaryLight: '#5eead4',
     primarySoft: '#134e4a',

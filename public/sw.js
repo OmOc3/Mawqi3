@@ -2,7 +2,7 @@
 
 const CACHE_NAME = "ecopest-offline-v1";
 const OFFLINE_URL = "/offline";
-const PRECACHE_URLS = [OFFLINE_URL, "/scan"];
+const PRECACHE_URLS = [OFFLINE_URL];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));

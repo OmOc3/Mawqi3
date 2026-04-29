@@ -41,6 +41,10 @@ function getImageFile(formData: FormData, key: string): File | undefined {
   return value instanceof File && value.size > 0 ? value : undefined;
 }
 
+function getImageFiles(formData: FormData, key: string): File[] {
+  return formData.getAll(key).filter((value): value is File => value instanceof File && value.size > 0);
+}
+
 export async function submitStationReportAction(
   stationId: string,
   formData: FormData,
@@ -52,6 +56,8 @@ export async function submitStationReportAction(
     notes: optionalString(formData, "notes"),
     beforePhoto: getImageFile(formData, "beforePhoto"),
     afterPhoto: getImageFile(formData, "afterPhoto"),
+    duringPhotos: getImageFiles(formData, "duringPhotos"),
+    otherPhotos: getImageFiles(formData, "otherPhotos"),
     stationPhoto: getImageFile(formData, "stationPhoto"),
   });
 
@@ -74,7 +80,9 @@ export async function submitStationReportAction(
 
   try {
     const clientReportId = crypto.randomUUID();
-    const [beforePhotoUrl, afterPhotoUrl, stationPhotoUrl] = await Promise.all([
+    const duringPhotoFiles = parsed.data.duringPhotos ?? [];
+    const otherPhotoFiles = parsed.data.otherPhotos ?? [];
+    const [beforePhotoUrl, afterPhotoUrl, stationPhotoUrl, duringPhotoUrls, otherPhotoUrls] = await Promise.all([
       parsed.data.beforePhoto
         ? uploadReportImageToCloudinary(parsed.data.beforePhoto, parsed.data.stationId, `${clientReportId}-before`)
         : Promise.resolve(undefined),
@@ -84,7 +92,24 @@ export async function submitStationReportAction(
       parsed.data.stationPhoto
         ? uploadReportImageToCloudinary(parsed.data.stationPhoto, parsed.data.stationId, `${clientReportId}-station`)
         : Promise.resolve(undefined),
+      Promise.all(
+        duringPhotoFiles.map((file, index) =>
+          uploadReportImageToCloudinary(file, parsed.data.stationId, `${clientReportId}-during-${index + 1}`),
+        ),
+      ),
+      Promise.all(
+        otherPhotoFiles.map((file, index) =>
+          uploadReportImageToCloudinary(file, parsed.data.stationId, `${clientReportId}-other-${index + 1}`),
+        ),
+      ),
     ]);
+    const photos = [
+      ...(stationPhotoUrl ? [{ category: "station" as const, url: stationPhotoUrl, sortOrder: 0 }] : []),
+      ...(beforePhotoUrl ? [{ category: "before" as const, url: beforePhotoUrl, sortOrder: 1 }] : []),
+      ...(afterPhotoUrl ? [{ category: "after" as const, url: afterPhotoUrl, sortOrder: 2 }] : []),
+      ...duringPhotoUrls.map((url, index) => ({ category: "during" as const, url, sortOrder: 10 + index })),
+      ...otherPhotoUrls.map((url, index) => ({ category: "other" as const, url, sortOrder: 30 + index })),
+    ];
 
     const result = await submitReportRecord({
       actorUid: session.uid,
@@ -95,6 +120,7 @@ export async function submitStationReportAction(
       technicianName: session.user.displayName,
       status: parsed.data.status,
       notes: parsed.data.notes,
+      photos,
       photoPaths: {
         before: beforePhotoUrl,
         after: afterPhotoUrl,

@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
+import type { ReportPhotoCategory } from "@/types";
 
 interface ReportPhotoLinksProps {
   photoCount: number;
@@ -11,9 +13,22 @@ interface ReportPhotoUrlsResponse {
   photos?: {
     after?: string;
     before?: string;
+    gallery?: {
+      category: ReportPhotoCategory;
+      photoId: string;
+      url: string;
+    }[];
     station?: string;
   };
 }
+
+const labels: Record<ReportPhotoCategory, string> = {
+  after: "بعد",
+  before: "قبل",
+  during: "أثناء العمل",
+  other: "أخرى",
+  station: "المحطة",
+};
 
 export function ReportPhotoLinks({ photoCount, reportId }: ReportPhotoLinksProps) {
   const [photos, setPhotos] = useState<ReportPhotoUrlsResponse["photos"] | null>(null);
@@ -50,6 +65,8 @@ export function ReportPhotoLinks({ photoCount, reportId }: ReportPhotoLinksProps
     }
   }
 
+  const gallery = photos?.gallery ?? [];
+
   return (
     <div className="mt-3">
       <button
@@ -58,44 +75,33 @@ export function ReportPhotoLinks({ photoCount, reportId }: ReportPhotoLinksProps
         onClick={loadPhotos}
         type="button"
       >
-        {isLoading ? "جار تحميل الصور..." : `عرض الصور (${photoCount})`}
+        {isLoading ? "جاري تحميل الصور..." : `عرض الصور (${photoCount})`}
       </button>
 
       {error ? <p className="mt-2 text-xs text-[var(--danger)]">{error}</p> : null}
 
       {photos ? (
-        photos.before || photos.after || photos.station ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {photos.station ? (
+        gallery.length > 0 ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {gallery.map((photo) => (
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)]"
-                href={photos.station}
+                className="group overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]"
+                href={photo.url}
+                key={photo.photoId}
                 rel="noreferrer"
                 target="_blank"
               >
-                صورة المحطة
+                <Image
+                  alt={`صورة ${labels[photo.category]}`}
+                  className="h-32 w-full object-cover transition-transform duration-150 group-hover:scale-[1.02]"
+                  height={128}
+                  src={photo.url}
+                  unoptimized
+                  width={240}
+                />
+                <span className="block px-3 py-2 text-xs font-semibold text-[var(--foreground)]">{labels[photo.category]}</span>
               </a>
-            ) : null}
-            {photos.before ? (
-              <a
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)]"
-                href={photos.before}
-                rel="noreferrer"
-                target="_blank"
-              >
-                صورة قبل
-              </a>
-            ) : null}
-            {photos.after ? (
-              <a
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)]"
-                href={photos.after}
-                rel="noreferrer"
-                target="_blank"
-              >
-                صورة بعد
-              </a>
-            ) : null}
+            ))}
           </div>
         ) : (
           <p className="mt-2 text-xs text-[var(--muted)]">لا توجد صور متاحة.</p>

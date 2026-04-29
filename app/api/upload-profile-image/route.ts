@@ -1,33 +1,32 @@
 import { NextResponse } from "next/server";
 import { uploadProfileImageToCloudinary } from "@/lib/cloudinary/profile-images";
-import { auth } from "@/lib/auth/better-auth";
-import { headers } from "next/headers";
+import { getCurrentSession } from "@/lib/auth/server-session";
 import { AppError } from "@/lib/errors";
 
-export async function POST(req: Request) {
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+function getUploadedImageFile(value: FormDataEntryValue | null): File | null {
+  return typeof File !== "undefined" && value instanceof File && value.size > 0 ? value : null;
+}
 
-    if (!session?.user) {
+export async function POST(req: Request): Promise<NextResponse> {
+  try {
+    const session = await getCurrentSession();
+
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const formData = await req.formData();
-    const file = formData.get("image") as File | null;
-    let uid = formData.get("uid") as string | null;
+    const file = getUploadedImageFile(formData.get("image"));
+    const requestedUid = formData.get("uid");
+    const requestedUidValue = typeof requestedUid === "string" ? requestedUid.trim() : "";
+    const uid = requestedUidValue.length > 0 ? requestedUidValue : session.uid;
 
     if (!file) {
       return NextResponse.json({ error: "No image file provided" }, { status: 400 });
     }
 
-    if (!uid) {
-      uid = session.user.id;
-    }
-
     // Only allow admin to upload images for other users
-    if (uid !== session.user.id && session.user.role !== "manager" && session.user.role !== "supervisor") {
+    if (uid !== session.uid && session.role !== "manager" && session.role !== "supervisor") {
       return NextResponse.json({ error: "Unauthorized to upload image for other user" }, { status: 403 });
     }
 

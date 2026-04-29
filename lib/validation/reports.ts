@@ -9,6 +9,8 @@ export const submitReportSchema = z.object({
   notes: z.string().trim().max(500).optional(),
   beforePhoto: z.instanceof(File).optional(),
   afterPhoto: z.instanceof(File).optional(),
+  duringPhotos: z.array(z.instanceof(File)).max(6).optional(),
+  otherPhotos: z.array(z.instanceof(File)).max(6).optional(),
   stationPhoto: z.instanceof(File).optional(),
 });
 

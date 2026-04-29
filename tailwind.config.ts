@@ -11,7 +11,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["IBM Plex Sans Arabic", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Tajawal", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       boxShadow: {
         control: "0 1px 2px var(--ring-shadow)",

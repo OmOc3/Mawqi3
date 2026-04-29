@@ -42,7 +42,7 @@ function isActiveUserResponse(value: unknown): value is AuthenticatedUserRespons
     typeof user.uid === 'string' &&
     typeof user.email === 'string' &&
     typeof user.displayName === 'string' &&
-    (user.role === 'technician' || user.role === 'supervisor' || user.role === 'manager')
+    (user.role === 'client' || user.role === 'technician' || user.role === 'supervisor' || user.role === 'manager')
   );
 }
 

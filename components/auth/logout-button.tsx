@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 interface LogoutButtonProps {
   buttonClassName?: string;
   className?: string;
+  redirectTo?: string;
 }
 
-export function LogoutButton({ buttonClassName, className }: LogoutButtonProps = {}) {
+export function LogoutButton({ buttonClassName, className, redirectTo = "/login" }: LogoutButtonProps = {}) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export function LogoutButton({ buttonClassName, className }: LogoutButtonProps =
       setError(null);
       setIsPending(true);
       await fetch("/api/auth/session", { method: "DELETE" });
-      router.replace("/login");
+      router.replace(redirectTo);
       router.refresh();
     } catch (_error: unknown) {
       setError(i18n.auth.logoutError);

@@ -59,7 +59,7 @@ export function OperationTasksView({ baseReportsHref, canEditStations = false, t
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card">
           <div className="border-b border-[var(--border-subtle)] px-5 py-4">
-            <h2 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">مراجعات عاجلة</h2>
+            <h2 className="section-heading text-base">مراجعات عاجلة</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">أقدم التقارير المفتوحة تحتاج قرار مراجعة.</p>
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">
@@ -76,7 +76,7 @@ export function OperationTasksView({ baseReportsHref, canEditStations = false, t
                       </p>
                     </div>
                     <Link
-                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-bold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-3 py-2 text-sm font-bold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
                       href={`${baseReportsHref}?reviewStatus=pending`}
                     >
                       فتح التقارير
@@ -91,7 +91,7 @@ export function OperationTasksView({ baseReportsHref, canEditStations = false, t
 
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card">
           <div className="border-b border-[var(--border-subtle)] px-5 py-4">
-            <h2 className="border-r-2 border-[var(--primary)] pr-3 text-base font-semibold text-[var(--foreground)]">محطات تحتاج متابعة</h2>
+            <h2 className="section-heading text-base">محطات تحتاج متابعة</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">محطات لم تزر مؤخرًا أو خرجت من الخدمة.</p>
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">

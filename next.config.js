@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    staticGenerationMaxConcurrency: 1,
+    staticGenerationMinPagesPerWorker: 1,
+    webpackBuildWorker: false
+  },
   images: {
     remotePatterns: [
       {
@@ -24,6 +29,13 @@ const nextConfig = {
         ]
       }
     ];
+  },
+  webpack(config, { dev }) {
+    if (!dev && process.platform === "win32") {
+      config.cache = false;
+    }
+
+    return config;
   }
 };
 

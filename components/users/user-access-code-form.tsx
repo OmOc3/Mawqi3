@@ -65,14 +65,14 @@ export function UserAccessCodeForm({ targetUid }: UserAccessCodeFormProps) {
       />
       <div className="flex flex-wrap gap-2">
         <Button
-          className="min-h-10 px-3 py-2 text-sm sm:w-fit"
+          className="min-h-11 px-3 py-2 text-sm sm:w-fit"
           onClick={() => form.setValue("password", generateAccessCode(), { shouldDirty: true, shouldValidate: true })}
           type="button"
           variant="secondary"
         >
           توليد
         </Button>
-        <Button className="min-h-10 px-3 py-2 text-sm sm:w-fit" disabled={form.formState.isSubmitting} type="submit">
+        <Button className="min-h-11 px-3 py-2 text-sm sm:w-fit" disabled={form.formState.isSubmitting} type="submit">
           تحديث الكود
         </Button>
       </div>

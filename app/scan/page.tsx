@@ -4,13 +4,20 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RoleRedirectWatcher } from "@/components/auth/role-redirect-watcher";
 import { AttendancePanel } from "@/components/attendance/attendance-panel";
+import { DailyReportForm } from "@/components/daily-reports/daily-report-form";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ManualStationEntry } from "@/components/station/manual-station-entry";
 import { WebQrScanner } from "@/components/station/web-qr-scanner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { getCurrentSession } from "@/lib/auth/server-session";
-import { getOpenAttendanceSession, listAttendanceSessions, listReportsForTechnician, listStations } from "@/lib/db/repositories";
+import {
+  getOpenAttendanceSession,
+  listAttendanceSessions,
+  listClientAttendanceSites,
+  listReportsForTechnician,
+  listStations,
+} from "@/lib/db/repositories";
 import { i18n } from "@/lib/i18n";
 import { statusOptionLabels } from "@ecopest/shared/constants";
 import type { AppTimestamp, Report, Station } from "@/types";
@@ -46,7 +53,7 @@ function SupportCard() {
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <a
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
           href={supportHref("email", supportEmail)}
         >
           مراسلة الدعم
@@ -102,7 +109,7 @@ function StationCard({ station }: { station: Station }) {
         </div>
       ) : null}
       <Link
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
         href={`/station/${station.stationId}/report`}
       >
         فتح نموذج الفحص
@@ -132,13 +139,15 @@ function RecentReport({ report }: { report: Report }) {
 
 export default async function ScanInstructionsPage() {
   const session = await getCurrentSession();
-  const [stations, recentReports, openAttendanceSession, attendanceSessions] = await Promise.all([
+  const [stations, recentReports, openAttendanceSession, attendanceSessions, attendanceSites] = await Promise.all([
     session ? listStations() : Promise.resolve([]),
     session?.role === "technician" ? listReportsForTechnician(session.uid, 6) : Promise.resolve([]),
     session?.role === "technician" ? getOpenAttendanceSession(session.uid) : Promise.resolve(null),
     session?.role === "technician" ? listAttendanceSessions(session.uid, 5) : Promise.resolve([]),
+    session?.role === "technician" ? listClientAttendanceSites() : Promise.resolve([]),
   ]);
-  const activeStations = stations.filter((station) => station.isActive).slice(0, 6);
+  const allActiveStations = stations.filter((station) => station.isActive);
+  const activeStations = allActiveStations.slice(0, 6);
 
   return (
     <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6" dir="rtl">
@@ -149,7 +158,7 @@ export default async function ScanInstructionsPage() {
             <BrandLockup />
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              {session ? <LogoutButton buttonClassName="min-h-10 px-3 py-2 text-sm" /> : null}
+              {session ? <LogoutButton buttonClassName="min-h-11 px-3 py-2 text-sm" /> : null}
             </div>
           </div>
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -205,7 +214,17 @@ export default async function ScanInstructionsPage() {
             </section>
 
             <section>
-              {session.role === "technician" ? <AttendancePanel openSession={openAttendanceSession} /> : null}
+              {session.role === "technician" ? <AttendancePanel openSession={openAttendanceSession} sites={attendanceSites} /> : null}
+              {session.role === "technician" ? (
+                <div className="mt-4">
+                  <DailyReportForm
+                    stations={allActiveStations.map((station) => ({
+                      label: station.label,
+                      stationId: station.stationId,
+                    }))}
+                  />
+                </div>
+              ) : null}
               <h2 className="text-xl font-bold text-[var(--foreground)]">سجل فحوصاتي</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">آخر التقارير التي أرسلتها من حسابك.</p>
               {recentReports.length > 0 ? (

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { toggleStationStatusAction } from "@/app/actions/stations";
@@ -38,8 +38,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
   const stations = query ? await listStations() : visibleStations;
 
   return (
-    <main className="min-h-dvh bg-[var(--background)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="manager">
         <PageHeader
           action={
             <div className="flex flex-wrap gap-2">
@@ -50,7 +49,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
                 خريطة المحطات
               </Link>
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
                 href="/dashboard/manager/stations/new"
               >
                 إضافة محطة
@@ -60,21 +59,26 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
           description="إدارة محطات الطعوم، حالة التشغيل، وعدد الزيارات المسجلة."
           title="المحطات"
         />
-        <DashboardNav role="manager" />
 
         <form
           action="/dashboard/manager/stations"
-          className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:flex-row"
+          className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:flex-row sm:items-end"
         >
-          <input
-            className="min-h-11 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_50%,var(--foreground)_50%)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            defaultValue={query}
-            name="q"
-            placeholder="ابحث باسم المحطة أو الموقع أو الرقم..."
-            type="search"
-          />
+          <div className="flex flex-1 flex-col gap-1">
+            <label className="text-sm font-medium text-[var(--foreground)]" htmlFor="station-search">
+              البحث عن محطة
+            </label>
+            <input
+              className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_50%,var(--foreground)_50%)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              defaultValue={query}
+              id="station-search"
+              name="q"
+              placeholder="ابحث باسم المحطة أو الموقع أو الرقم..."
+              type="search"
+            />
+          </div>
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
             type="submit"
           >
             بحث
@@ -94,7 +98,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
             <EmptyState
               action={
                 <Link
-                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
                   href="/dashboard/manager/stations/new"
                 >
                   إضافة أول محطة
@@ -110,7 +114,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {visibleStations.map((station) => {
                 const health = getStationHealth(station);
 
@@ -196,7 +200,7 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
                 );
               })}
             </div>
-          <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card md:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card lg:block">
             <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
@@ -311,7 +315,6 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
           </div>
           </div>
         )}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }

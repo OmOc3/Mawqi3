@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { extractPortableBetterAuthCookieHeader, unsealMobileWebSessionCookieHeader } from "@/lib/auth/mobile-web-session-cookies";
 import { createSignedRoleCookie } from "@/lib/auth/role-cookie";
 import { setRoleCookie } from "@/lib/auth/session";
 import { getSessionMaxAgeMs, getSessionMaxAgeSeconds } from "@/lib/auth/session-config";
@@ -18,10 +19,16 @@ function loginRedirect(request: NextRequest): NextResponse {
 }
 
 function appendStoredAuthCookies(response: NextResponse, cookieHeader: string): void {
-  cookieHeader
+  const portableCookieHeader = extractPortableBetterAuthCookieHeader(cookieHeader);
+
+  if (!portableCookieHeader) {
+    return;
+  }
+
+  portableCookieHeader
     .split(";")
     .map((cookie) => cookie.trim())
-    .filter((cookie) => cookie.includes("better-auth") && cookie.includes("="))
+    .filter((cookie) => cookie.includes("="))
     .forEach((cookie) => {
       const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
 
@@ -53,7 +60,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       expiresAt: Date.now() + getSessionMaxAgeMs(),
     });
 
-    appendStoredAuthCookies(response, consumedSession.cookieHeader);
+    const cookieHeader = unsealMobileWebSessionCookieHeader(consumedSession.cookieHeader);
+
+    if (!cookieHeader) {
+      return loginRedirect(request);
+    }
+
+    appendStoredAuthCookies(response, cookieHeader);
     setRoleCookie(response, roleCookie);
 
     return response;

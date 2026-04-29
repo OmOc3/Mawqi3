@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DashboardNav } from "@/components/layout/nav";
+import { DashboardShell } from "@/components/layout/dashboard-page";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportMobileCard } from "@/components/reports/report-mobile-card";
@@ -94,10 +94,12 @@ function timestampToMillis(timestamp?: AppTimestamp): number | null {
 }
 
 function photoCount(report: Report): number {
+  const galleryCount = report.photos?.length ?? 0;
   return (
+    galleryCount ||
     Number(Boolean(report.photoPaths?.before)) +
-    Number(Boolean(report.photoPaths?.after)) +
-    Number(Boolean(report.photoPaths?.station))
+      Number(Boolean(report.photoPaths?.after)) +
+      Number(Boolean(report.photoPaths?.station))
   );
 }
 
@@ -163,12 +165,11 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
       : null;
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-subtle)] px-4 py-6 text-right sm:px-6 lg:px-8" dir="rtl">
-      <section className="mx-auto max-w-7xl space-y-6">
+    <DashboardShell role="supervisor">
         <PageHeader
           action={
             <Link
-              className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--primary-hover)]"
+              className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--primary-hover)]"
               href={buildExportHref(filters)}
             >
               تصدير CSV
@@ -178,7 +179,6 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
           description="استعرض تقارير الفنيين حسب المحطة أو التاريخ أو حالة المراجعة."
           title="تقارير المشرف"
         />
-        <DashboardNav role="supervisor" />
 
         <ReportsFilterForm defaultValues={filters} />
 
@@ -191,7 +191,7 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid gap-3 md:hidden">
+            <div className="grid gap-3 lg:hidden">
               {reports.map((report) => (
                 <ReportMobileCard
                   key={report.reportId}
@@ -202,7 +202,7 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
                 />
               ))}
             </div>
-          <div className="hidden overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] lg:block">
             <table className="w-full min-w-[980px]">
               <thead className="border-b border-[var(--border)] bg-[var(--surface-subtle)]">
                 <tr>
@@ -265,7 +265,6 @@ export default async function SupervisorReportsPage({ searchParams }: Supervisor
             </Link>
           </div>
         ) : null}
-      </section>
-    </main>
+    </DashboardShell>
   );
 }
