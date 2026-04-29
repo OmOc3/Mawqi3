@@ -98,7 +98,7 @@ export interface AttendanceSession {
 export interface AttendanceLocation {
   accuracyMeters?: number;
   clientName?: string;
-  clientUid: string;
+  clientUid?: string;
   coordinates: Coordinates;
   distanceMeters: number;
   stationId: string;

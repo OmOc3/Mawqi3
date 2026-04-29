@@ -3,21 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RoleRedirectWatcher } from "@/components/auth/role-redirect-watcher";
-import { AttendancePanel } from "@/components/attendance/attendance-panel";
-import { DailyReportForm } from "@/components/daily-reports/daily-report-form";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ManualStationEntry } from "@/components/station/manual-station-entry";
+import { NearbyStations } from "@/components/station/nearby-stations";
 import { WebQrScanner } from "@/components/station/web-qr-scanner";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { getCurrentSession } from "@/lib/auth/server-session";
-import {
-  getOpenAttendanceSession,
-  listAttendanceSessions,
-  listClientAttendanceSites,
-  listReportsForTechnician,
-  listStations,
-} from "@/lib/db/repositories";
+import { listAttendanceSessions, listReportsForTechnician, listStations } from "@/lib/db/repositories";
 import { i18n } from "@/lib/i18n";
 import { statusOptionLabels } from "@ecopest/shared/constants";
 import type { AppTimestamp, Report, Station } from "@/types";
@@ -139,12 +132,10 @@ function RecentReport({ report }: { report: Report }) {
 
 export default async function ScanInstructionsPage() {
   const session = await getCurrentSession();
-  const [stations, recentReports, openAttendanceSession, attendanceSessions, attendanceSites] = await Promise.all([
-    session ? listStations() : Promise.resolve([]),
+  const [stations, recentReports, attendanceSessions] = await Promise.all([
+    session?.role === "manager" ? listStations() : Promise.resolve([]),
     session?.role === "technician" ? listReportsForTechnician(session.uid, 6) : Promise.resolve([]),
-    session?.role === "technician" ? getOpenAttendanceSession(session.uid) : Promise.resolve(null),
     session?.role === "technician" ? listAttendanceSessions(session.uid, 5) : Promise.resolve([]),
-    session?.role === "technician" ? listClientAttendanceSites() : Promise.resolve([]),
   ]);
   const allActiveStations = stations.filter((station) => station.isActive);
   const activeStations = allActiveStations.slice(0, 6);
@@ -166,17 +157,26 @@ export default async function ScanInstructionsPage() {
               <p className="text-sm font-semibold text-teal-700">لوحة الفني</p>
               <h1 className="mt-2 text-3xl font-extrabold text-[var(--foreground)]">{i18n.scan.title}</h1>
               <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--muted)]">
-                وجّه كاميرا الهاتف إلى رمز QR المثبت على محطة الطعوم، أو افتح محطة من القائمة لتسجيل الفحص بسرعة.
+                وجّه كاميرا الهاتف إلى رمز QR المثبت على محطة الطعوم، أو استخدم موقعك لفتح المحطات القريبة فقط.
               </p>
             </div>
             <div className="rounded-2xl bg-[var(--surface-subtle)] p-4">
               <WebQrScanner />
-              <div className="my-4 h-px w-full bg-[var(--border-subtle)]" />
-              <p className="text-sm font-semibold text-[var(--foreground)]">إدخال يدوي</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">استخدمه إذا لم يعمل المسح أو كانت الكاميرا غير متاحة.</p>
-              <div className="mt-3">
-                <ManualStationEntry />
-              </div>
+              {session?.role === "manager" ? (
+                <>
+                  <div className="my-4 h-px w-full bg-[var(--border-subtle)]" />
+                  <p className="text-sm font-semibold text-[var(--foreground)]">إدخال يدوي للإدارة</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">مخصص للاختبار أو فتح محطة بإذن إداري.</p>
+                  <div className="mt-3">
+                    <ManualStationEntry />
+                  </div>
+                </>
+              ) : null}
+              {session?.role === "technician" ? (
+                <p className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm leading-6 text-[var(--muted)]">
+                  الوصول للفني يتم عبر QR أو من قائمة المحطات القريبة بعد السماح بقراءة الموقع.
+                </p>
+              ) : null}
               {!session ? (
                 <Link
                   className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-base font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)]"
@@ -192,70 +192,65 @@ export default async function ScanInstructionsPage() {
         <SupportCard />
 
         {session ? (
-          <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
+          <div className={session.role === "technician" ? "grid gap-6 xl:grid-cols-[1fr_380px]" : "grid gap-6"}>
             <section>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-[var(--foreground)]">المحطات النشطة</h2>
-                  <p className="mt-1 text-sm text-[var(--muted)]">افتح محطة وسجل فحصها مباشرة.</p>
-                </div>
-              </div>
-              {activeStations.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {activeStations.map((station) => (
-                    <StationCard key={station.stationId} station={station} />
-                  ))}
-                </div>
+              {session.role === "technician" ? (
+                <NearbyStations />
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)] shadow-control">
-                  لا توجد محطات نشطة حتى الآن.
-                </div>
+                <>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-[var(--foreground)]">المحطات النشطة</h2>
+                      <p className="mt-1 text-sm text-[var(--muted)]">افتح محطة وسجل فحصها مباشرة.</p>
+                    </div>
+                  </div>
+                  {activeStations.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {activeStations.map((station) => (
+                        <StationCard key={station.stationId} station={station} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)] shadow-control">
+                      لا توجد محطات نشطة حتى الآن.
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
-            <section>
-              {session.role === "technician" ? <AttendancePanel openSession={openAttendanceSession} sites={attendanceSites} /> : null}
-              {session.role === "technician" ? (
-                <div className="mt-4">
-                  <DailyReportForm
-                    stations={allActiveStations.map((station) => ({
-                      label: station.label,
-                      stationId: station.stationId,
-                    }))}
-                  />
-                </div>
-              ) : null}
-              <h2 className="text-xl font-bold text-[var(--foreground)]">سجل فحوصاتي</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">آخر التقارير التي أرسلتها من حسابك.</p>
-              {recentReports.length > 0 ? (
-                <ul className="mt-4 space-y-3">
-                  {recentReports.map((report) => (
-                    <RecentReport key={report.reportId} report={report} />
-                  ))}
-                </ul>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)] shadow-control">
-                  لم تسجل أي فحوصات بعد.
-                </div>
-              )}
-              {session.role === "technician" ? (
-                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-control">
-                  <h3 className="text-sm font-bold text-[var(--foreground)]">آخر سجلات الحضور والانصراف</h3>
-                  <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
-                    {attendanceSessions.length > 0 ? (
-                      attendanceSessions.map((attendance) => (
-                        <li className="rounded-lg bg-[var(--surface-subtle)] px-3 py-2" key={attendance.attendanceId}>
-                          حضور: {formatTimestamp(attendance.clockInAt)} -{" "}
-                          {attendance.clockOutAt ? `انصراف: ${formatTimestamp(attendance.clockOutAt)}` : "انصراف: قيد العمل"}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="rounded-lg bg-[var(--surface-subtle)] px-3 py-2">لا توجد سجلات حضور حتى الآن.</li>
-                    )}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
+            {session.role === "technician" ? (
+              <section>
+                  <h2 className="text-xl font-bold text-[var(--foreground)]">سجل فحوصاتي</h2>
+                  <p className="mt-1 text-sm text-[var(--muted)]">آخر التقارير التي أرسلتها من حسابك.</p>
+                  {recentReports.length > 0 ? (
+                    <ul className="mt-4 space-y-3">
+                      {recentReports.map((report) => (
+                        <RecentReport key={report.reportId} report={report} />
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)] shadow-control">
+                      لم تسجل أي فحوصات بعد.
+                    </div>
+                  )}
+                  <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-control">
+                    <h3 className="text-sm font-bold text-[var(--foreground)]">آخر سجلات الحضور والانصراف</h3>
+                    <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
+                      {attendanceSessions.length > 0 ? (
+                        attendanceSessions.map((attendance) => (
+                          <li className="rounded-lg bg-[var(--surface-subtle)] px-3 py-2" key={attendance.attendanceId}>
+                            حضور: {formatTimestamp(attendance.clockInAt)} -{" "}
+                            {attendance.clockOutAt ? `انصراف: ${formatTimestamp(attendance.clockOutAt)}` : "انصراف: قيد العمل"}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="rounded-lg bg-[var(--surface-subtle)] px-3 py-2">لا توجد سجلات حضور حتى الآن.</li>
+                      )}
+                    </ul>
+                  </div>
+              </section>
+            ) : null}
           </div>
         ) : null}
       </section>

@@ -1,11 +1,12 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EcoPestIcon } from '@/components/icons';
-import { BottomSheet, InputField, MobileTopBar, PrimaryButton, ScreenShell, SecondaryButton, useToast } from '@/components/ecopest-ui';
+import { BottomSheet, MobileTopBar, PrimaryButton, ScreenShell, SecondaryButton, useToast } from '@/components/ecopest-ui';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, Radius, Shadow, Spacing, TouchTarget, Typography } from '@/constants/theme';
 import { useLanguage } from '@/contexts/language-context';
@@ -14,6 +15,8 @@ import { useStation } from '@/hooks/use-station';
 import { useCurrentUser } from '@/lib/auth';
 import { errorHaptic, successHaptic, warningHaptic } from '@/lib/haptics';
 import { languageDateLocales } from '@/lib/i18n';
+import { apiGet } from '@/lib/sync/api-client';
+import type { Station } from '@/lib/sync/types';
 
 function normalizeStationId(value: string): string {
   return value.trim().replace(/^\/+|\/+$/g, '');
@@ -35,6 +38,14 @@ function timestampToDate(timestamp?: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function formatDistance(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'داخل النطاق';
+  }
+
+  return value < 1000 ? `${Math.round(value)} م` : `${(value / 1000).toFixed(1)} كم`;
+}
+
 export default function ScanScreen() {
   const [stationId, setStationId] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +55,9 @@ export default function ScanScreen() {
   const [previewStationId, setPreviewStationId] = useState<string | null>(null);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [isTorchEnabled, setIsTorchEnabled] = useState(false);
+  const [nearbyStations, setNearbyStations] = useState<Station[]>([]);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
   const theme = useTheme();
   const { language, strings } = useLanguage();
   const t = strings.scan;
@@ -111,6 +125,50 @@ export default function ScanScreen() {
     void errorHaptic();
   }
 
+  const loadNearbyStations = useCallback(async (showFeedback = false): Promise<void> => {
+    setIsLoadingNearby(true);
+    setNearbyError(null);
+
+    try {
+      const permissionResult = await Location.requestForegroundPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        throw new Error('اسمح للتطبيق بقراءة الموقع لعرض المحطات القريبة.');
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+      const params = new URLSearchParams({
+        lat: String(position.coords.latitude),
+        lng: String(position.coords.longitude),
+      });
+
+      if (typeof position.coords.accuracy === 'number' && Number.isFinite(position.coords.accuracy)) {
+        params.set('accuracyMeters', String(position.coords.accuracy));
+      }
+
+      const stations = await apiGet<Station[]>(`/api/mobile/stations?${params.toString()}`, {
+        fallbackErrorMessage: 'تعذر تحميل المحطات القريبة.',
+        networkErrorMessage: 'تعذر الاتصال بالخادم لتحميل المحطات القريبة.',
+      });
+
+      setNearbyStations(stations);
+
+      if (showFeedback) {
+        showToast('تم تحديث المحطات القريبة.', 'success');
+        await successHaptic();
+      }
+    } catch (loadError: unknown) {
+      const message = loadError instanceof Error ? loadError.message : 'تعذر تحديد موقعك الحالي.';
+
+      setNearbyStations([]);
+      setNearbyError(message);
+      showToast(message, 'error');
+      await warningHaptic();
+    } finally {
+      setIsLoadingNearby(false);
+    }
+  }, [showToast]);
+
   useEffect(() => {
     if (currentUser && !isTechnician) {
       showToast(strings.errors.accessDenied, 'error');
@@ -118,6 +176,12 @@ export default function ScanScreen() {
       router.replace('/(tabs)');
     }
   }, [currentUser, isTechnician, showToast, strings.errors.accessDenied]);
+
+  useEffect(() => {
+    if (currentUser && isTechnician) {
+      void loadNearbyStations();
+    }
+  }, [currentUser, isTechnician, loadNearbyStations]);
 
   if (currentUser && !isTechnician) {
     return (
@@ -185,26 +249,60 @@ export default function ScanScreen() {
             </View>
           ) : null}
 
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={[styles.nearbySection, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <View style={[styles.nearbyHeader, { flexDirection: 'row' }]}>
+              <View style={styles.nearbyHeaderCopy}>
+                <ThemedText type="title" style={styles.nearbyTitle}>
+                  المحطات القريبة
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  تظهر المحطات النشطة داخل نطاق موقعك الحالي فقط.
+                </ThemedText>
+              </View>
+              <SecondaryButton icon="map-pin" loading={isLoadingNearby} onPress={() => void loadNearbyStations(true)}>
+                تحديث
+              </SecondaryButton>
+            </View>
 
-          <View style={styles.manualSection}>
-            <ThemedText type="title" style={styles.manualTitle}>
-              {t.manualTitle}
-            </ThemedText>
-            <InputField
-              autoCapitalize="none"
-              autoCorrect={false}
-              contentDirection="ltr"
-              label={t.manualStationLabel}
-              onChangeText={setStationId}
-              placeholder={t.manualStationPlaceholder}
-              style={styles.input}
-              value={stationId}
-            />
+            {nearbyError ? <ThemedText selectable style={{ color: theme.danger }}>{nearbyError}</ThemedText> : null}
             {error ? <ThemedText selectable style={{ color: theme.danger }}>{error}</ThemedText> : null}
-            <PrimaryButton icon="file-text" onPress={() => openReport()}>
-              {strings.actions.openReport}
-            </PrimaryButton>
+
+            {nearbyStations.length > 0 ? (
+              <View style={styles.nearbyList}>
+                {nearbyStations.map((station) => (
+                  <View style={[styles.nearbyCard, { backgroundColor: theme.surfaceCard, borderColor: theme.border }]} key={station.stationId}>
+                    <View style={[styles.nearbyCardHeader, { flexDirection: 'row' }]}>
+                      <View style={styles.nearbyCardCopy}>
+                        <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                          #{station.stationId}
+                        </ThemedText>
+                        <ThemedText type="title" style={styles.nearbyStationLabel}>
+                          {station.label}
+                        </ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {station.location}
+                        </ThemedText>
+                      </View>
+                      <View style={[styles.distancePill, { backgroundColor: theme.primarySoft }]}>
+                        <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                          {formatDistance(station.distanceMeters)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <PrimaryButton icon="file-text" onPress={() => openReport(station.stationId)}>
+                      {strings.actions.openReport}
+                    </PrimaryButton>
+                  </View>
+                ))}
+              </View>
+            ) : !isLoadingNearby ? (
+              <View style={[styles.nearbyEmpty, { borderColor: theme.border }]}>
+                <EcoPestIcon color={theme.textSecondary} name="map-pin" size={28} />
+                <ThemedText type="small" themeColor="textSecondary" style={styles.permissionText}>
+                  لا توجد محطات قريبة. اقترب من المحطة أو استخدم QR المثبت عليها.
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
 
           {scanHistory.length > 0 ? (
@@ -300,9 +398,10 @@ const styles = StyleSheet.create({
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-  divider: {
-    height: 1,
-    width: '100%',
+  distancePill: {
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   historyBlock: {
     gap: Spacing.sm,
@@ -318,18 +417,58 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.sm,
   },
-  input: {
-    textAlign: 'left',
-  },
   instruction: {
     fontSize: Typography.fontSize.md,
     textAlign: 'center',
   },
-  manualSection: {
-    gap: Spacing.md,
-  },
   manualTitle: {
     textAlign: 'center',
+  },
+  nearbyCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    padding: Spacing.md,
+  },
+  nearbyCardCopy: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  nearbyCardHeader: {
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  nearbyEmpty: {
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    gap: Spacing.sm,
+    padding: Spacing.lg,
+  },
+  nearbyHeader: {
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    justifyContent: 'space-between',
+  },
+  nearbyHeaderCopy: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  nearbyList: {
+    gap: Spacing.md,
+  },
+  nearbySection: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    padding: Spacing.lg,
+  },
+  nearbyStationLabel: {
+    fontSize: Typography.fontSize.md,
+  },
+  nearbyTitle: {
+    fontSize: Typography.fontSize.lg,
   },
   permissionBox: {
     alignItems: 'center',

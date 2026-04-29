@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { mobileApiErrorResponse } from "@/lib/api/mobile";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
 import { uploadReportImageToCloudinary } from "@/lib/cloudinary/report-images";
-import { getStationById } from "@/lib/db/repositories";
+import { getOpenAttendanceSession, getStationById } from "@/lib/db/repositories";
 import { AppError } from "@/lib/errors";
 import { submitReportWithAdmin } from "@/lib/reports/submit-report";
 import { mobileReportSyncSchema } from "@/lib/validation/mobile";
@@ -94,6 +94,14 @@ export async function POST(
 
     if (!station.isActive) {
       throw new AppError("هذه المحطة غير نشطة.", "STATION_INACTIVE", 409);
+    }
+
+    if (session.role === "technician") {
+      const openAttendance = await getOpenAttendanceSession(session.uid);
+
+      if (openAttendance?.clockInLocation?.stationId !== parsed.data.stationId) {
+        throw new AppError("يجب تسجيل الحضور في هذه المحطة قبل حفظ التقرير.", "ATTENDANCE_REQUIRED", 409);
+      }
     }
 
     const stationPhotoUrl = inspectionPhoto

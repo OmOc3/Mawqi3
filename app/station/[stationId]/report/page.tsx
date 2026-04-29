@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { StationAttendancePanel } from "@/components/attendance/station-attendance-panel";
 import { ReportForm } from "@/components/station/report-form";
 import { requireRole } from "@/lib/auth/server-session";
-import { getStationById } from "@/lib/db/repositories";
+import { getOpenAttendanceSession, getStationById } from "@/lib/db/repositories";
 
 interface StationReportPageProps {
   params: Promise<{
@@ -33,8 +34,11 @@ function ErrorMessage({ message }: { message: string }) {
 
 export default async function StationReportPage({ params }: StationReportPageProps) {
   const { stationId } = await params;
-  await requireRole(["technician", "manager"]);
-  const station = await getStationById(stationId);
+  const session = await requireRole(["technician", "manager"]);
+  const [station, openAttendanceSession] = await Promise.all([
+    getStationById(stationId),
+    session.role === "technician" ? getOpenAttendanceSession(session.uid) : Promise.resolve(null),
+  ]);
 
   if (!station) {
     return <ErrorMessage message="المحطة غير موجودة" />;
@@ -75,7 +79,21 @@ export default async function StationReportPage({ params }: StationReportPagePro
             {station.description ? <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{station.description}</p> : null}
           </div>
           <div className="mt-5">
-            <ReportForm stationId={stationId} stationLabel={station.label ?? "محطة بدون اسم"} />
+            {session.role === "technician" ? (
+              <div className="mb-5">
+                <StationAttendancePanel
+                  openSession={openAttendanceSession}
+                  stationId={stationId}
+                  stationLabel={station.label ?? "محطة بدون اسم"}
+                />
+              </div>
+            ) : null}
+            <ReportForm
+              blockedReason={session.role === "technician" ? "سجل الحضور في هذه المحطة أولا حتى تتمكن من حفظ التقرير." : undefined}
+              canSubmit={session.role !== "technician" || openAttendanceSession?.clockInLocation?.stationId === stationId}
+              stationId={stationId}
+              stationLabel={station.label ?? "محطة بدون اسم"}
+            />
           </div>
         </div>
       </section>

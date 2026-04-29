@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Location from 'expo-location';
 import { Directory, File, Paths } from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useCurrentUser } from '@/lib/auth';
 import { clearWorkingDraft, getWorkingDraft, saveSubmittedReport, syncDraft, upsertWorkingDraft } from '@/lib/drafts';
 import { errorHaptic, successHaptic, warningHaptic } from '@/lib/haptics';
-import type { StatusOption } from '@/lib/sync/types';
+import { apiGet, apiPost } from '@/lib/sync/api-client';
+import type { AttendanceSession, OpenAttendanceResponse, StatusOption } from '@/lib/sync/types';
 
 function getParamValue(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -47,6 +49,28 @@ function persistCapturedPhoto(sourceUri: string, fileName: string): string {
   source.copy(destination);
 
   return destination.uri;
+}
+
+function formatAttendanceDistance(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'داخل النطاق';
+  }
+
+  return value < 1000 ? `${Math.round(value)} م` : `${(value / 1000).toFixed(1)} كم`;
+}
+
+function formatAttendanceTime(value?: string): string {
+  if (!value) {
+    return 'غير متاح';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'غير متاح';
+  }
+
+  return new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function StatusOptionRow({ label, onPress, selected }: { label: string; onPress: () => void; selected: boolean }) {
@@ -204,12 +228,18 @@ export default function StationReportScreen() {
   const [inspectionPhotoUri, setInspectionPhotoUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [attendanceError, setAttendanceError] = useState<string | null>(null);
+  const [attendanceNotes, setAttendanceNotes] = useState('');
+  const [attendanceSession, setAttendanceSession] = useState<AttendanceSession | null>(null);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
   const { statusOptionLabels, strings } = useLanguage();
   const { error: stationError, loading: stationLoading, station } = useStation(stationId, strings.errors.loadStation);
   const theme = useTheme();
   const { showToast } = useToast();
   const currentUser = useCurrentUser();
   const isTechnician = currentUser?.profile.role === 'technician';
+  const hasStationAttendance = attendanceSession?.clockInLocation?.stationId === stationId;
+  const hasOtherOpenAttendance = Boolean(attendanceSession && !hasStationAttendance);
   const stationPhotoUrl = station?.photoUrls?.[0];
   const notesRef = useRef(notes);
   const statusRef = useRef(status);
@@ -271,6 +301,70 @@ export default function StationReportScreen() {
     setError(null);
   }
 
+  const loadOpenAttendance = useCallback(async (): Promise<void> => {
+    try {
+      const response = await apiGet<OpenAttendanceResponse>('/api/mobile/attendance', {
+        fallbackErrorMessage: 'تعذر تحميل حالة الحضور.',
+        networkErrorMessage: 'تعذر الاتصال بالخادم لتحميل حالة الحضور.',
+      });
+
+      setAttendanceSession(response.openSession);
+      setAttendanceError(null);
+    } catch (loadError: unknown) {
+      setAttendanceError(loadError instanceof Error ? loadError.message : 'تعذر تحميل حالة الحضور.');
+    }
+  }, []);
+
+  async function readAttendancePosition(): Promise<{ accuracyMeters?: number; lat: number; lng: number }> {
+    const permissionResult = await Location.requestForegroundPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      throw new Error('اسمح للتطبيق بقراءة الموقع لتسجيل الحضور.');
+    }
+
+    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
+
+    return {
+      ...(typeof position.coords.accuracy === 'number' && Number.isFinite(position.coords.accuracy)
+        ? { accuracyMeters: position.coords.accuracy }
+        : {}),
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    };
+  }
+
+  async function submitAttendance(action: 'clockIn' | 'clockOut'): Promise<void> {
+    setIsAttendanceLoading(true);
+    setAttendanceError(null);
+
+    try {
+      const location = await readAttendancePosition();
+      const response = await apiPost<AttendanceSession>('/api/mobile/attendance', {
+        action,
+        notes: attendanceNotes.trim() || undefined,
+        stationId: stationId.trim(),
+        ...location,
+      });
+
+      setAttendanceSession(action === 'clockOut' ? null : response);
+      setAttendanceNotes('');
+      showToast(action === 'clockIn' ? 'تم تسجيل حضور المحطة.' : 'تم تسجيل الانصراف من المحطة.', 'success');
+      await successHaptic();
+
+      if (action === 'clockOut') {
+        await loadOpenAttendance();
+      }
+    } catch (attendanceActionError: unknown) {
+      const message = attendanceActionError instanceof Error ? attendanceActionError.message : 'تعذر تحديث الحضور.';
+
+      setAttendanceError(message);
+      showToast(message, 'error');
+      await warningHaptic();
+    } finally {
+      setIsAttendanceLoading(false);
+    }
+  }
+
   function validateDraft(): boolean {
     if (!stationId.trim()) {
       setError(strings.validation.stationIdRequired);
@@ -307,6 +401,12 @@ export default function StationReportScreen() {
 
     if (status.length === 0) {
       setError(strings.validation.statusRequired);
+      void warningHaptic();
+      return false;
+    }
+
+    if (isTechnician && !hasStationAttendance) {
+      setError('يجب تسجيل الحضور في هذه المحطة قبل إرسال التقرير.');
       void warningHaptic();
       return false;
     }
@@ -448,6 +548,12 @@ export default function StationReportScreen() {
     }
   }, [currentUser, isTechnician, showToast, strings.errors.accessDenied]);
 
+  useEffect(() => {
+    if (currentUser && isTechnician) {
+      void loadOpenAttendance();
+    }
+  }, [currentUser, isTechnician, loadOpenAttendance]);
+
   if (currentUser && !isTechnician) {
     return (
       <ScreenShell>
@@ -525,6 +631,86 @@ export default function StationReportScreen() {
               <SyncBanner body={stationError} title={strings.report.stationUnavailable} tone="warning" />
             ) : null}
 
+            <View style={[styles.attendancePanel, Shadow.sm, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <View style={[styles.attendanceHeader, { flexDirection: 'row' }]}>
+                <View style={[styles.attendanceIcon, { backgroundColor: hasStationAttendance ? theme.successSoft : theme.primarySoft }]}>
+                  <EcoPestIcon color={hasStationAttendance ? theme.successStrong : theme.primary} name="map-pin" size={24} />
+                </View>
+                <View style={styles.attendanceCopy}>
+                  <ThemedText type="title" style={styles.attendanceTitle}>
+                    حضور المحطة
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    يجب تسجيل حضور داخل نطاق المحطة قبل إرسال التقرير.
+                  </ThemedText>
+                </View>
+              </View>
+
+              {hasStationAttendance ? (
+                <View style={[styles.attendanceStatusBox, { borderColor: theme.success, backgroundColor: theme.successSoft }]}>
+                  <ThemedText type="smallBold" style={{ color: theme.successStrong }}>
+                    حضور مسجل لهذه المحطة
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.successStrong }}>
+                    وقت الحضور: {formatAttendanceTime(attendanceSession?.clockInAt)} · المسافة: {formatAttendanceDistance(attendanceSession?.clockInLocation?.distanceMeters)}
+                  </ThemedText>
+                </View>
+              ) : hasOtherOpenAttendance ? (
+                <View style={[styles.attendanceStatusBox, { borderColor: theme.warning, backgroundColor: theme.warningSoft }]}>
+                  <ThemedText type="smallBold" style={{ color: theme.warningStrong }}>
+                    لديك حضور مفتوح في محطة أخرى
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.warningStrong }}>
+                    محطة #{attendanceSession?.clockInLocation?.stationId ?? '-'} · {attendanceSession?.clockInLocation?.stationLabel ?? 'غير محدد'}
+                  </ThemedText>
+                  {attendanceSession?.clockInLocation?.stationId ? (
+                    <SecondaryButton
+                      icon="file-text"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/report/[stationId]',
+                          params: { stationId: attendanceSession.clockInLocation?.stationId ?? '' },
+                        })
+                      }>
+                      فتح محطة الحضور
+                    </SecondaryButton>
+                  ) : null}
+                </View>
+              ) : (
+                <View style={[styles.attendanceStatusBox, { borderColor: theme.border, backgroundColor: theme.surfaceCard }]}>
+                  <ThemedText type="smallBold">لم يتم تسجيل حضور لهذه المحطة بعد</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    سيتم التحقق من الموقع ودقة GPS قبل فتح الإرسال.
+                  </ThemedText>
+                </View>
+              )}
+
+              <InputField
+                label="ملاحظات الحضور اختياري"
+                multiline
+                onChangeText={setAttendanceNotes}
+                placeholder="مثال: بداية فحص منطقة المخزن"
+                style={styles.attendanceNotes}
+                value={attendanceNotes}
+              />
+
+              {attendanceError ? <ThemedText selectable style={{ color: theme.danger }}>{attendanceError}</ThemedText> : null}
+
+              {hasStationAttendance ? (
+                <SecondaryButton disabled={isAttendanceLoading} icon="logout" loading={isAttendanceLoading} onPress={() => void submitAttendance('clockOut')}>
+                  تسجيل الانصراف من المحطة
+                </SecondaryButton>
+              ) : (
+                <PrimaryButton
+                  disabled={isAttendanceLoading || hasOtherOpenAttendance}
+                  icon="map-pin"
+                  loading={isAttendanceLoading}
+                  onPress={() => void submitAttendance('clockIn')}>
+                  تسجيل حضور المحطة
+                </PrimaryButton>
+              )}
+            </View>
+
             <View style={styles.section}>
               <ThemedText type="title" style={styles.sectionTitle}>
                 {strings.report.stationStatusTitle}
@@ -574,7 +760,7 @@ export default function StationReportScreen() {
               <SecondaryButton disabled={isSaving} icon="clipboard-check" onPress={() => void saveReportDraft()} stretch>
                 {strings.report.saveOffline}
               </SecondaryButton>
-              <PrimaryButton disabled={isSaving} icon="send" loading={isSaving} onPress={() => void submitReport()}>
+              <PrimaryButton disabled={isSaving || (isTechnician && !hasStationAttendance)} icon="send" loading={isSaving} onPress={() => void submitReport()}>
                 {isSaving ? strings.actions.saving : strings.report.submit}
               </PrimaryButton>
             </View>
@@ -589,6 +775,39 @@ const styles = StyleSheet.create({
   actions: {
     gap: Spacing.md,
     paddingTop: Spacing.sm,
+  },
+  attendanceCopy: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  attendanceHeader: {
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  attendanceIcon: {
+    alignItems: 'center',
+    borderRadius: Radius.full,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  attendanceNotes: {
+    minHeight: 92,
+  },
+  attendancePanel: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    padding: Spacing.lg,
+  },
+  attendanceStatusBox: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    gap: Spacing.xs,
+    padding: Spacing.md,
+  },
+  attendanceTitle: {
+    fontSize: Typography.fontSize.lg,
   },
   checkbox: {
     alignItems: 'center',

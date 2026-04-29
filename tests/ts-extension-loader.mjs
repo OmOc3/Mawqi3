@@ -1,7 +1,9 @@
+import { existsSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const sharedPackageRoot = resolvePath("packages/shared/src");
+const appRoot = resolvePath(".");
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "@ecopest/shared") {
@@ -13,6 +15,16 @@ export async function resolve(specifier, context, nextResolve) {
     const targetPath = /\.[cm]?[jt]sx?$/.test(sharedPath) ? sharedPath : `${sharedPath}.ts`;
 
     return nextResolve(pathToFileURL(resolvePath(sharedPackageRoot, targetPath)).href, context);
+  }
+
+  if (specifier.startsWith("@/")) {
+    const appPath = specifier.slice("@/".length);
+    const candidates = /\.[cm]?[jt]sx?$/.test(appPath)
+      ? [appPath]
+      : [`${appPath}.ts`, `${appPath}.tsx`, `${appPath}/index.ts`, `${appPath}/index.tsx`];
+    const targetPath = candidates.find((candidate) => existsSync(resolvePath(appRoot, candidate))) ?? candidates[0];
+
+    return nextResolve(pathToFileURL(resolvePath(appRoot, targetPath)).href, context);
   }
 
   if (specifier.startsWith(".") && !/\.[cm]?[jt]sx?$/.test(specifier)) {

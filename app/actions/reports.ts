@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server-session";
 import { uploadReportImageToCloudinary } from "@/lib/cloudinary/report-images";
-import { getStationById, submitReportRecord, updateReportReviewRecord } from "@/lib/db/repositories";
+import { getOpenAttendanceSession, getStationById, submitReportRecord, updateReportReviewRecord } from "@/lib/db/repositories";
 import { reviewReportSchema, submitReportSchema } from "@/lib/validation/reports";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -76,6 +76,14 @@ export async function submitStationReportAction(
 
   if (!station.isActive) {
     return { error: "هذه المحطة غير نشطة" };
+  }
+
+  if (session.role === "technician") {
+    const openAttendance = await getOpenAttendanceSession(session.uid);
+
+    if (openAttendance?.clockInLocation?.stationId !== parsed.data.stationId) {
+      return { error: "يجب تسجيل الحضور في هذه المحطة قبل حفظ التقرير." };
+    }
   }
 
   try {

@@ -4,9 +4,18 @@ import { useState } from "react";
 import { updateUserProfileAction } from "@/app/actions/users";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { cn } from "@/lib/utils";
 import type { AppUser } from "@/types";
 
-export function UserProfileForm({ user, disabled }: { user: Pick<AppUser, "uid" | "displayName" | "image">; disabled?: boolean }) {
+export function UserProfileForm({
+  disabled,
+  embedded = false,
+  user,
+}: {
+  disabled?: boolean;
+  embedded?: boolean;
+  user: Pick<AppUser, "uid" | "displayName" | "image">;
+}) {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +66,13 @@ export function UserProfileForm({ user, disabled }: { user: Pick<AppUser, "uid" 
   }
 
   return (
-    <form className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card" onSubmit={handleSubmit}>
+    <form
+      className={cn(
+        "space-y-4",
+        embedded ? null : "rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card",
+      )}
+      onSubmit={handleSubmit}
+    >
       <h3 className="section-heading text-base">تحديث الملف الشخصي</h3>
       
       {message && (

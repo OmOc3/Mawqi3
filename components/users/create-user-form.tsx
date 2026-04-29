@@ -7,6 +7,7 @@ import { createUserAccountAction, type UserActionResult } from "@/app/actions/us
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { roleLabels } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { createUserSchema, type CreateUserValues } from "@/lib/validation/users";
 import type { UserRole } from "@/types";
 
@@ -37,7 +38,7 @@ function generateAccessCode(length = 10): string {
   return Array.from(values, (value) => accessCodeAlphabet[value % accessCodeAlphabet.length]).join("");
 }
 
-export function CreateUserForm() {
+export function CreateUserForm({ embedded = false }: { embedded?: boolean } = {}) {
   const [result, setResult] = useState<UserActionResult | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const form = useForm<CreateUserValues>({
@@ -86,7 +87,14 @@ export function CreateUserForm() {
   }
 
   return (
-    <form className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:grid-cols-2" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
+    <form
+      className={cn(
+        "grid gap-4 sm:grid-cols-2",
+        embedded ? null : "rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card",
+      )}
+      dir="rtl"
+      onSubmit={form.handleSubmit(onSubmit)}
+    >
       <div className="sm:col-span-2">
         <h2 className="section-heading text-base">إنشاء مستخدم جديد</h2>
         <p className="mt-1 text-sm leading-6 text-[var(--muted)]">إنشاء مستخدم جديد في قاعدة البيانات.</p>

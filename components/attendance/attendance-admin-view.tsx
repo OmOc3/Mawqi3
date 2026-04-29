@@ -65,6 +65,16 @@ function formatDuration(session: AttendanceSession): string {
   return hours > 0 ? `${hours} س ${restMinutes} د` : `${restMinutes} د`;
 }
 
+function formatAttendanceLocation(session: AttendanceSession): string {
+  const location = session.clockInLocation;
+
+  if (!location) {
+    return "غير متاح";
+  }
+
+  return location.clientName ? `${location.clientName} - ${location.stationLabel}` : location.stationLabel;
+}
+
 function buildExportHref(filters: AttendanceFilters): string {
   const params = new URLSearchParams();
 
@@ -93,6 +103,7 @@ export async function AttendanceAdminView({ basePath, role, searchParams, title 
   ]);
   const technicians = users.filter((user) => user.role === "technician");
   const openSessions = sessions.filter((session) => !session.clockOutAt);
+  const activeStations = stations.filter((station) => station.isActive);
 
   return (
     <DashboardShell role={role}>
@@ -105,7 +116,7 @@ export async function AttendanceAdminView({ basePath, role, searchParams, title 
               تصدير CSV
             </Link>
           }
-          description="متابعة حضور الفنيين داخل مواقع العملاء، مع إظهار أقرب محطة والمسافة المسجلة من GPS."
+          description="متابعة حضور الفنيين داخل نطاق المحطات، مع إظهار المحطة والمسافة المسجلة من GPS."
           title={title}
         />
 
@@ -119,8 +130,8 @@ export async function AttendanceAdminView({ basePath, role, searchParams, title 
             <p className="mt-2 text-3xl font-extrabold text-[var(--foreground)]">{openSessions.length}</p>
           </div>
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card">
-            <p className="text-sm text-[var(--muted)]">مواقع عمل مفعلة</p>
-            <p className="mt-2 text-3xl font-extrabold text-[var(--foreground)]">{clients.length}</p>
+            <p className="text-sm text-[var(--muted)]">محطات مفعلة</p>
+            <p className="mt-2 text-3xl font-extrabold text-[var(--foreground)]">{activeStations.length}</p>
           </div>
         </div>
 
@@ -140,7 +151,7 @@ export async function AttendanceAdminView({ basePath, role, searchParams, title 
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="attendance-client">
-              العميل
+              العميل المرتبط
             </label>
             <select id="attendance-client" className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" defaultValue={filters.clientUid} name="clientUid">
               <option value="">كل العملاء</option>
@@ -206,9 +217,7 @@ export async function AttendanceAdminView({ basePath, role, searchParams, title 
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--foreground)]">{formatDuration(session)}</td>
                   <td className="px-4 py-3 text-sm text-[var(--foreground)]">
-                    {session.clockInLocation
-                      ? `${session.clockInLocation.clientName ?? "عميل"} - ${session.clockInLocation.stationLabel}`
-                      : "غير متاح"}
+                    {formatAttendanceLocation(session)}
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--muted)]">
                     {session.clockInLocation ? `${Math.round(session.clockInLocation.distanceMeters)} م` : "غير متاح"}

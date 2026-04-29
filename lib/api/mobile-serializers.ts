@@ -10,6 +10,7 @@ export interface MobileStationResponse {
   createdAt?: string;
   createdBy?: string;
   description?: string;
+  distanceMeters?: number;
   isActive: boolean;
   label: string;
   lastVisitedAt?: string;
@@ -86,7 +87,11 @@ export function timestampToIso(value: unknown): string | undefined {
   return timestamp.toDate().toISOString();
 }
 
-export function mobileStationResponse(stationId: string, data: Partial<Station>): MobileStationResponse {
+export function mobileStationResponse(
+  stationId: string,
+  data: Partial<Station>,
+  distanceMeters?: number,
+): MobileStationResponse {
   return {
     stationId: data.stationId ?? stationId,
     label: data.label ?? "محطة بدون اسم",
@@ -102,6 +107,7 @@ export function mobileStationResponse(stationId: string, data: Partial<Station>)
     ...(data.qrCodeValue ? { qrCodeValue: data.qrCodeValue } : {}),
     ...(data.updatedBy ? { updatedBy: data.updatedBy } : {}),
     ...(data.zone ? { zone: data.zone } : {}),
+    ...(typeof distanceMeters === "number" ? { distanceMeters } : {}),
     ...(timestampToIso(data.createdAt) ? { createdAt: timestampToIso(data.createdAt) } : {}),
     ...(timestampToIso(data.lastVisitedAt) ? { lastVisitedAt: timestampToIso(data.lastVisitedAt) } : {}),
     ...(timestampToIso(data.updatedAt) ? { updatedAt: timestampToIso(data.updatedAt) } : {}),

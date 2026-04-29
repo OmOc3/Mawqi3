@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { CopyrightFooter } from "@/components/legal/copyright-footer";
 import { BrandLockup } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { getRoleRedirect } from "@/lib/auth/redirects";
 import { getCurrentSession } from "@/lib/auth/server-session";
 
 export const metadata: Metadata = {
@@ -14,8 +14,8 @@ export const metadata: Metadata = {
 
 export default async function ClientLoginPage() {
   const session = await getCurrentSession();
-  if (session) {
-    redirect(getRoleRedirect(session.role));
+  if (session?.role === "client") {
+    redirect("/client/portal");
   }
 
   return (
@@ -48,11 +48,29 @@ export default async function ClientLoginPage() {
                 <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">تسجيل دخول العميل</h1>
                 <p className="mt-2 text-sm leading-7 text-[var(--muted)]">هذه الصفحة مخصصة للعملاء فقط.</p>
               </div>
-              <LoginForm expectedRole="client" />
+              {session ? (
+                <div className="rounded-xl border border-[var(--danger-muted)] bg-[var(--danger-soft)] p-4">
+                  <h2 className="text-base font-bold text-[var(--danger)]">هذا الحساب ليس حساب عميل</h2>
+                  <p className="mt-2 text-sm leading-6 text-[var(--danger)]">
+                    أنت مسجل دخول بحساب {session.user.displayName}. سجل الخروج ثم ادخل بحساب عميل حتى لا يتم توجيهك إلى صفحة الفريق.
+                  </p>
+                  <LogoutButton
+                    buttonClassName="mt-4 !w-full"
+                    className="w-full"
+                    redirectTo="/client/login"
+                  />
+                </div>
+              ) : (
+                <LoginForm expectedRole="client" />
+              )}
               <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--muted)]">
                 لو حسابك إدارة أو فريق، استخدم{" "}
                 <Link className="font-semibold text-teal-700 hover:underline" href="/login">
                   صفحة دخول الإدارة
+                </Link>
+                . أو{" "}
+                <Link className="font-semibold text-teal-700 hover:underline" href="/client/signup">
+                  أنشئ حساب عميل جديد
                 </Link>
                 .
               </div>

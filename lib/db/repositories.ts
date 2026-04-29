@@ -1,8 +1,15 @@
-import "server-only";
+﻿import "server-only";
 
 import { createHash } from "node:crypto";
 import { and, count, desc, eq, gte, inArray, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
+import {
+  distanceMeters,
+  isValidCoordinates,
+  maxLocationAccuracyMeters,
+  stationAccessRadiusMeters,
+  stationsWithinRadius,
+} from "@/lib/geo";
 import {
   attendanceSessions,
   auditLogs,
@@ -149,11 +156,11 @@ export interface PendingReviewNotificationSnapshot {
 
 export interface ClockAttendanceInput {
   actorRole: UserRole;
-  clientUid: string;
   location: Coordinates & {
     accuracyMeters?: number;
   };
   notes?: string;
+  stationId: string;
   technicianName: string;
   technicianUid: string;
 }
@@ -177,6 +184,11 @@ export interface ClientAttendanceSite {
   clientUid: string;
   locatedStationCount: number;
   stationCount: number;
+}
+
+export interface NearbyStation {
+  distanceMeters: number;
+  station: Station;
 }
 
 export interface CreateDailyWorkReportInput {
@@ -443,6 +455,22 @@ export async function listStations(query?: string): Promise<Station[]> {
   return rows.map(stationFromRow);
 }
 
+export async function listNearbyStations(
+  location: Coordinates,
+  limit = 20,
+  radiusMeters = stationAccessRadiusMeters,
+): Promise<NearbyStation[]> {
+  if (!isValidCoordinates(location)) {
+    throw new AppError("إحداثيات الموقع غير صالحة.", "LOCATION_INVALID", 400);
+  }
+
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const rows = await db.select().from(stations).where(eq(stations.isActive, true)).orderBy(stations.label);
+  const activeStations = rows.map(stationFromRow);
+
+  return stationsWithinRadius(activeStations, location, radiusMeters).slice(0, safeLimit);
+}
+
 async function statusesByReportId(reportIds: string[]): Promise<Map<string, StatusOption[]>> {
   if (reportIds.length === 0) {
     return new Map();
@@ -575,23 +603,6 @@ export async function listReportsForTechnician(technicianUid: string, limit: num
   });
 }
 
-const attendanceRadiusMeters = 100;
-const maxAttendanceAccuracyMeters = 100;
-
-function distanceMeters(left: Coordinates, right: Coordinates): number {
-  const earthRadiusMeters = 6_371_000;
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-  const deltaLat = toRadians(right.lat - left.lat);
-  const deltaLng = toRadians(right.lng - left.lng);
-  const lat1 = toRadians(left.lat);
-  const lat2 = toRadians(right.lat);
-  const haversine =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
-
-  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
 function attendanceLocationFromRow(
   row: typeof attendanceSessions.$inferSelect,
   prefix: "clockIn" | "clockOut",
@@ -610,7 +621,6 @@ function attendanceLocationFromRow(
     typeof lng !== "number" ||
     !stationId ||
     !stationLabel ||
-    !clientUid ||
     typeof distance !== "number"
   ) {
     return undefined;
@@ -619,7 +629,7 @@ function attendanceLocationFromRow(
   return {
     accuracyMeters: typeof accuracyMeters === "number" ? accuracyMeters : undefined,
     clientName: clientName ?? undefined,
-    clientUid,
+    clientUid: clientUid ?? undefined,
     coordinates: { lat, lng },
     distanceMeters: distance,
     stationId,
@@ -646,20 +656,13 @@ async function verifyAttendanceLocation(input: ClockAttendanceInput): Promise<At
     lng: input.location.lng,
   };
 
-  if (
-    !Number.isFinite(coordinates.lat) ||
-    !Number.isFinite(coordinates.lng) ||
-    coordinates.lat < -90 ||
-    coordinates.lat > 90 ||
-    coordinates.lng < -180 ||
-    coordinates.lng > 180
-  ) {
+  if (!isValidCoordinates(coordinates)) {
     throw new AppError("إحداثيات الموقع غير صالحة.", "ATTENDANCE_LOCATION_INVALID", 400);
   }
 
   if (
     typeof input.location.accuracyMeters === "number" &&
-    input.location.accuracyMeters > maxAttendanceAccuracyMeters
+    input.location.accuracyMeters > maxLocationAccuracyMeters
   ) {
     throw new AppError(
       "دقة الموقع ضعيفة. اقترب من الموقع أو فعّل GPS ثم حاول مرة أخرى.",
@@ -668,56 +671,44 @@ async function verifyAttendanceLocation(input: ClockAttendanceInput): Promise<At
     );
   }
 
-  const candidateRows = await db
+  const station = await getStationById(input.stationId);
+
+  if (!station) {
+    throw new AppError("المحطة غير موجودة.", "STATION_NOT_FOUND", 404);
+  }
+
+  if (!station.isActive) {
+    throw new AppError("هذه المحطة غير نشطة.", "STATION_INACTIVE", 409);
+  }
+
+  if (!station.coordinates) {
+    throw new AppError("لا توجد إحداثيات مسجلة لهذه المحطة.", "ATTENDANCE_STATION_LOCATION_MISSING", 409);
+  }
+
+  const distance = distanceMeters(coordinates, station.coordinates);
+
+  if (distance > stationAccessRadiusMeters) {
+    throw new AppError("أنت خارج نطاق هذه المحطة.", "ATTENDANCE_OUT_OF_RANGE", 403);
+  }
+
+  const [clientAccess] = await db
     .select({
       clientName: user.name,
       clientUid: clientStationAccess.clientUid,
-      lat: stations.lat,
-      lng: stations.lng,
-      stationId: stations.stationId,
-      stationLabel: stations.label,
     })
     .from(clientStationAccess)
-    .innerJoin(stations, eq(clientStationAccess.stationId, stations.stationId))
     .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
-    .where(and(eq(clientStationAccess.clientUid, input.clientUid), eq(stations.isActive, true)));
-
-  if (candidateRows.length === 0) {
-    throw new AppError("لا توجد محطات مخصصة لهذا العميل.", "ATTENDANCE_CLIENT_STATIONS_NOT_FOUND", 404);
-  }
-
-  const locatedStations = candidateRows.filter(
-    (row): row is typeof row & { lat: number; lng: number } =>
-      typeof row.lat === "number" && typeof row.lng === "number",
-  );
-
-  if (locatedStations.length === 0) {
-    throw new AppError(
-      "محطات هذا العميل لا تحتوي على إحداثيات، لا يمكن احتساب الحضور.",
-      "ATTENDANCE_STATIONS_WITHOUT_COORDINATES",
-      409,
-    );
-  }
-
-  const nearest = locatedStations
-    .map((row) => ({
-      ...row,
-      distanceMeters: distanceMeters(coordinates, { lat: row.lat, lng: row.lng }),
-    }))
-    .sort((left, right) => left.distanceMeters - right.distanceMeters)[0];
-
-  if (!nearest || nearest.distanceMeters > attendanceRadiusMeters) {
-    throw new AppError("أنت خارج نطاق الموقع المحدد لهذا العميل.", "ATTENDANCE_OUT_OF_RANGE", 403);
-  }
+    .where(eq(clientStationAccess.stationId, station.stationId))
+    .limit(1);
 
   return {
     accuracyMeters: input.location.accuracyMeters,
-    clientName: nearest.clientName,
-    clientUid: nearest.clientUid,
+    clientName: clientAccess?.clientName,
+    clientUid: clientAccess?.clientUid,
     coordinates,
-    distanceMeters: Math.round(nearest.distanceMeters),
-    stationId: nearest.stationId,
-    stationLabel: nearest.stationLabel,
+    distanceMeters: Math.round(distance),
+    stationId: station.stationId,
+    stationLabel: station.label,
   };
 }
 
@@ -737,11 +728,11 @@ async function writeRejectedAttendanceAudit(
     entityId: input.technicianUid,
     metadata: {
       accuracyMeters: input.location.accuracyMeters,
-      clientUid: input.clientUid,
       code,
       lat: input.location.lat,
       lng: input.location.lng,
       message,
+      stationId: input.stationId,
     },
   });
 }
@@ -782,7 +773,7 @@ export async function clockInAttendanceSession(input: ClockAttendanceInput): Pro
     clockInAccuracyMeters: verifiedLocation.accuracyMeters ?? null,
     clockInStationId: verifiedLocation.stationId,
     clockInStationLabel: verifiedLocation.stationLabel,
-    clockInClientUid: verifiedLocation.clientUid,
+    clockInClientUid: verifiedLocation.clientUid ?? null,
     clockInClientName: verifiedLocation.clientName ?? null,
     clockInDistanceMeters: verifiedLocation.distanceMeters,
     clockOutAt: null,
@@ -829,8 +820,8 @@ export async function clockOutAttendanceSession(input: ClockAttendanceInput): Pr
     throw new AppError("لا يوجد حضور مفتوح لتسجيل الانصراف.", "ATTENDANCE_NOT_FOUND", 404);
   }
 
-  if (openSession.clockInLocation?.clientUid && openSession.clockInLocation.clientUid !== input.clientUid) {
-    throw new AppError("يجب تسجيل الانصراف من نفس عميل/موقع الحضور.", "ATTENDANCE_CLIENT_MISMATCH", 409);
+  if (openSession.clockInLocation?.stationId !== input.stationId) {
+    throw new AppError("يجب تسجيل الانصراف من نفس المحطة.", "ATTENDANCE_STATION_MISMATCH", 409);
   }
 
   let verifiedLocation: AttendanceLocation;
@@ -852,7 +843,7 @@ export async function clockOutAttendanceSession(input: ClockAttendanceInput): Pr
       clockOutAccuracyMeters: verifiedLocation.accuracyMeters ?? null,
       clockOutStationId: verifiedLocation.stationId,
       clockOutStationLabel: verifiedLocation.stationLabel,
-      clockOutClientUid: verifiedLocation.clientUid,
+      clockOutClientUid: verifiedLocation.clientUid ?? null,
       clockOutClientName: verifiedLocation.clientName ?? null,
       clockOutDistanceMeters: verifiedLocation.distanceMeters,
       notes: input.notes ?? openSession.notes ?? null,
@@ -1937,3 +1928,4 @@ export async function consumeMobileWebSessionRecord(tokenHash: string): Promise<
     };
   });
 }
+

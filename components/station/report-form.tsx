@@ -13,6 +13,8 @@ import type { StatusOption } from "@/types";
 const statusOptions = Object.keys(statusOptionLabels) as StatusOption[];
 
 interface ReportFormProps {
+  blockedReason?: string;
+  canSubmit?: boolean;
   stationId: string;
   stationLabel: string;
 }
@@ -58,7 +60,7 @@ function getFieldError(
   return actionResult?.fieldErrors?.[fieldName]?.[0];
 }
 
-export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
+export function ReportForm({ blockedReason, canSubmit = true, stationId, stationLabel }: ReportFormProps) {
   const [actionResult, setActionResult] = useState<SubmitReportActionResult | null>(null);
   const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
   const form = useForm<SubmitReportValues>({
@@ -115,6 +117,12 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
       {actionResult?.error ? (
         <p className="rounded-lg border border-[var(--danger-muted)] bg-[var(--danger-soft)] px-4 py-3 text-sm font-medium text-[var(--danger)]" role="alert">
           {actionResult.error}
+        </p>
+      ) : null}
+
+      {!canSubmit && blockedReason ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          {blockedReason}
         </p>
       ) : null}
 
@@ -227,7 +235,7 @@ export function ReportForm({ stationId, stationLabel }: ReportFormProps) {
         </div>
       </div>
 
-      <Button className="w-full py-3 text-base" disabled={form.formState.isSubmitting} isLoading={form.formState.isSubmitting} type="submit">
+      <Button className="w-full py-3 text-base" disabled={!canSubmit || form.formState.isSubmitting} isLoading={form.formState.isSubmitting} type="submit">
         حفظ التقرير
       </Button>
     </form>

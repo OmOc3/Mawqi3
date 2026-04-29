@@ -62,6 +62,7 @@ export interface Station {
   label: string;
   location: string;
   description?: string;
+  distanceMeters?: number;
   zone?: string;
   photoUrls?: string[];
   coordinates?: Coordinates;
@@ -105,6 +106,31 @@ export interface AuditLog {
   entityId: string;
   createdAt?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface AttendanceLocation {
+  accuracyMeters?: number;
+  clientName?: string;
+  clientUid?: string;
+  coordinates: Coordinates;
+  distanceMeters: number;
+  stationId: string;
+  stationLabel: string;
+}
+
+export interface AttendanceSession {
+  attendanceId: string;
+  clockInAt?: string;
+  clockInLocation?: AttendanceLocation;
+  clockOutAt?: string;
+  clockOutLocation?: AttendanceLocation;
+  notes?: string;
+  technicianName: string;
+  technicianUid: string;
+}
+
+export interface OpenAttendanceResponse {
+  openSession: AttendanceSession | null;
 }
 
 export interface MobileClientOrder {

@@ -4,7 +4,7 @@ import { toAuthenticatedUserResponse } from "@/lib/auth/public-user";
 import { checkLoginRateLimit, recordFailedLogin, resetLoginRateLimit } from "@/lib/auth/rate-limit";
 import { getRoleRedirect } from "@/lib/auth/redirects";
 import { createSignedRoleCookie } from "@/lib/auth/role-cookie";
-import { setRoleCookie } from "@/lib/auth/session";
+import { clearAuthCookies, setRoleCookie } from "@/lib/auth/session";
 import { getSessionMaxAgeMs } from "@/lib/auth/session-config";
 import { requiredTimestamp } from "@/lib/db/mappers";
 import { i18n } from "@/lib/i18n";
@@ -70,6 +70,31 @@ function appendAuthCookies(response: NextResponse, headers: Headers): void {
   getSetCookieHeaders(headers).forEach((cookie) => {
     response.headers.append("Set-Cookie", cookie);
   });
+}
+
+async function roleMismatchResponse(request: NextRequest): Promise<NextResponse<ApiErrorResponse>> {
+  const response = NextResponse.json(
+    {
+      message: "هذا الحساب غير مسموح له بالدخول من هذه الصفحة. تم إنهاء الجلسة الحالية، سجل الدخول بالحساب الصحيح.",
+      code: "AUTH_ROLE_MISMATCH",
+    },
+    { status: 403 },
+  );
+
+  try {
+    const signOut = await auth.api.signOut({
+      headers: request.headers,
+      returnHeaders: true,
+    });
+
+    appendAuthCookies(response, signOut.headers);
+  } catch (_error: unknown) {
+    // The app role cookie still needs to be cleared even if the auth session is already gone.
+  }
+
+  clearAuthCookies(response);
+
+  return response;
 }
 
 function authUserToAppUser(value: unknown): AuthClassification {
@@ -183,13 +208,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
 
       if (expectedRole && authClassification.profile.role !== expectedRole) {
         await recordFailedLogin(email, ipAddress);
-        return NextResponse.json(
-          {
-            message: "هذا الحساب غير مسموح له بالدخول من هذه الصفحة.",
-            code: "AUTH_ROLE_MISMATCH",
-          },
-          { status: 403 },
-        );
+        return roleMismatchResponse(request);
       }
 
       await resetLoginRateLimit(email, ipAddress);

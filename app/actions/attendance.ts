@@ -52,21 +52,23 @@ function optionalNumber(formData: FormData, key: string): number | undefined {
 
 export async function clockInAction(formData: FormData): Promise<AttendanceActionResult> {
   const session = await requireRole(["technician", "manager"]);
+  const stationId = requiredString(formData, "stationId");
 
   try {
     await clockInAttendanceSession({
       actorRole: session.role,
-      clientUid: requiredString(formData, "clientUid"),
       location: {
         accuracyMeters: optionalNumber(formData, "accuracyMeters"),
         lat: requiredNumber(formData, "lat"),
         lng: requiredNumber(formData, "lng"),
       },
+      stationId,
       technicianUid: session.uid,
       technicianName: session.user.displayName,
       notes: optionalString(formData, "notes"),
     });
     revalidatePath("/scan");
+    revalidatePath(`/station/${stationId}/report`);
     return { success: true };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "تعذر تسجيل الحضور." };
@@ -75,21 +77,23 @@ export async function clockInAction(formData: FormData): Promise<AttendanceActio
 
 export async function clockOutAction(formData: FormData): Promise<AttendanceActionResult> {
   const session = await requireRole(["technician", "manager"]);
+  const stationId = requiredString(formData, "stationId");
 
   try {
     await clockOutAttendanceSession({
       actorRole: session.role,
-      clientUid: requiredString(formData, "clientUid"),
       location: {
         accuracyMeters: optionalNumber(formData, "accuracyMeters"),
         lat: requiredNumber(formData, "lat"),
         lng: requiredNumber(formData, "lng"),
       },
+      stationId,
       technicianUid: session.uid,
       technicianName: session.user.displayName,
       notes: optionalString(formData, "notes"),
     });
     revalidatePath("/scan");
+    revalidatePath(`/station/${stationId}/report`);
     return { success: true };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "تعذر تسجيل الانصراف." };
