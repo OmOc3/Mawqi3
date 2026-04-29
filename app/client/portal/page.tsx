@@ -10,6 +10,7 @@ import {
   listClientOrdersForClient,
   listOrderedStationsForClient,
   listReportsForClientOrderedStations,
+  listAttendanceSessionsForClient,
 } from "@/lib/db/repositories";
 import type { AppTimestamp, ClientOrderStatus } from "@/types";
 
@@ -71,10 +72,11 @@ function SummaryCard({ label, value }: SummaryCardProps) {
 
 export default async function ClientPortalPage() {
   const session = await requireRole(["client"]);
-  const [orderedStations, orders, reports] = await Promise.all([
+  const [orderedStations, orders, reports, attendanceLogs] = await Promise.all([
     listOrderedStationsForClient(session.uid),
     listClientOrdersForClient(session.uid),
     listReportsForClientOrderedStations(session.uid),
+    listAttendanceSessionsForClient(session.uid, 30),
   ]);
   const openOrders = orders.filter((order) => order.status === "pending" || order.status === "in_progress").length;
   const completedOrders = orders.filter((order) => order.status === "completed").length;
@@ -109,6 +111,7 @@ export default async function ClientPortalPage() {
           <SummaryCard label="طلبات مفتوحة" value={openOrders} />
           <SummaryCard label="طلبات مكتملة" value={completedOrders} />
           <SummaryCard label="تقارير مستلمة" value={reports.length} />
+          <SummaryCard label="سجلات حضور الفنيين" value={attendanceLogs.length} />
         </div>
 
         <div className="grid gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] xl:items-start">
@@ -235,6 +238,75 @@ export default async function ClientPortalPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-sm text-[var(--muted)]">{station.description ?? "لا يوجد"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:p-6">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--foreground)]">سجل حضور الفنيين</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">زيارات الفريق الميداني لمحطاتك المسجلة بالنظام.</p>
+              </div>
+
+              {attendanceLogs.length === 0 ? (
+                <EmptyState description="ستظهر هنا سجلات حضور الفنيين عند زيارتهم لمحطاتك." title="لا توجد سجلات حضور بعد" />
+              ) : (
+                <>
+                  {/* Mobile cards */}
+                  <div className="mt-5 grid gap-3 lg:hidden">
+                    {attendanceLogs.map((log) => (
+                      <article className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4" key={log.attendanceId}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-bold text-[var(--foreground)]">{log.technicianName}</h3>
+                            <p className="mt-1 text-xs text-[var(--muted)]">{log.clockInLocation?.stationLabel ?? "غير محدد"}</p>
+                          </div>
+                          <StatusBadge tone={log.clockOutAt ? "reviewed" : "pending"}>
+                            {log.clockOutAt ? "مكتمل" : "قيد العمل"}
+                          </StatusBadge>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--muted)]">
+                          <span>حضور: {formatTimestamp(log.clockInAt)}</span>
+                          <span>انصراف: {log.clockOutAt ? formatTimestamp(log.clockOutAt) : "قيد العمل"}</span>
+                        </div>
+                        {log.clockInLocation && (
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            المسافة: {Math.round(log.clockInLocation.distanceMeters)} م
+                          </p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="soft-scrollbar mt-5 hidden overflow-x-auto rounded-xl border border-[var(--border)] lg:block">
+                    <table className="w-full min-w-[700px]">
+                      <thead className="bg-[var(--surface-subtle)]">
+                        <tr>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">الفني</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">المحطة</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">وقت الحضور</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">وقت الانصراف</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">الحالة</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--border-subtle)]">
+                        {attendanceLogs.map((log) => (
+                          <tr className="transition-colors hover:bg-[var(--surface-subtle)]" key={log.attendanceId}>
+                            <td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]">{log.technicianName}</td>
+                            <td className="px-4 py-3 text-sm text-[var(--muted)]">{log.clockInLocation?.stationLabel ?? "غير محدد"}</td>
+                            <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(log.clockInAt)}</td>
+                            <td className="px-4 py-3 text-sm text-[var(--muted)]">{log.clockOutAt ? formatTimestamp(log.clockOutAt) : "قيد العمل"}</td>
+                            <td className="px-4 py-3">
+                              <StatusBadge tone={log.clockOutAt ? "reviewed" : "pending"}>
+                                {log.clockOutAt ? "مكتمل" : "قيد العمل"}
+                              </StatusBadge>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

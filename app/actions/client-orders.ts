@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server-session";
-import { replaceClientStationAccess, updateClientOrderStatus, upsertClientProfile } from "@/lib/db/repositories";
+import { createClientOrder, replaceClientStationAccess, updateClientOrderStatus, upsertClientProfile } from "@/lib/db/repositories";
+import { writeAuditLog } from "@/lib/audit";
 import {
   clientAddressLinesFromText,
   createClientOrderSchema,
@@ -28,19 +29,80 @@ function optionalString(formData: FormData, key: string): string | undefined {
 }
 
 export async function createClientOrderAction(formData: FormData): Promise<ClientOrderActionResult> {
-  await requireRole(["client"]);
+  const session = await requireRole(["client"]);
+  const latRaw = formData.get("lat");
+  const lngRaw = formData.get("lng");
+  const lat = latRaw ? parseFloat(String(latRaw)) : undefined;
+  const lng = lngRaw ? parseFloat(String(lngRaw)) : undefined;
+
   const parsed = createClientOrderSchema.safeParse({
     stationDescription: optionalString(formData, "stationDescription"),
     stationLabel: formData.get("stationLabel"),
     stationLocation: formData.get("stationLocation"),
     note: optionalString(formData, "note"),
+    lat: lat !== undefined && !Number.isNaN(lat) ? lat : undefined,
+    lng: lng !== undefined && !Number.isNaN(lng) ? lng : undefined,
   });
 
   if (!parsed.success) {
     return { error: "تحقق من بيانات الطلب." };
   }
 
-  return { error: "بوابة العميل للعرض فقط. تواصل مع الإدارة لإضافة أو تعديل المحطات." };
+  // Handle photo upload
+  let photoUrl: string | undefined;
+  const photoFile = formData.get("photo");
+
+  if (photoFile instanceof File && photoFile.size > 0) {
+    try {
+      const uploadForm = new FormData();
+      uploadForm.set("image", photoFile);
+      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/upload-profile-image`, {
+        method: "POST",
+        body: uploadForm,
+      });
+      if (uploadRes.ok) {
+        const { url } = (await uploadRes.json()) as { url?: string };
+        if (typeof url === "string") {
+          photoUrl = url;
+        }
+      }
+    } catch {
+      // Non-fatal: proceed without photo
+    }
+  }
+
+  const coordinates =
+    typeof parsed.data.lat === "number" && typeof parsed.data.lng === "number"
+      ? { lat: parsed.data.lat, lng: parsed.data.lng }
+      : undefined;
+
+  try {
+    await createClientOrder({
+      actorRole: session.role,
+      clientUid: session.uid,
+      clientName: session.user.displayName,
+      stationLabel: parsed.data.stationLabel,
+      stationLocation: parsed.data.stationLocation,
+      stationDescription: parsed.data.stationDescription,
+      note: parsed.data.note,
+      photoUrl,
+      coordinates,
+    });
+
+    await writeAuditLog({
+      actorUid: session.uid,
+      actorRole: session.role,
+      action: "client_order.submit",
+      entityType: "client_order",
+      entityId: session.uid,
+      metadata: { stationLabel: parsed.data.stationLabel, hasCoordinates: Boolean(coordinates) },
+    });
+
+    revalidatePath("/client/portal");
+    return { success: true };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "تعذر إرسال الطلب. حاول مرة أخرى." };
+  }
 }
 
 export async function updateClientOrderStatusAction(formData: FormData): Promise<ClientOrderActionResult> {

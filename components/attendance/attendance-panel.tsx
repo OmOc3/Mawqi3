@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { clockInAction, clockOutAction } from "@/app/actions/attendance";
-import type { AttendanceSession } from "@/types";
+import { SerializedOpenSession } from "@/components/attendance/station-attendance-panel";
 
 interface AttendanceSiteOption {
   clientName: string;
@@ -13,12 +13,12 @@ interface AttendanceSiteOption {
 
 interface AttendancePanelProps {
   attendanceSites?: AttendanceSiteOption[];
-  openSession: AttendanceSession | null;
+  openSession: SerializedOpenSession | null;
   sites?: AttendanceSiteOption[];
 }
 
-function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(date);
+function formatDateTime(ms: number): string {
+  return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(ms));
 }
 
 function getCurrentPosition(): Promise<GeolocationPosition> {
@@ -115,7 +115,7 @@ export function AttendancePanel({ attendanceSites, openSession, sites }: Attenda
       <div className="mt-3 rounded-xl bg-[var(--surface-subtle)] px-3 py-2 text-sm text-[var(--foreground)]">
         {openSession ? (
           <span>
-            حالة اليوم: <strong className="text-teal-700">حضور مسجل</strong> منذ {formatDateTime(openSession.clockInAt.toDate())}
+            حالة اليوم: <strong className="text-teal-700">حضور مسجل</strong> منذ {formatDateTime(openSession.clockInAtMs)}
           </span>
         ) : (
           <span>

@@ -3,16 +3,30 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { clockInAction, clockOutAction } from "@/app/actions/attendance";
-import type { AttendanceSession } from "@/types";
+
+interface SerializedAttendanceLocation {
+  stationId: string;
+  stationLabel: string;
+  distanceMeters: number;
+  clientUid?: string;
+  clientName?: string;
+}
+
+export interface SerializedOpenSession {
+  attendanceId: string;
+  technicianName: string;
+  clockInAtMs: number;
+  clockInLocation?: SerializedAttendanceLocation;
+}
 
 interface StationAttendancePanelProps {
-  openSession: AttendanceSession | null;
+  openSession: SerializedOpenSession | null;
   stationId: string;
   stationLabel: string;
 }
 
-function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(date);
+function formatDateTime(ms: number): string {
+  return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(ms));
 }
 
 function readPosition(): Promise<GeolocationPosition> {
@@ -105,7 +119,7 @@ export function StationAttendancePanel({ openSession, stationId, stationLabel }:
 
       {openSession ? (
         <div className="mt-3 rounded-lg bg-[var(--surface-subtle)] px-3 py-2 text-sm leading-6 text-[var(--muted)]">
-          حضور مفتوح منذ {formatDateTime(openSession.clockInAt.toDate())}
+          حضور مفتوح منذ {formatDateTime(openSession.clockInAtMs)}
           {openSession.clockInLocation?.stationLabel ? ` في ${openSession.clockInLocation.stationLabel}` : ""}
         </div>
       ) : null}
@@ -131,7 +145,7 @@ export function StationAttendancePanel({ openSession, stationId, stationLabel }:
           onClick={() => submit("clockIn")}
           type="button"
         >
-          تسجيل حضور
+          {isPending ? "جاري التسجيل..." : "تسجيل حضور"}
         </button>
         <button
           className="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
@@ -139,11 +153,19 @@ export function StationAttendancePanel({ openSession, stationId, stationLabel }:
           onClick={() => submit("clockOut")}
           type="button"
         >
-          تسجيل انصراف
+          {isPending ? "جاري التسجيل..." : "تسجيل انصراف"}
         </button>
       </div>
 
-      {message ? <p className="mt-3 text-sm font-medium text-[var(--foreground)]">{message}</p> : null}
+      {message ? (
+        <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-medium ${
+          message.includes("تم") 
+            ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300" 
+            : "bg-[var(--surface-subtle)] text-[var(--foreground)]"
+        }`}>
+          {message}
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -5,7 +5,7 @@ import { toAuthenticatedUserResponse } from "@/lib/auth/public-user";
 import { createSignedRoleCookie } from "@/lib/auth/role-cookie";
 import { setRoleCookie } from "@/lib/auth/session";
 import { getSessionMaxAgeMs } from "@/lib/auth/session-config";
-import { getAppUser, getUserByEmail, upsertClientProfile } from "@/lib/db/repositories";
+import { getAppUser, getUserByEmail, getClientByPhone, upsertClientProfile } from "@/lib/db/repositories";
 import { i18n } from "@/lib/i18n";
 import { clientAddressLinesFromText } from "@/lib/validation/client-orders";
 import { clientSignupSchema } from "@/lib/validation/auth";
@@ -47,13 +47,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
     }
 
     const email = parsed.data.email.trim().toLowerCase();
-    const existingUser = await getUserByEmail(email);
+    const phone = parsed.data.phone?.trim();
+    const [existingUser, phoneExists] = await Promise.all([
+      getUserByEmail(email),
+      phone ? getClientByPhone(phone) : Promise.resolve(false),
+    ]);
 
     if (existingUser) {
       return NextResponse.json(
         {
-          message: "هذا البريد مستخدم بالفعل.",
+          message: "هذا البريد الإلكتروني مستخدم بالفعل. الرجاء استخدام بريد مختلف.",
           code: "CLIENT_SIGNUP_EMAIL_EXISTS",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (phoneExists) {
+      return NextResponse.json(
+        {
+          message: "رقم الهاتف هذا مسجل بالفعل لحساب آخر. الرجاء استخدام رقم مختلف.",
+          code: "CLIENT_SIGNUP_PHONE_EXISTS",
         },
         { status: 409 },
       );

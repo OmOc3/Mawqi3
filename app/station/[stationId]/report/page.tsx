@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { StationAttendancePanel } from "@/components/attendance/station-attendance-panel";
+import { StationAttendancePanel, type SerializedOpenSession } from "@/components/attendance/station-attendance-panel";
 import { ReportForm } from "@/components/station/report-form";
 import { requireRole } from "@/lib/auth/server-session";
 import { getOpenAttendanceSession, getStationById } from "@/lib/db/repositories";
@@ -39,6 +39,16 @@ export default async function StationReportPage({ params }: StationReportPagePro
     getStationById(stationId),
     session.role === "technician" ? getOpenAttendanceSession(session.uid) : Promise.resolve(null),
   ]);
+
+  const serializedOpenSession: SerializedOpenSession | null =
+    openAttendanceSession
+      ? {
+          attendanceId: openAttendanceSession.attendanceId,
+          technicianName: openAttendanceSession.technicianName,
+          clockInAtMs: openAttendanceSession.clockInAt.toDate().getTime(),
+          clockInLocation: openAttendanceSession.clockInLocation,
+        }
+      : null;
 
   if (!station) {
     return <ErrorMessage message="المحطة غير موجودة" />;
@@ -82,7 +92,7 @@ export default async function StationReportPage({ params }: StationReportPagePro
             {session.role === "technician" ? (
               <div className="mb-5">
                 <StationAttendancePanel
-                  openSession={openAttendanceSession}
+                  openSession={serializedOpenSession}
                   stationId={stationId}
                   stationLabel={station.label ?? "محطة بدون اسم"}
                 />
@@ -90,7 +100,7 @@ export default async function StationReportPage({ params }: StationReportPagePro
             ) : null}
             <ReportForm
               blockedReason={session.role === "technician" ? "سجل الحضور في هذه المحطة أولا حتى تتمكن من حفظ التقرير." : undefined}
-              canSubmit={session.role !== "technician" || openAttendanceSession?.clockInLocation?.stationId === stationId}
+              canSubmit={session.role !== "technician" || serializedOpenSession?.clockInLocation?.stationId === stationId}
               stationId={stationId}
               stationLabel={station.label ?? "محطة بدون اسم"}
             />

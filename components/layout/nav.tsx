@@ -45,7 +45,6 @@ const supervisorItems: NavItem[] = [
 
 type IconName = "analytics" | "attendance" | "audit" | "dashboard" | "map" | "reports" | "stations" | "supervisor" | "tasks" | "team";
 
-const SIDEBAR_STORAGE_KEY = "ecopest-dashboard-sidebar";
 
 function IconFrame({ children, className, ...props }: SVGProps<SVGSVGElement>) {
   return (
@@ -175,15 +174,6 @@ function SupervisorIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
-  return (
-    <IconFrame className="h-5 w-5">
-      <rect height="16" rx="2" width="16" x="4" y="4" />
-      <path d="M14 4v16" />
-      <path d={isOpen ? "m9 9-3 3 3 3" : "m7 9 3 3-3 3"} />
-    </IconFrame>
-  );
-}
 
 function MobileMenuIcon({ isOpen }: { isOpen: boolean }) {
   return (
@@ -250,22 +240,26 @@ function UserAvatar({ isSidebarOpen, role }: { isSidebarOpen: boolean; role: Das
 
 export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const items = role === "manager" ? managerItems : supervisorItems;
   const currentPathname = pathname ?? "";
-  const toggleLabel = isSidebarOpen ? "إغلاق القائمة" : "فتح القائمة";
   const mobileToggleLabel = isMobileNavOpen ? "إغلاق القائمة" : "فتح القائمة";
 
-  useEffect(() => {
-    const storedState = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+  function handleSidebarMouseEnter(): void {
+    sidebarHoverTimer.current = setTimeout(() => setIsSidebarOpen(true), 250);
+  }
 
-    if (storedState === "collapsed") {
-      setIsSidebarOpen(false);
+  function handleSidebarMouseLeave(): void {
+    if (sidebarHoverTimer.current !== null) {
+      clearTimeout(sidebarHoverTimer.current);
+      sidebarHoverTimer.current = null;
     }
-  }, []);
+    setIsSidebarOpen(false);
+  }
 
   useEffect(() => {
     setIsMobileNavOpen(false);
@@ -335,16 +329,6 @@ export function DashboardNav({ role }: DashboardNavProps) {
       event.preventDefault();
       firstElement.focus();
     }
-  }
-
-  function toggleSidebar(): void {
-    setIsSidebarOpen((currentState) => {
-      const nextState = !currentState;
-
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, nextState ? "expanded" : "collapsed");
-
-      return nextState;
-    });
   }
 
   return (
@@ -449,38 +433,33 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width,background-color,color] duration-200 ease-out lg:flex",
-          isSidebarOpen ? "w-64" : "w-20",
+          "fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] lg:flex",
+          isSidebarOpen ? "w-64" : "w-[4.5rem]",
         )}
         data-dashboard-nav={isSidebarOpen ? "expanded" : "collapsed"}
         id="dashboard-sidebar"
         dir="rtl"
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
       >
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(255_255_255_/_0.05),transparent_42%)]" />
         <div className={cn("relative border-b border-[var(--sidebar-border)] py-5", isSidebarOpen ? "px-5" : "px-3")}>
-          <div className={cn("flex items-center gap-3", isSidebarOpen ? "justify-between" : "flex-col")}>
+          <div className="flex items-center gap-3">
             <Link href="/" className={cn("flex min-w-0 items-center gap-2.5", isSidebarOpen ? "flex-1" : "justify-center")}>
-              <BrandMark className={cn("shrink-0 transition-all", isSidebarOpen ? "h-9 w-9" : "h-11 w-11")} />
-              <div className={cn("min-w-0", isSidebarOpen ? "block" : "sr-only")}>
-                <p className="truncate text-base font-bold leading-tight text-[var(--sidebar-text)]">
+              <BrandMark className={cn("shrink-0 transition-all duration-300", isSidebarOpen ? "h-9 w-9" : "h-11 w-11")} />
+              <div
+                className={cn(
+                  "min-w-0 overflow-hidden transition-[opacity,max-width] duration-300",
+                  isSidebarOpen ? "max-w-xs opacity-100" : "max-w-0 opacity-0",
+                )}
+              >
+                <p className="truncate text-base font-bold leading-tight text-[var(--sidebar-text)] whitespace-nowrap">
                   إيكوبست
                   <span className="ms-1.5 text-xs font-semibold text-[var(--sidebar-muted)]">EcoPest</span>
                 </p>
-                <p className="text-[11px] font-medium text-teal-400 truncate">إدارة محطات الطعوم</p>
+                <p className="text-[11px] font-medium text-teal-400 truncate whitespace-nowrap">إدارة محطات الطعوم</p>
               </div>
             </Link>
-            <button
-              aria-controls="dashboard-sidebar"
-              aria-expanded={isSidebarOpen}
-              aria-label={toggleLabel}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              onClick={toggleSidebar}
-              title={toggleLabel}
-              type="button"
-            >
-              <SidebarToggleIcon isOpen={isSidebarOpen} />
-              <span className="sr-only">{toggleLabel}</span>
-            </button>
           </div>
         </div>
 
@@ -496,7 +475,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
               <Link
                 aria-label={item.label}
                 className={cn(
-                  "relative flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors",
+                  "relative flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors duration-150",
                   isSidebarOpen ? "px-3" : "justify-center px-2",
                   isActive
                     ? "bg-teal-300 text-[var(--sidebar)] ring-1 ring-inset ring-teal-200/70"
@@ -506,8 +485,15 @@ export function DashboardNav({ role }: DashboardNavProps) {
                 key={item.href}
                 title={item.label}
               >
-                <Icon className={cn(isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
-                <span className={cn("truncate", isSidebarOpen ? "block" : "sr-only")}>{item.label}</span>
+                <Icon className={cn("shrink-0", isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
+                <span
+                  className={cn(
+                    "overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-300",
+                    isSidebarOpen ? "max-w-xs opacity-100" : "max-w-0 opacity-0",
+                  )}
+                >
+                  {item.label}
+                </span>
               </Link>
             );
           })}
@@ -515,7 +501,12 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
         <div className="relative space-y-3 border-t border-[var(--sidebar-border)] p-4">
           <UserAvatar isSidebarOpen={isSidebarOpen} role={role} />
-          <div className={cn("space-y-3", isSidebarOpen ? "block" : "hidden")}>
+          <div
+            className={cn(
+              "space-y-3 overflow-hidden transition-[opacity,max-height] duration-300",
+              isSidebarOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0",
+            )}
+          >
             <ThemeToggle className="!w-full !border-[var(--sidebar-border)] !bg-[var(--sidebar-surface)] !text-[var(--sidebar-text)] hover:!bg-[var(--sidebar-border)] hover:!text-[var(--sidebar-text)]" />
             <LogoutButton
               buttonClassName="!w-full !border-[var(--sidebar-border)] !bg-[var(--sidebar-surface)] !text-[var(--sidebar-text)] hover:!bg-[var(--sidebar-border)] hover:!text-[var(--sidebar-text)]"

@@ -7,6 +7,7 @@ import { assertEnv } from "@/lib/env-check";
 const alwaysPublicPrefixes = [
   "/login",
   "/client/login",
+  "/client/signup",
   "/unauthorized",
   "/account-disabled",
   "/scan",

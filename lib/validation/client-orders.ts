@@ -12,6 +12,8 @@ export const createClientOrderSchema = z.object({
   stationLocation: z.string().trim().min(3).max(300),
   stationDescription: z.string().trim().max(500).optional(),
   note: z.string().trim().max(600).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
 });
 
 export const updateClientOrderStatusSchema = z.object({

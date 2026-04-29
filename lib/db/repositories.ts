@@ -1,4 +1,4 @@
-﻿import "server-only";
+import "server-only";
 
 import { createHash } from "node:crypto";
 import { and, count, desc, eq, gte, inArray, like, lt, lte, or, sql, type SQL } from "drizzle-orm";
@@ -214,6 +214,7 @@ export interface CreateClientOrderInput {
   actorRole: UserRole;
   clientUid: string;
   clientName: string;
+  coordinates?: Coordinates;
   note?: string;
   photoUrl?: string;
   stationDescription?: string;
@@ -302,6 +303,22 @@ export async function getUserByEmail(email: string): Promise<AppUser | null> {
   });
 
   return row ? appUserFromAuthUser(row) : null;
+}
+
+export async function getClientByPhone(phone: string): Promise<boolean> {
+  const normalizedPhone = phone.trim();
+
+  if (!normalizedPhone) {
+    return false;
+  }
+
+  const row = await db
+    .select({ clientUid: clientProfiles.clientUid })
+    .from(clientProfiles)
+    .where(eq(clientProfiles.phone, normalizedPhone))
+    .limit(1);
+
+  return row.length > 0;
 }
 
 export async function listAppUsers(): Promise<AppUser[]> {
@@ -905,6 +922,18 @@ export async function listAttendanceSessionsForAdmin(
   return rows.map(attendanceFromRow);
 }
 
+export async function listAttendanceSessionsForClient(clientUid: string, limit = 50): Promise<AttendanceSession[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const rows = await db
+    .select()
+    .from(attendanceSessions)
+    .where(eq(attendanceSessions.clockInClientUid, clientUid))
+    .orderBy(desc(attendanceSessions.clockInAt))
+    .limit(safeLimit);
+
+  return rows.map(attendanceFromRow);
+}
+
 function clientOrderFromRow(row: typeof clientOrders.$inferSelect): ClientOrder {
   return {
     orderId: row.orderId,
@@ -1335,6 +1364,7 @@ export async function createClientOrder(input: CreateClientOrderInput): Promise<
     label: input.stationLabel,
     location: input.stationLocation,
     description: input.stationDescription,
+    coordinates: input.coordinates,
     photoUrls: input.photoUrl ? [input.photoUrl] : undefined,
     qrCodeValue,
     createdBy: input.clientUid,
