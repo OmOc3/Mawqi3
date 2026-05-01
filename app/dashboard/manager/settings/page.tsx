@@ -129,7 +129,7 @@ export default async function ManagerSettingsPage({ searchParams }: ManagerSetti
         <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card">
           <h2 className="text-base font-bold text-[var(--foreground)]">ملاحظات تشغيلية</h2>
           <ul className="mt-3 list-disc space-y-2 ps-5 text-sm leading-7 text-[var(--muted)]">
-            <li>وضع الصيانة يطبق على صفحات العميل والفني، وكذلك على API للموبايل.</li>
+            <li>وضع الصيانة يطبق على صفحات العميل والفني.</li>
             <li>عند إلغاء الصيانة: صفحة الصيانة ستخرج المستخدم تلقائيًا إلى الصفحة المناسبة عند التحديث.</li>
             <li>الحد اليومي يمنع العميل من إنشاء طلب جديد عند تجاوز العدد في نفس اليوم.</li>
             <li>الحذف النهائي للعميل/المحطة متاح من صفحات الإدارة وبشروط حماية لمنع فقد بيانات مرتبطة.</li>

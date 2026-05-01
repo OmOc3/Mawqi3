@@ -259,56 +259,118 @@ export function WebQrScanner() {
   }, [stopScanner]);
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold text-[var(--foreground)]">المسح بالكاميرا (ويب)</p>
-      <p className="text-xs leading-5 text-[var(--muted)]">اضغط تشغيل الكاميرا ثم وجّهها إلى QR الخاص بالمحطة.</p>
-
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]">
-        <video className="h-56 w-full object-cover" muted playsInline ref={videoRef} />
+    <div className="flex flex-col gap-4">
+      <style>{`
+        @keyframes scanline {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        .animate-scan-line {
+          animation: scanline 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+      `}</style>
+      
+      {/* Video Container with Scanning UI overlay */}
+      <div className="relative w-full overflow-hidden rounded-[1.5rem] bg-black shadow-inner" style={{ aspectRatio: '4/5' }}>
+        <video className="h-full w-full object-cover" muted playsInline ref={videoRef} />
+        
+        {/* Scanning Overlay / Targeting Reticle */}
+        {isScanning ? (
+          <>
+            {/* Darkened overlay with a clear cutout */}
+            <div className="pointer-events-none absolute inset-0 border-[15vw] border-black/60 transition-all duration-300 sm:border-[60px]">
+               {/* Animated Scan Line */}
+               <div className="absolute left-0 right-0 h-0.5 w-full bg-teal-400 shadow-[0_0_12px_rgba(45,212,191,1)] animate-scan-line" />
+            </div>
+            
+            {/* Corner Markers */}
+            <div className="absolute inset-x-[15vw] inset-y-[15vw] sm:inset-x-[60px] sm:inset-y-[60px] pointer-events-none">
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-teal-400 rounded-tr-lg" />
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-teal-400 rounded-tl-lg" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-teal-400 rounded-br-lg" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-teal-400 rounded-bl-lg" />
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white p-6 text-center">
+            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-md">
+              <svg aria-hidden="true" className="h-10 w-10 text-teal-400" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                <path d="M8 7v10" />
+                <path d="M12 7v10" />
+                <path d="M16 7v10" />
+              </svg>
+            </div>
+            <p className="font-bold text-xl">الكاميرا متوقفة</p>
+            <p className="mt-3 text-sm text-gray-300 max-w-xs leading-relaxed">
+              اضغط على زر البدء بالأسفل لتشغيل الكاميرا ومسح كود المحطة
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row">
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          className="inline-flex min-h-[56px] items-center justify-center rounded-2xl bg-[var(--primary)] px-4 py-3 text-base font-bold text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/20 transition-all active:scale-[0.98] sm:flex-1"
           disabled={isScanning}
           onClick={() => void startScanner()}
           type="button"
+          style={{ opacity: isScanning ? 0.6 : 1 }}
         >
-          {isScanning ? "جاري المسح..." : "تشغيل الكاميرا"}
+          {isScanning ? (
+            <span className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-white"></span>
+              </span>
+              جاري المسح...
+            </span>
+          ) : (
+            "تشغيل الكاميرا"
+          )}
         </button>
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          className="inline-flex min-h-[56px] items-center justify-center rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-base font-bold text-[var(--foreground)] shadow-sm transition-all hover:bg-[var(--surface-subtle)] active:scale-[0.98] sm:flex-1"
           disabled={!isScanning}
           onClick={stopScanner}
           type="button"
+          style={{ opacity: !isScanning ? 0.6 : 1 }}
         >
           إيقاف
         </button>
       </div>
 
-      {message ? (
-        <p className="text-xs text-[var(--muted)]" role="status">
+      {message && !isScanning ? (
+        <div className="mt-1 flex items-center justify-center rounded-xl bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-700 dark:bg-teal-900/30 dark:text-teal-300" role="status">
           {message}
-        </p>
+        </div>
       ) : null}
+      
       {error ? (
-        <div className="flex flex-wrap items-center gap-2" role="alert">
-          <p className="text-xs font-medium text-[var(--danger)]">{error}</p>
+        <div className="mt-1 flex flex-col items-center gap-3 rounded-xl bg-[var(--danger-soft)] p-5 text-center shadow-sm" role="alert">
+          <svg aria-hidden="true" className="h-8 w-8 text-[var(--danger)]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+          <p className="text-sm font-bold text-[var(--danger)] leading-relaxed">{error}</p>
           {error.includes("أعد تحميل الصفحة") ? (
             <button
-              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-xs font-semibold text-[var(--danger)] hover:opacity-90"
+              className="mt-2 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-[var(--danger)] px-8 py-2 text-sm font-bold text-white shadow-md hover:opacity-90 active:scale-[0.98]"
               onClick={() => window.location.reload()}
               type="button"
             >
-              إعادة تحميل
+              إعادة تحميل الصفحة
             </button>
           ) : null}
         </div>
       ) : null}
+      
       {debugInfo ? (
-        <details className="mt-2">
-          <summary className="cursor-pointer text-xs text-[var(--muted)]">معلومات تقنية (للدعم)</summary>
-          <p className="mt-1 break-all text-[10px] text-[var(--muted)]">{debugInfo}</p>
+        <details className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+          <summary className="cursor-pointer text-sm font-bold text-[var(--muted)]">معلومات تقنية (للدعم)</summary>
+          <p className="mt-3 break-all rounded-lg bg-[var(--surface)] p-3 font-mono text-[11px] text-[var(--muted-foreground)] leading-relaxed">{debugInfo}</p>
         </details>
       ) : null}
     </div>
