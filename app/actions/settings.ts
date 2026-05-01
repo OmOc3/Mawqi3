@@ -16,11 +16,17 @@ function numberFromFormData(formData: FormData, key: string): number {
   return typeof value === "string" && value.trim().length > 0 ? Number(value) : 0;
 }
 
+function stringFromFormData(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
 export async function updateAppSettingsAction(formData: FormData): Promise<void> {
   const session = await requireRole(["manager"]);
 
   const parsed = updateAppSettingsSchema.safeParse({
     maintenanceEnabled: booleanFromFormData(formData, "maintenanceEnabled"),
+    maintenanceMessage: stringFromFormData(formData, "maintenanceMessage"),
     clientDailyStationOrderLimit: numberFromFormData(formData, "clientDailyStationOrderLimit"),
   });
 
@@ -33,6 +39,7 @@ export async function updateAppSettingsAction(formData: FormData): Promise<void>
       actorUid: session.uid,
       actorRole: session.role,
       maintenanceEnabled: parsed.data.maintenanceEnabled,
+      maintenanceMessage: parsed.data.maintenanceMessage,
       clientDailyStationOrderLimit: parsed.data.clientDailyStationOrderLimit,
     });
   } catch (error: unknown) {

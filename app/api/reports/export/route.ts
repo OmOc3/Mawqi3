@@ -8,6 +8,7 @@ import {
   REPORT_EXPORT_MAX_ROWS,
   statusLabelsForCsv,
 } from "@/lib/reports/export";
+import { formatDateRome, formatIsoDateRome, formatTimeRome } from "@/lib/datetime";
 import type { Report } from "@/types";
 
 export const runtime = "nodejs";
@@ -106,12 +107,12 @@ export async function GET(request: NextRequest): Promise<Response> {
       statusLabelsForCsv(report.status),
       report.notes ?? "",
       reviewStatusArabic(report.reviewStatus),
-      submittedAt ? new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium" }).format(submittedAt) : "",
-      submittedAt ? new Intl.DateTimeFormat("ar-EG", { timeStyle: "short" }).format(submittedAt) : "",
+      submittedAt ? formatDateRome(submittedAt, { locale: "ar-EG" }) : "",
+      submittedAt ? formatTimeRome(submittedAt, { locale: "ar-EG" }) : "",
     ];
   });
   const csv = [header, ...rows].map(csvRow).join("\n");
-  const filenameDate = new Intl.DateTimeFormat("en-CA").format(new Date());
+  const filenameDate = formatIsoDateRome(new Date()) ?? new Intl.DateTimeFormat("en-CA").format(new Date());
 
   return new Response(`\uFEFF${csv}`, {
     headers: {

@@ -10,6 +10,7 @@ import { ReviewReportForm } from "@/components/reports/review-report-form";
 import { StatusPills } from "@/components/reports/status-pills";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
+import { formatDateTimeRome } from "@/lib/datetime";
 import { formatPestTypesLine } from "@/lib/reports/report-display";
 import { listReports } from "@/lib/db/repositories";
 import { decodeReportCursor, encodeReportCursor } from "@/lib/pagination/report-cursor";
@@ -37,10 +38,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
     return "غير متاح";
   }
 
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(timestamp.toDate());
+  return formatDateTimeRome(timestamp.toDate(), { locale: "ar-EG" });
 }
 
 function reviewStatusBadge(status: Report["reviewStatus"]) {

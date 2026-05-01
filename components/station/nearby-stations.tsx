@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { formatDateTimeRome } from "@/lib/datetime";
 
 interface NearbyStation {
   distanceMeters: number;
@@ -30,7 +31,7 @@ function formatTimestamp(value?: string): string {
     return "غير متاح";
   }
 
-  return new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatDateTimeRome(date, { locale: "ar-EG" });
 }
 
 function readPosition(): Promise<GeolocationPosition> {

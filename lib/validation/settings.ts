@@ -2,6 +2,12 @@ import { z } from "zod";
 
 export const updateAppSettingsSchema = z.object({
   maintenanceEnabled: z.boolean(),
+  maintenanceMessage: z
+    .string()
+    .trim()
+    .max(280, "رسالة الصيانة طويلة جدًا.")
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
   clientDailyStationOrderLimit: z
     .number()
     .int()

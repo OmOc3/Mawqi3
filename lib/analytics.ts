@@ -1,4 +1,5 @@
 import type { Report, Station, StatusOption } from "@/types";
+import { formatIsoDateRome } from "@/lib/datetime";
 
 export interface ZoneStats {
   activeStations: number;
@@ -204,19 +205,19 @@ function bucketStart(date: Date, granularity: TrendGranularity): Date {
 }
 
 function bucketKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return formatIsoDateRome(date) ?? date.toISOString().slice(0, 10);
 }
 
 function trendLabel(date: Date, granularity: TrendGranularity): string {
   if (granularity === "week") {
-    return `أسبوع ${new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short" }).format(date)}`;
+    return `أسبوع ${new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short", timeZone: "Europe/Rome" }).format(date)}`;
   }
 
   if (granularity === "month") {
-    return new Intl.DateTimeFormat("ar-EG", { month: "short", year: "numeric" }).format(date);
+    return new Intl.DateTimeFormat("ar-EG", { month: "short", year: "numeric", timeZone: "Europe/Rome" }).format(date);
   }
 
-  return new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short" }).format(date);
+  return new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "short", timeZone: "Europe/Rome" }).format(date);
 }
 
 function createTrendPoint(date: Date, granularity: TrendGranularity): ReportTrendPoint {

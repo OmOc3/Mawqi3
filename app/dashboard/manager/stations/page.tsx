@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { deleteStationAction, toggleStationStatusAction } from "@/app/actions/stations";
 import { requireRole } from "@/lib/auth/server-session";
+import { formatDateTimeRome } from "@/lib/datetime";
 import { listStations } from "@/lib/db/repositories";
 import { getStationHealth } from "@/lib/station-health";
 import type { AppTimestamp } from "@/types";
@@ -25,10 +26,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
     return "لم تتم الزيارة";
   }
 
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(timestamp.toDate());
+  return formatDateTimeRome(timestamp.toDate(), { locale: "ar-EG" });
 }
 
 export default async function ManagerStationsPage({ searchParams }: ManagerStationsPageProps) {

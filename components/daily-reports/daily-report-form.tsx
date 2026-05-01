@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { createDailyWorkReportAction, type DailyWorkReportActionResult } from "@/app/actions/daily-reports";
 import { Button } from "@/components/ui/button";
+import { formatIsoDateRome } from "@/lib/datetime";
 import { createDailyWorkReportSchema, type CreateDailyWorkReportValues } from "@/lib/validation/daily-reports";
 
 interface DailyReportFormProps {
@@ -15,7 +16,7 @@ interface DailyReportFormProps {
 }
 
 function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
+  return formatIsoDateRome(new Date()) ?? new Date().toISOString().slice(0, 10);
 }
 
 function toFormData(values: CreateDailyWorkReportValues, photos: File[]): FormData {

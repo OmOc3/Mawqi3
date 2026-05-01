@@ -81,6 +81,24 @@ export default async function ManagerSettingsPage({ searchParams }: ManagerSetti
             </label>
 
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+              <label className="block text-sm font-semibold text-[var(--foreground)]" htmlFor="maintenanceMessage">
+                رسالة الصيانة (اختياري)
+              </label>
+              <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
+                ستظهر هذه الرسالة للعميل والفني داخل شاشة الصيانة.
+              </p>
+              <textarea
+                className="mt-3 min-h-28 w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] shadow-control focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                defaultValue={settings.maintenanceMessage ?? ""}
+                id="maintenanceMessage"
+                maxLength={280}
+                name="maintenanceMessage"
+                placeholder="مثال: نعمل حاليًا على تحديثات في النظام. سنعود قريبًا."
+              />
+              <p className="mt-2 text-xs text-[var(--muted)]">الحد الأقصى 280 حرف.</p>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
               <label className="block text-sm font-semibold text-[var(--foreground)]" htmlFor="clientDailyStationOrderLimit">
                 الحد اليومي لطلبات المحطات لكل عميل
               </label>
@@ -112,6 +130,7 @@ export default async function ManagerSettingsPage({ searchParams }: ManagerSetti
           <h2 className="text-base font-bold text-[var(--foreground)]">ملاحظات تشغيلية</h2>
           <ul className="mt-3 list-disc space-y-2 ps-5 text-sm leading-7 text-[var(--muted)]">
             <li>وضع الصيانة يطبق على صفحات العميل والفني، وكذلك على API للموبايل.</li>
+            <li>عند إلغاء الصيانة: صفحة الصيانة ستخرج المستخدم تلقائيًا إلى الصفحة المناسبة عند التحديث.</li>
             <li>الحد اليومي يمنع العميل من إنشاء طلب جديد عند تجاوز العدد في نفس اليوم.</li>
             <li>الحذف النهائي للعميل/المحطة متاح من صفحات الإدارة وبشروط حماية لمنع فقد بيانات مرتبطة.</li>
           </ul>

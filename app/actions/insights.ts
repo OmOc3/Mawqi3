@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/server-session";
 import { writeAuditLogRecord } from "@/lib/db/repositories";
 import { generateGeminiInsights, hasGeminiConfigured } from "@/lib/gemini";
 import { i18n } from "@/lib/i18n";
+import { formatDateTimeRome } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/utils";
 import type { AiDataCoverageItem, AiInsightsResult } from "@/types";
 
@@ -14,10 +15,7 @@ export interface GenerateManagerInsightsActionResult {
 }
 
 function generatedAtLabel(): string {
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date());
+  return formatDateTimeRome(new Date(), { locale: "ar-EG" });
 }
 
 function buildUnavailableFallback(note: string): AiInsightsResult {

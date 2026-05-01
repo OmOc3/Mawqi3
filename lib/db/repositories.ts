@@ -162,6 +162,7 @@ const appSettingsSingletonId = "global";
 export interface AppSettingsRecord {
   clientDailyStationOrderLimit: number;
   maintenanceEnabled: boolean;
+  maintenanceMessage?: string;
   updatedAt?: AppTimestamp;
   updatedBy?: string;
 }
@@ -170,6 +171,7 @@ function appSettingsFromRow(row: typeof appSettings.$inferSelect): AppSettingsRe
   return {
     clientDailyStationOrderLimit: row.clientDailyStationOrderLimit,
     maintenanceEnabled: row.maintenanceEnabled,
+    maintenanceMessage: row.maintenanceMessage ?? undefined,
     updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
     updatedBy: row.updatedBy ?? undefined,
   };
@@ -254,6 +256,7 @@ export async function updateAppSettings(input: {
   actorUid: string;
   actorRole: UserRole;
   maintenanceEnabled: boolean;
+  maintenanceMessage?: string;
   clientDailyStationOrderLimit: number;
 }): Promise<AppSettingsRecord> {
   if (input.actorRole !== "manager") {
@@ -280,6 +283,10 @@ export async function updateAppSettings(input: {
   }
 
   const updatedAt = now();
+  const safeMessage =
+    typeof input.maintenanceMessage === "string"
+      ? input.maintenanceMessage.trim().slice(0, 280) || null
+      : null;
 
   try {
     await db
@@ -288,6 +295,7 @@ export async function updateAppSettings(input: {
         settingId: appSettingsSingletonId,
         maintenanceEnabled: input.maintenanceEnabled,
         clientDailyStationOrderLimit: safeLimit,
+        maintenanceMessage: safeMessage,
         updatedAt,
         updatedBy: input.actorUid,
       })
@@ -296,6 +304,7 @@ export async function updateAppSettings(input: {
         set: {
           maintenanceEnabled: input.maintenanceEnabled,
           clientDailyStationOrderLimit: safeLimit,
+          maintenanceMessage: safeMessage,
           updatedAt,
           updatedBy: input.actorUid,
         },
@@ -326,6 +335,7 @@ export async function updateAppSettings(input: {
     entityId: appSettingsSingletonId,
     metadata: {
       maintenanceEnabled: input.maintenanceEnabled,
+      maintenanceMessage: safeMessage ?? undefined,
       clientDailyStationOrderLimit: safeLimit,
     },
   });

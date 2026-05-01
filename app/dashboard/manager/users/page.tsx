@@ -13,6 +13,7 @@ import { UserRoleForm } from "@/components/users/user-role-form";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { deleteClientAccountAction } from "@/app/actions/users";
 import { requireRole } from "@/lib/auth/server-session";
+import { formatDateTimeRome } from "@/lib/datetime";
 import { roleLabels } from "@/lib/i18n";
 import { listAppUsers } from "@/lib/db/repositories";
 import type { AppTimestamp, AppUser, UserRole } from "@/types";
@@ -49,11 +50,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
     return "غير متاح";
   }
 
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    hour12: true,
-  }).format(timestamp.toDate());
+  return formatDateTimeRome(timestamp.toDate(), { locale: "ar-EG" });
 }
 
 function normalizeRoleFilter(value: string | undefined): UserRole | "all" {

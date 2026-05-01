@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusPills } from "@/components/reports/status-pills";
 import { ThemeIconToggle } from "@/components/theme/theme-icon-toggle";
 import { requireRole } from "@/lib/auth/server-session";
+import { formatDateTimeRome } from "@/lib/datetime";
 import { i18n } from "@/lib/i18n";
 import { getLatestReports, getManagerDashboardStats } from "@/lib/stats/dashboard-stats";
 import type { AppTimestamp } from "@/types";
@@ -127,10 +128,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
     return "غير متاح";
   }
 
-  return new Intl.DateTimeFormat("ar-EG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(timestamp.toDate());
+  return formatDateTimeRome(timestamp.toDate(), { locale: "ar-EG" });
 }
 
 export default async function ManagerDashboardPage() {
