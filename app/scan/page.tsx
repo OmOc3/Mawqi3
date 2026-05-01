@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { getCurrentSession } from "@/lib/auth/server-session";
 import { listAttendanceSessions, listReportsForTechnician, listStations } from "@/lib/db/repositories";
 import { i18n } from "@/lib/i18n";
+import { APP_TIME_ZONE } from "@/lib/datetime";
 import { statusOptionLabels } from "@ecopest/shared/constants";
 import type { AppTimestamp, Report, Station } from "@/types";
 
@@ -66,6 +67,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
   return new Intl.DateTimeFormat("ar-EG", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: APP_TIME_ZONE,
   }).format(timestamp.toDate());
 }
 

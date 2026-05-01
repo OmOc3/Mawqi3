@@ -1,4 +1,4 @@
-export const APP_TIME_ZONE = "Europe/Rome" as const;
+export const APP_TIME_ZONE = "Asia/Riyadh" as const;
 
 type DateInput = Date | string | number | null | undefined;
 

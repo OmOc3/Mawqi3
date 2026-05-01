@@ -273,7 +273,7 @@ export function WebQrScanner() {
       `}</style>
       
       {/* Video Container with Scanning UI overlay */}
-      <div className="relative w-full overflow-hidden rounded-[1.5rem] bg-black shadow-inner" style={{ aspectRatio: '4/5' }}>
+      <div className="relative w-full overflow-hidden rounded-[1.5rem] bg-black shadow-inner aspect-[3/4] sm:aspect-square md:aspect-video">
         <video className="h-full w-full object-cover" muted playsInline ref={videoRef} />
         
         {/* Scanning Overlay / Targeting Reticle */}

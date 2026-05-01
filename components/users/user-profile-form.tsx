@@ -132,7 +132,7 @@ export function UserProfileForm({
           
           <input
             accept="image/*"
-            className="block w-full text-sm text-[var(--muted)] file:mr-4 file:rounded-full file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-teal-900/30 dark:file:text-teal-300"
+            className="block w-full text-sm text-[var(--muted)] file:me-4 file:rounded-full file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-teal-900/30 dark:file:text-teal-300"
             id={`image-${user.uid}`}
             onChange={handleImageChange}
             type="file"
@@ -140,9 +140,9 @@ export function UserProfileForm({
           />
         </div>
       </div>
-
+        
       <Button disabled={isFormDisabled} isLoading={isSubmitting} type="submit" variant="secondary" className="w-full">
-        حفظ التعديلات
+          حفظ التعديلات
       </Button>
     </form>
   );

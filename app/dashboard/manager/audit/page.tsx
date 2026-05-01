@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
 import { listAuditLogs } from "@/lib/db/repositories";
+import { APP_TIME_ZONE } from "@/lib/datetime";
 import type { AppTimestamp } from "@/types";
 
 interface AuditPageProps {
@@ -48,6 +49,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
   return new Intl.DateTimeFormat("ar-EG", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: APP_TIME_ZONE,
   }).format(timestamp.toDate());
 }
 
