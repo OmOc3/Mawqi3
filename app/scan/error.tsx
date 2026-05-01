@@ -9,7 +9,7 @@ export default function ScanError({ reset }: { reset: () => void }) {
         <h2 className="text-lg font-semibold text-[var(--foreground)]">تعذر تحميل صفحة المسح</h2>
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">حاول مرة أخرى أو سجل الدخول من جديد.</p>
         <Button className="mt-5" onClick={reset} type="button">
-          إعادة المحاولة
+          إعاده المحاولة
         </Button>
       </section>
     </main>
