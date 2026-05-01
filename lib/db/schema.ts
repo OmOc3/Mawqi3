@@ -1,6 +1,14 @@
 import { relations } from "drizzle-orm";
 import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
-import type { ClientOrderStatus, Coordinates, ReportPhotoCategory, ReportPhotoPaths, StatusOption, UserRole } from "@/types";
+import type {
+  ClientOrderStatus,
+  Coordinates,
+  PestTypeOption,
+  ReportPhotoCategory,
+  ReportPhotoPaths,
+  StatusOption,
+  UserRole,
+} from "@/types";
 import type { SharedReviewStatus } from "@ecopest/shared/constants";
 
 const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
@@ -21,6 +29,10 @@ export const user = sqliteTable(
     banReason: text("ban_reason"),
     banExpires: timestamp("ban_expires"),
     passwordChangedAt: timestamp("password_changed_at"),
+    deactivatedAt: timestamp("deactivated_at"),
+    deactivatedBy: text("deactivated_by"),
+    reactivatedAt: timestamp("reactivated_at"),
+    reactivatedBy: text("reactivated_by"),
   },
   (table) => [uniqueIndex("user_email_unique").on(table.email), index("user_role_idx").on(table.role)],
 );
@@ -135,6 +147,8 @@ export const reports = sqliteTable(
       .notNull()
       .references(() => stations.stationId, { onDelete: "restrict" }),
     stationLabel: text("station_label").notNull(),
+    stationLocation: text("station_location"),
+    pestTypes: text("pest_types", { mode: "json" }).$type<PestTypeOption[]>(),
     technicianUid: text("technician_uid").notNull(),
     technicianName: text("technician_name").notNull(),
     clientReportId: text("client_report_id"),

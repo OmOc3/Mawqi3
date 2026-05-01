@@ -64,6 +64,13 @@
       "when": 1777514154192,
       "tag": "0008_polite_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1777600000000,
+      "tag": "0009_ecopest_enhancements",
+      "breakpoints": true
     }
   ]
 }

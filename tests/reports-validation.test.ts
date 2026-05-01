@@ -7,6 +7,7 @@ test("submitReportSchema accepts a valid report payload", () => {
     notes: "تم الفحص",
     stationId: "station-1",
     status: ["station_ok"],
+    pestTypes: ["rodents"],
   });
 
   assert.equal(result.success, true);
@@ -16,6 +17,17 @@ test("submitReportSchema requires at least one status", () => {
   const result = submitReportSchema.safeParse({
     stationId: "station-1",
     status: [],
+    pestTypes: ["others"],
+  });
+
+  assert.equal(result.success, false);
+});
+
+test("submitReportSchema requires at least one pest type", () => {
+  const result = submitReportSchema.safeParse({
+    stationId: "station-1",
+    status: ["station_ok"],
+    pestTypes: [],
   });
 
   assert.equal(result.success, false);

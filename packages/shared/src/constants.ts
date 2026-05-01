@@ -14,6 +14,32 @@ export type SharedStatusOption = (typeof reportStatusOptions)[number];
 export const reviewStatuses = ["pending", "reviewed", "rejected"] as const;
 export type SharedReviewStatus = (typeof reviewStatuses)[number];
 
+/** Pest categories for execution program (QR / field reports). */
+export const pestTypeOptions = [
+  "flying_insects",
+  "crawling_insects",
+  "rodents",
+  "reptiles",
+  "others",
+] as const;
+export type SharedPestTypeOption = (typeof pestTypeOptions)[number];
+
+export const pestTypeLabels: Record<SharedPestTypeOption, string> = {
+  flying_insects: "حشرات طائرة",
+  crawling_insects: "حشرات زاحفة",
+  rodents: "قوارض",
+  reptiles: "زواحف",
+  others: "أخرى",
+};
+
+export const pestTypeLabelsEnglish: Record<SharedPestTypeOption, string> = {
+  flying_insects: "Flying insects",
+  crawling_insects: "Crawling insects",
+  rodents: "Rodents",
+  reptiles: "Reptiles",
+  others: "Others",
+};
+
 export interface StatusOptionEntry {
   labelArabic: string;
   labelEnglish: string;

@@ -5,10 +5,14 @@ import { StationAttendancePanel, type SerializedOpenSession } from "@/components
 import { ReportForm } from "@/components/station/report-form";
 import { requireRole } from "@/lib/auth/server-session";
 import { getOpenAttendanceSession, getStationById } from "@/lib/db/repositories";
+import { verifyStationQrToken } from "@/lib/qr/station-qr-token";
 
 interface StationReportPageProps {
   params: Promise<{
     stationId: string;
+  }>;
+  searchParams: Promise<{
+    qr?: string;
   }>;
 }
 
@@ -32,8 +36,14 @@ function ErrorMessage({ message }: { message: string }) {
   );
 }
 
-export default async function StationReportPage({ params }: StationReportPageProps) {
+export default async function StationReportPage({ params, searchParams }: StationReportPageProps) {
   const { stationId } = await params;
+  const { qr } = await searchParams;
+
+  if (!verifyStationQrToken(stationId, qr)) {
+    return <ErrorMessage message="رابط QR غير صالح. امسح رمز المحطة من لوحة المدير مرة أخرى." />;
+  }
+
   const session = await requireRole(["technician", "manager"]);
   const [station, openAttendanceSession] = await Promise.all([
     getStationById(stationId),

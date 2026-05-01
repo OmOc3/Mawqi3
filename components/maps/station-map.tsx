@@ -11,6 +11,7 @@ const minZoom = 3;
 const maxZoom = 18;
 const keyboardStep = 32;
 const keyboardFastStep = 96;
+const searchResultLimit = 5;
 
 export interface StationMapMarker {
   coordinates: Coordinates;
@@ -22,6 +23,7 @@ export interface StationMapMarker {
 interface StationMapProps {
   className?: string;
   defaultCenter?: Coordinates;
+  enableSearch?: boolean;
   markers?: StationMapMarker[];
   onSelect?: (coordinates: Coordinates) => void;
   selected?: Coordinates;
@@ -43,6 +45,12 @@ interface Tile {
   left: number;
   top: number;
   url: string;
+}
+
+interface GeocodeResult {
+  displayName: string;
+  lat: number;
+  lng: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -156,6 +164,7 @@ function formatCoordinate(value: number): string {
 export function StationMap({
   className,
   defaultCenter = defaultMapCenter,
+  enableSearch = true,
   markers = emptyMarkers,
   onSelect,
   selected,
@@ -165,6 +174,10 @@ export function StationMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size>({ height: 320, width: 640 });
   const [currentZoom, setCurrentZoom] = useState(clamp(Math.round(zoom), minZoom, maxZoom));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GeocodeResult[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const initialCenter = useMemo(
     () => normalizeCoordinates(selected ?? markerCenter(markers, defaultCenter)),
     [defaultCenter, markers, selected],
@@ -298,8 +311,116 @@ export function StationMap({
     setCurrentZoom((value) => clamp(value + delta, minZoom, maxZoom));
   }
 
+  async function searchLocation(): Promise<void> {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setSearchError("اكتب اسم منطقة أو عنوان أو معلم واضح.");
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${searchResultLimit}&q=${encodeURIComponent(query)}&accept-language=ar`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Geocoding request failed");
+      }
+
+      const data = (await response.json()) as Array<{
+        display_name?: string;
+        lat?: string;
+        lon?: string;
+      }>;
+
+      const parsedResults = data
+        .map((item) => ({
+          displayName: String(item.display_name ?? ""),
+          lat: Number(item.lat),
+          lng: Number(item.lon),
+        }))
+        .filter((item) => item.displayName.length > 0 && Number.isFinite(item.lat) && Number.isFinite(item.lng))
+        .slice(0, searchResultLimit);
+
+      if (parsedResults.length === 0) {
+        setSearchError("لم يتم العثور على نتائج. جرّب كتابة وصف أدق للمكان.");
+        setSearchResults([]);
+        return;
+      }
+
+      setSearchResults(parsedResults);
+    } catch {
+      setSearchError("تعذر البحث الآن. حاول مرة أخرى بعد قليل.");
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  function focusResult(result: GeocodeResult): void {
+    const nextCenter = normalizeCoordinates({ lat: result.lat, lng: result.lng });
+    setCenter(nextCenter);
+    setCurrentZoom((value) => Math.max(value, 15));
+    if (onSelect) {
+      selectCoordinates(nextCenter);
+    }
+  }
+
   return (
     <div className={cn("space-y-3", className)} dir="rtl">
+      {enableSearch && onSelect ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              aria-label="ابحث عن عنوان المحطة"
+              className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] transition-all duration-200 hover:border-[var(--primary)]/50 focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void searchLocation();
+                }
+              }}
+              placeholder="ابحث بالمنطقة أو الشارع أو اسم المكان"
+              type="text"
+              value={searchQuery}
+            />
+            <button
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--border)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSearching}
+              onClick={() => {
+                void searchLocation();
+              }}
+              type="button"
+            >
+              {isSearching ? "جارٍ البحث..." : "بحث"}
+            </button>
+          </div>
+          {searchError ? <p className="text-xs text-[var(--danger)]">{searchError}</p> : null}
+          {searchResults.length > 0 ? (
+            <div className="max-h-44 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+              <ul className="divide-y divide-[var(--border)]">
+                {searchResults.map((result) => (
+                  <li key={`${result.lat}-${result.lng}-${result.displayName}`}>
+                    <button
+                      className="w-full px-3 py-2 text-right text-xs leading-6 text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                      onClick={() => focusResult(result)}
+                      type="button"
+                    >
+                      {result.displayName}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div
         aria-describedby={onSelect ? instructionsId : undefined}
         aria-label={onSelect ? "خريطة اختيار موقع المحطة" : "خريطة مواقع المحطات"}

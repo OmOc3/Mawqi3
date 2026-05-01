@@ -62,6 +62,8 @@ export function reportFromData(reportId: string, data: Partial<Report>): Report 
     reportId: data.reportId ?? reportId,
     stationId: data.stationId ?? "",
     stationLabel: data.stationLabel ?? "محطة بدون اسم",
+    stationLocation: data.stationLocation,
+    pestTypes: data.pestTypes,
     technicianUid: data.technicianUid ?? "",
     technicianName: data.technicianName ?? "فني غير محدد",
     status: (data.status ?? []) as StatusOption[],

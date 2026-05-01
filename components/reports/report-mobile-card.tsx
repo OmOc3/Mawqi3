@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Report } from "@/types";
 import { ReportPhotoLinks } from "@/components/reports/report-photo-links";
 import { StatusPills } from "@/components/reports/status-pills";
+import { formatPestTypesLine } from "@/lib/reports/report-display";
 
 interface ReportMobileCardProps {
   action?: ReactNode;
@@ -30,6 +31,14 @@ export function ReportMobileCard({ action, photoCount, report, reviewBadge, time
         <div>
           <dt className="font-medium text-[var(--muted)]">الفني</dt>
           <dd className="mt-1 text-[var(--foreground)]">{report.technicianName}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-[var(--muted)]">الموقع</dt>
+          <dd className="mt-1 text-[var(--foreground)]">{report.stationLocation ?? "—"}</dd>
+        </div>
+        <div>
+          <dt className="font-medium text-[var(--muted)]">برنامج التنفيذ</dt>
+          <dd className="mt-1 text-[var(--foreground)]">{formatPestTypesLine(report)}</dd>
         </div>
         <div>
           <dt className="font-medium text-[var(--muted)]">الحالة</dt>

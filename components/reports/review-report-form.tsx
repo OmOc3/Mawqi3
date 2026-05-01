@@ -83,6 +83,14 @@ export function ReviewReportForm({ instanceId = "table", reportId, reviewNotes, 
           maxLength={500}
           {...form.register("reviewNotes")}
         />
+        <p className="text-xs text-[var(--muted)]">
+          عند اختيار «مرفوض» يجب إدخال سبب الرفض في الملاحظات (3 أحرف على الأقل). عند «تمت المراجعة» يمكن اعتبارها موافقة.
+        </p>
+        {form.formState.errors.reviewNotes?.message ? (
+          <p className="text-xs font-medium text-[var(--danger)]" role="alert">
+            {form.formState.errors.reviewNotes.message}
+          </p>
+        ) : null}
       </div>
 
       <Button

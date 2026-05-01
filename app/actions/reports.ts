@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/server-session";
-import { uploadReportImageToCloudinary } from "@/lib/cloudinary/report-images";
-import { getOpenAttendanceSession, getStationById, submitReportRecord, updateReportReviewRecord } from "@/lib/db/repositories";
-import { reviewReportSchema, submitReportSchema } from "@/lib/validation/reports";
+import { getOpenAttendanceSession, getReportById, getStationById, submitReportRecord, updateReportReviewRecord, updateReportSubmissionByReviewer } from "@/lib/db/repositories";
+import { editSubmittedReportSchema, reviewReportSchema, submitReportSchema } from "@/lib/validation/reports";
+import { storeReportImage } from "@/lib/reports/store-report-image";
 import { writeAuditLog } from "@/lib/audit";
 
 export interface SubmitReportActionResult {
@@ -15,6 +15,12 @@ export interface SubmitReportActionResult {
 }
 
 export interface ReviewReportActionResult {
+  error?: string;
+  fieldErrors?: Record<string, string[] | undefined>;
+  success?: boolean;
+}
+
+export interface EditSubmittedReportActionResult {
   error?: string;
   fieldErrors?: Record<string, string[] | undefined>;
   success?: boolean;
@@ -53,6 +59,7 @@ export async function submitStationReportAction(
   const parsed = submitReportSchema.safeParse({
     stationId,
     status: stringArray(formData, "status"),
+    pestTypes: stringArray(formData, "pestTypes"),
     notes: optionalString(formData, "notes"),
     beforePhoto: getImageFile(formData, "beforePhoto"),
     afterPhoto: getImageFile(formData, "afterPhoto"),
@@ -92,22 +99,22 @@ export async function submitStationReportAction(
     const otherPhotoFiles = parsed.data.otherPhotos ?? [];
     const [beforePhotoUrl, afterPhotoUrl, stationPhotoUrl, duringPhotoUrls, otherPhotoUrls] = await Promise.all([
       parsed.data.beforePhoto
-        ? uploadReportImageToCloudinary(parsed.data.beforePhoto, parsed.data.stationId, `${clientReportId}-before`)
+        ? storeReportImage(parsed.data.beforePhoto, parsed.data.stationId, `${clientReportId}-before`)
         : Promise.resolve(undefined),
       parsed.data.afterPhoto
-        ? uploadReportImageToCloudinary(parsed.data.afterPhoto, parsed.data.stationId, `${clientReportId}-after`)
+        ? storeReportImage(parsed.data.afterPhoto, parsed.data.stationId, `${clientReportId}-after`)
         : Promise.resolve(undefined),
       parsed.data.stationPhoto
-        ? uploadReportImageToCloudinary(parsed.data.stationPhoto, parsed.data.stationId, `${clientReportId}-station`)
+        ? storeReportImage(parsed.data.stationPhoto, parsed.data.stationId, `${clientReportId}-station`)
         : Promise.resolve(undefined),
       Promise.all(
         duringPhotoFiles.map((file, index) =>
-          uploadReportImageToCloudinary(file, parsed.data.stationId, `${clientReportId}-during-${index + 1}`),
+          storeReportImage(file, parsed.data.stationId, `${clientReportId}-during-${index + 1}`),
         ),
       ),
       Promise.all(
         otherPhotoFiles.map((file, index) =>
-          uploadReportImageToCloudinary(file, parsed.data.stationId, `${clientReportId}-other-${index + 1}`),
+          storeReportImage(file, parsed.data.stationId, `${clientReportId}-other-${index + 1}`),
         ),
       ),
     ]);
@@ -127,6 +134,7 @@ export async function submitStationReportAction(
       stationId: parsed.data.stationId,
       technicianName: session.user.displayName,
       status: parsed.data.status,
+      pestTypes: parsed.data.pestTypes,
       notes: parsed.data.notes,
       photos,
       photoPaths: {
@@ -157,8 +165,9 @@ export async function addReviewReportAction(
   formData: FormData,
 ): Promise<ReviewReportActionResult> {
   const session = await requireRole(["manager", "supervisor"]);
+  const reviewStatusRaw = formData.get("reviewStatus");
   const parsed = reviewReportSchema.safeParse({
-    reviewStatus: optionalString(formData, "reviewStatus"),
+    reviewStatus: typeof reviewStatusRaw === "string" ? reviewStatusRaw : undefined,
     reviewNotes: optionalString(formData, "reviewNotes"),
   });
 
@@ -193,6 +202,59 @@ export async function addReviewReportAction(
 
   revalidatePath("/dashboard/manager/reports");
   revalidatePath("/dashboard/supervisor/reports");
+  revalidatePath("/dashboard/manager/tasks");
+  revalidatePath("/dashboard/supervisor/tasks");
+
+  return { success: true };
+}
+
+export async function editSubmittedReportAction(
+  reportId: string,
+  formData: FormData,
+): Promise<EditSubmittedReportActionResult> {
+  const session = await requireRole(["manager", "supervisor"]);
+  const parsed = editSubmittedReportSchema.safeParse({
+    notes: optionalString(formData, "notes"),
+    status: stringArray(formData, "status"),
+    pestTypes: stringArray(formData, "pestTypes"),
+  });
+
+  if (!parsed.success) {
+    return {
+      error: "تحقق من بيانات التعديل وحاول مرة أخرى.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const existing = await getReportById(reportId);
+
+  if (!existing) {
+    return { error: "التقرير غير موجود." };
+  }
+
+  const canSupervisorEdit = session.role === "supervisor" && existing.reviewStatus === "pending";
+  const canManagerEdit = session.role === "manager";
+
+  if (!canSupervisorEdit && !canManagerEdit) {
+    return { error: "لا يمكن تعديل التقرير بعد اعتماد المراجعة." };
+  }
+
+  const updated = await updateReportSubmissionByReviewer(reportId, {
+    actorUid: session.uid,
+    actorRole: session.role,
+    notes: parsed.data.notes,
+    status: parsed.data.status,
+    pestTypes: parsed.data.pestTypes,
+  });
+
+  if (!updated) {
+    return { error: "تعذر حفظ التعديلات." };
+  }
+
+  revalidatePath("/dashboard/manager/reports");
+  revalidatePath("/dashboard/supervisor/reports");
+  revalidatePath("/dashboard/manager/tasks");
+  revalidatePath("/dashboard/supervisor/tasks");
 
   return { success: true };
 }

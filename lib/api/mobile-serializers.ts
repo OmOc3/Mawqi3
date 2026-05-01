@@ -29,12 +29,14 @@ export interface MobileStationResponse {
 export interface MobileReportResponse {
   clientReportId?: string;
   notes?: string;
+  pestTypes?: Report["pestTypes"];
   photoCount: number;
   reportId: string;
   reviewNotes?: string;
   reviewStatus: Report["reviewStatus"];
   stationId: string;
   stationLabel: string;
+  stationLocation?: string;
   status: Report["status"];
   submittedAt?: string;
   technicianName: string;
@@ -115,6 +117,12 @@ export function mobileStationResponse(
 }
 
 export function mobileReportResponse(report: Report): MobileReportResponse {
+  const galleryCount = report.photos?.length ?? 0;
+  const legacyCount =
+    Number(Boolean(report.photoPaths?.before)) +
+    Number(Boolean(report.photoPaths?.after)) +
+    Number(Boolean(report.photoPaths?.station));
+
   return {
     reportId: report.reportId,
     stationId: report.stationId,
@@ -123,13 +131,12 @@ export function mobileReportResponse(report: Report): MobileReportResponse {
     technicianName: report.technicianName,
     status: report.status,
     reviewStatus: report.reviewStatus,
-    photoCount:
-      Number(Boolean(report.photoPaths?.before)) +
-      Number(Boolean(report.photoPaths?.after)) +
-      Number(Boolean(report.photoPaths?.station)),
+    photoCount: galleryCount > 0 ? galleryCount : legacyCount,
     ...(report.clientReportId ? { clientReportId: report.clientReportId } : {}),
     ...(report.notes ? { notes: report.notes } : {}),
     ...(report.reviewNotes ? { reviewNotes: report.reviewNotes } : {}),
+    ...(report.stationLocation ? { stationLocation: report.stationLocation } : {}),
+    ...(report.pestTypes?.length ? { pestTypes: report.pestTypes } : {}),
     ...(timestampToIso(report.submittedAt) ? { submittedAt: timestampToIso(report.submittedAt) } : {}),
   };
 }

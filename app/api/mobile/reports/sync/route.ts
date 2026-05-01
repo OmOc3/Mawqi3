@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { mobileApiErrorResponse } from "@/lib/api/mobile";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
-import { uploadReportImageToCloudinary } from "@/lib/cloudinary/report-images";
+import { storeReportImage } from "@/lib/reports/store-report-image";
 import { getOpenAttendanceSession, getStationById } from "@/lib/db/repositories";
 import { AppError } from "@/lib/errors";
 import { submitReportWithAdmin } from "@/lib/reports/submit-report";
@@ -105,8 +105,10 @@ export async function POST(
     }
 
     const stationPhotoUrl = inspectionPhoto
-      ? await uploadReportImageToCloudinary(inspectionPhoto, parsed.data.stationId, parsed.data.clientReportId)
+      ? await storeReportImage(inspectionPhoto, parsed.data.stationId, parsed.data.clientReportId)
       : undefined;
+
+    const pestTypes = parsed.data.pestTypes ?? ["others"];
 
     const result = await submitReportWithAdmin({
       actorUid: session.uid,
@@ -115,6 +117,7 @@ export async function POST(
       stationId: parsed.data.stationId,
       technicianName: session.user.displayName,
       status: parsed.data.status,
+      pestTypes,
       notes: parsed.data.notes,
       ...(stationPhotoUrl
         ? {

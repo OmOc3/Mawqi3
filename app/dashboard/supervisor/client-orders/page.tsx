@@ -4,7 +4,6 @@ import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
 import { EmptyState } from "@/components/ui/empty-state";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { requireRole } from "@/lib/auth/server-session";
 import { getStationLocations, listClientOrders, listAttendanceSessionsForAdmin } from "@/lib/db/repositories";
 import type { AppTimestamp, ClientOrder, ClientOrderStatus } from "@/types";
@@ -39,13 +38,6 @@ function toSerializableOrder(order: ClientOrder): SerializableOrder {
 
 export const metadata: Metadata = {
   title: "طلبات العملاء - المشرف",
-};
-
-const statusConfig: Record<ClientOrderStatus, { label: string; tone: "pending" | "active" | "reviewed" | "rejected" }> = {
-  pending: { label: "جديد", tone: "pending" },
-  in_progress: { label: "قيد التنفيذ", tone: "active" },
-  completed: { label: "مكتمل", tone: "reviewed" },
-  cancelled: { label: "ملغي", tone: "rejected" },
 };
 
 const statusOptions: { value: ClientOrderStatus; label: string }[] = [
@@ -84,11 +76,6 @@ function findAttendanceForOrder(order: ClientOrder, attendanceLogs: Array<{ tech
     clockInAt: stationAttendance.clockInAt?.toDate().toISOString() ?? null,
     clockOutAt: stationAttendance.clockOutAt?.toDate().toISOString() ?? null,
   };
-}
-
-function OrderStatusBadge({ status }: { status: ClientOrderStatus }) {
-  const config = statusConfig[status];
-  return <StatusBadge tone={config.tone}>{config.label}</StatusBadge>;
 }
 
 function OrderCard({ order, location, attendance }: { order: ClientOrder; location: string; attendance: AttendanceInfo | null }) {

@@ -150,7 +150,7 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
             </dl>
             {station.coordinates ? (
               <div className="mt-6 space-y-3">
-                <h3 className="text-base font-semibold text-[var(--foreground)]">موقع المحطة على الخريطة</h3>
+                <h3 className="text-base font-semibold text-[var(--foreground)]">موقع المحطة على الخريطة (OpenStreetMap)</h3>
                 <StationMap
                   markers={[
                     {
@@ -162,7 +162,15 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
                   zoom={16}
                 />
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4 text-sm text-[var(--muted)]">
+                <p className="font-semibold text-[var(--foreground)]">الخريطة غير متاحة</p>
+                <p className="mt-2 leading-6">
+                  لم يتم حفظ إحداثيات GPS لهذه المحطة. يمكنك إضافتها من «تعديل المحطة» لعرض الموقع على خريطة OpenStreetMap. وصف
+                  الموقع النصي الحالي: <span className="text-[var(--foreground)]">{station.location}</span>
+                </p>
+              </div>
+            )}
             {station.photoUrls?.length ? (
               <div className="mt-6">
                 <h3 className="text-base font-semibold text-[var(--foreground)]">صور المحطة</h3>

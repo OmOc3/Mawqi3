@@ -5,13 +5,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ReportMobileCard } from "@/components/reports/report-mobile-card";
 import { ReportPhotoLinks } from "@/components/reports/report-photo-links";
 import { ReportsFilterForm, type ReportsFilterValues } from "@/components/reports/reports-filter-form";
+import { EditSubmittedReportForm } from "@/components/reports/edit-submitted-report-form";
 import { ReviewReportForm } from "@/components/reports/review-report-form";
 import { StatusPills } from "@/components/reports/status-pills";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
+import { formatPestTypesLine } from "@/lib/reports/report-display";
 import { listReports } from "@/lib/db/repositories";
 import { decodeReportCursor, encodeReportCursor } from "@/lib/pagination/report-cursor";
-import type { AppTimestamp, Report } from "@/types";
+import type { AppTimestamp, Report, UserRole } from "@/types";
 
 interface ManagerReportsPageProps {
   searchParams: Promise<{
@@ -129,9 +131,13 @@ function buildExportHref(filters: ReportsFilterValues): string {
   return `/api/reports/export${params.size > 0 ? `?${params.toString()}` : ""}`;
 }
 
+function canEditReportSubmission(role: UserRole, report: Report): boolean {
+  return role === "manager" || (role === "supervisor" && report.reviewStatus === "pending");
+}
+
 export default async function ManagerReportsPage({ searchParams }: ManagerReportsPageProps) {
   const params = await searchParams;
-  await requireRole(["manager"]);
+  const session = await requireRole(["manager"]);
 
   const filters: ReportsFilterValues = {
     stationId: params.stationId ?? "",
@@ -203,12 +209,19 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
               {reports.map((report) => (
                 <ReportMobileCard
                   action={
-                    <ReviewReportForm
-                      instanceId="mobile"
-                      reportId={report.reportId}
-                      reviewNotes={report.reviewNotes}
-                      reviewStatus={report.reviewStatus}
-                    />
+                    <div className="space-y-5">
+                      <EditSubmittedReportForm
+                        canEdit={canEditReportSubmission(session.role, report)}
+                        instanceId="mobile"
+                        report={report}
+                      />
+                      <ReviewReportForm
+                        instanceId="mobile"
+                        reportId={report.reportId}
+                        reviewNotes={report.reviewNotes}
+                        reviewStatus={report.reviewStatus}
+                      />
+                    </div>
                   }
                   key={report.reportId}
                   photoCount={photoCount(report)}
@@ -230,6 +243,12 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                     المحطة
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    الموقع
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    برنامج التنفيذ
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     الفني
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -248,6 +267,14 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                   <tr className="align-top transition-colors even:bg-[var(--surface-subtle)] hover:bg-[var(--primary-soft)]" key={report.reportId}>
                     <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(report.submittedAt)}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]">{report.stationLabel}</td>
+                    <td className="max-w-[200px] px-4 py-3 text-sm text-[var(--muted)]">
+                      <span className="line-clamp-2">{report.stationLocation ?? "—"}</span>
+                    </td>
+                    <td className="max-w-[220px] px-4 py-3 text-sm text-[var(--foreground)]">
+                      <span className="line-clamp-2" title={formatPestTypesLine(report)}>
+                        {formatPestTypesLine(report)}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm text-[var(--muted)]">{report.technicianName}</td>
                     <td className="px-4 py-3">
                       <StatusPills status={report.status} />
@@ -262,6 +289,10 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                           <p className="font-medium text-[var(--foreground)]">ملاحظات الفني</p>
                           <p className="mt-1">{report.notes ?? "لا توجد ملاحظات."}</p>
                           <ReportPhotoLinks photoCount={photoCount(report)} reportId={report.reportId} />
+                          <EditSubmittedReportForm
+                            canEdit={canEditReportSubmission(session.role, report)}
+                            report={report}
+                          />
                           <ReviewReportForm
                             reportId={report.reportId}
                             reviewNotes={report.reviewNotes}

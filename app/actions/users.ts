@@ -10,6 +10,7 @@ import { user as usersTable } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createUserSchema, updateUserAccessCodeSchema, updateUserRoleSchema, updateUserProfileSchema } from "@/lib/validation/users";
 import { writeAuditLog } from "@/lib/audit";
+import { recordUserLifecycleAfterActiveChange } from "@/lib/users/user-lifecycle";
 
 export interface UserActionResult {
   createdUid?: string;
@@ -77,6 +78,7 @@ export async function createUserAccountAction(formData: FormData): Promise<UserA
 
     revalidatePath("/dashboard/manager/users");
     revalidatePath("/dashboard/manager/client-orders");
+    revalidatePath("/dashboard/manager");
 
     return {
       createdUid,
@@ -87,7 +89,10 @@ export async function createUserAccountAction(formData: FormData): Promise<UserA
   }
 }
 
-export async function toggleUserActiveAction(targetUid: string): Promise<UserActionResult> {
+export async function toggleUserActiveAction(
+  targetUid: string,
+  intent: "activate" | "deactivate",
+): Promise<UserActionResult> {
   const session = await requireRole(["manager"]);
 
   if (targetUid === session.uid) {
@@ -100,7 +105,16 @@ export async function toggleUserActiveAction(targetUid: string): Promise<UserAct
     return { error: "المستخدم غير موجود" };
   }
 
-  const nextIsActive = !user.isActive;
+  const nextIsActive = intent === "activate";
+
+  if (nextIsActive && user.isActive) {
+    return { success: true };
+  }
+
+  if (!nextIsActive && !user.isActive) {
+    return { success: true };
+  }
+
   const requestHeaders = await headers();
 
   try {
@@ -122,6 +136,8 @@ export async function toggleUserActiveAction(targetUid: string): Promise<UserAct
     return { error: "تعذر تحديث حالة المستخدم." };
   }
 
+  await recordUserLifecycleAfterActiveChange(targetUid, session.uid, nextIsActive);
+
   await writeAuditLog({
     actorUid: session.uid,
     actorRole: session.role,
@@ -130,11 +146,14 @@ export async function toggleUserActiveAction(targetUid: string): Promise<UserAct
     entityId: targetUid,
     metadata: {
       isActive: nextIsActive,
+      previousIsActive: user.isActive,
       previousRole: user.role,
+      source: "web",
     },
   });
 
   revalidatePath("/dashboard/manager/users");
+  revalidatePath("/dashboard/manager");
 
   return { success: true };
 }
@@ -188,6 +207,7 @@ export async function updateUserRoleAction(targetUid: string, formData: FormData
   });
 
   revalidatePath("/dashboard/manager/users");
+  revalidatePath("/dashboard/manager");
 
   return { success: true };
 }
@@ -240,6 +260,7 @@ export async function updateUserAccessCodeAction(targetUid: string, formData: Fo
   });
 
   revalidatePath("/dashboard/manager/users");
+  revalidatePath("/dashboard/manager");
 
   return { success: true };
 }

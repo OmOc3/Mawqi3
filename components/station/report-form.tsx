@@ -6,9 +6,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { submitStationReportAction, type SubmitReportActionResult } from "@/app/actions/reports";
 import { Button } from "@/components/ui/button";
-import { statusOptionLabels } from "@/lib/i18n";
+import { pestTypeLabels, statusOptionLabels } from "@/lib/i18n";
 import { submitReportSchema, type SubmitReportValues } from "@/lib/validation/reports";
-import type { StatusOption } from "@/types";
+import type { PestTypeOption, StatusOption } from "@/types";
+import { pestTypeOptions } from "@ecopest/shared/constants";
 
 const statusOptions = Object.keys(statusOptionLabels) as StatusOption[];
 
@@ -24,6 +25,10 @@ function toFormData(values: SubmitReportValues): FormData {
 
   values.status.forEach((status) => {
     formData.append("status", status);
+  });
+
+  values.pestTypes.forEach((pest) => {
+    formData.append("pestTypes", pest);
   });
 
   if (values.notes) {
@@ -68,6 +73,7 @@ export function ReportForm({ blockedReason, canSubmit = true, stationId, station
     defaultValues: {
       stationId,
       status: [],
+      pestTypes: [] as PestTypeOption[],
       notes: "",
     },
   });
@@ -108,6 +114,7 @@ export function ReportForm({ blockedReason, canSubmit = true, stationId, station
   }
 
   const statusError = form.formState.errors.status?.message ?? getFieldError(actionResult, "status");
+  const pestTypesError = form.formState.errors.pestTypes?.message ?? getFieldError(actionResult, "pestTypes");
   const notesError = form.formState.errors.notes?.message ?? getFieldError(actionResult, "notes");
   const duringPhotosError = form.formState.errors.duringPhotos?.message ?? getFieldError(actionResult, "duringPhotos");
   const otherPhotosError = form.formState.errors.otherPhotos?.message ?? getFieldError(actionResult, "otherPhotos");
@@ -127,6 +134,38 @@ export function ReportForm({ blockedReason, canSubmit = true, stationId, station
       ) : null}
 
       <input type="hidden" value={stationId} {...form.register("stationId")} />
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+        <h2 className="text-lg font-bold text-[var(--foreground)]">برنامج التنفيذ</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">اختر نوعاً واحداً أو أكثر من أنواع الآفات المستهدفة في هذا الموقع.</p>
+      </div>
+
+      <fieldset
+        aria-describedby={pestTypesError ? "pest-types-error" : undefined}
+        aria-invalid={Boolean(pestTypesError)}
+        className="space-y-2"
+      >
+        <legend className="mb-2 text-base font-bold text-[var(--foreground)]">أنواع الآفات (متعدد)</legend>
+        {pestTypeOptions.map((pest) => (
+          <label
+            className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-teal-300 hover:bg-teal-50 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50 dark:hover:bg-teal-900/30 dark:has-[:checked]:bg-teal-900/30"
+            key={pest}
+          >
+            <input
+              className="h-5 w-5 rounded accent-teal-600"
+              type="checkbox"
+              value={pest}
+              {...form.register("pestTypes")}
+            />
+            <span className="text-base font-medium text-[var(--foreground)]">{pestTypeLabels[pest]}</span>
+          </label>
+        ))}
+        {pestTypesError ? (
+          <p className="text-sm font-medium text-[var(--danger)]" id="pest-types-error" role="alert">
+            {pestTypesError}
+          </p>
+        ) : null}
+      </fieldset>
 
       <fieldset
         aria-describedby={statusError ? "status-error" : undefined}

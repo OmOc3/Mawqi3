@@ -6,7 +6,6 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement, typ
 import { LogoutButton } from "@/components/auth/logout-button";
 import { BrandMark } from "@/components/layout/brand";
 import { ReportNotificationListener } from "@/components/notifications/report-notification-listener";
-import { ThemeIconToggle } from "@/components/theme/theme-icon-toggle";
 import { cn } from "@/lib/utils";
 
 interface DashboardNavProps {
@@ -217,25 +216,6 @@ function isItemActive(pathname: string, href: string): boolean {
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function UserAvatar({ isSidebarOpen, role }: { isSidebarOpen: boolean; role: DashboardNavProps["role"] }) {
-  const roleLabel = role === "manager" ? "Manager" : "Supervisor";
-
-  return (
-    <div className={cn("flex items-center gap-3", isSidebarOpen ? "justify-start" : "justify-center")}>
-      <div
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-teal-400/30 bg-teal-500/15 text-sm font-bold text-teal-200 shadow-inset-border"
-        title={roleLabel}
-      >
-        EP
-      </div>
-      <div className={cn("min-w-0", isSidebarOpen ? "block" : "sr-only")}>
-        <p className="truncate text-sm font-semibold text-[var(--sidebar-text)]">EcoPest</p>
-        <p className="truncate text-xs text-[var(--sidebar-muted)]">{roleLabel}</p>
-      </div>
-    </div>
-  );
 }
 
 export function DashboardNav({ role }: DashboardNavProps) {

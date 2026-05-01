@@ -1,8 +1,15 @@
-import type { SharedReviewStatus, SharedStatusOption, SharedUserRole } from "@ecopest/shared/constants";
+import type {
+  SharedPestTypeOption,
+  SharedReviewStatus,
+  SharedStatusOption,
+  SharedUserRole,
+} from "@ecopest/shared/constants";
 
 export type UserRole = SharedUserRole;
 
 export type StatusOption = SharedStatusOption;
+
+export type PestTypeOption = SharedPestTypeOption;
 
 export interface AppTimestamp {
   seconds: number;
@@ -32,6 +39,10 @@ export interface AppUser {
   isActive: boolean;
   image?: string | null;
   passwordChangedAt?: AppTimestamp;
+  deactivatedAt?: AppTimestamp;
+  deactivatedBy?: string;
+  reactivatedAt?: AppTimestamp;
+  reactivatedBy?: string;
 }
 
 export interface Station {
@@ -58,6 +69,10 @@ export interface Report {
   reportId: string;
   stationId: string;
   stationLabel: string;
+  /** Snapshot of station address/description at submission time. */
+  stationLocation?: string;
+  /** Execution program — pest categories (multi-select). */
+  pestTypes?: PestTypeOption[];
   technicianUid: string;
   technicianName: string;
   status: StatusOption[];

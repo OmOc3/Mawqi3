@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/server-session";
 import { getStationLocations, listReports } from "@/lib/db/repositories";
+import { pestTypeLabels } from "@/lib/i18n";
 import {
   csvRow,
   defaultExportDateFrom,
   REPORT_EXPORT_MAX_ROWS,
   statusLabelsForCsv,
 } from "@/lib/reports/export";
+import type { Report } from "@/types";
 
 export const runtime = "nodejs";
 
@@ -60,17 +62,50 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const stationLocations = await getStationLocations(reports.map((report) => report.stationId));
-  const header = ["رقم التقرير", "المحطة", "الموقع", "الفني", "الحالة", "ملاحظات", "التاريخ", "وقت الإرسال"];
+
+  function pestLabelsForCsv(types: Report["pestTypes"]): string {
+    if (!types?.length) {
+      return "";
+    }
+
+    return types.map((p) => pestTypeLabels[p]).join("؛ ");
+  }
+
+  function reviewStatusArabic(status: Report["reviewStatus"]): string {
+    return (
+      {
+        pending: "بانتظار المراجعة",
+        reviewed: "موافق",
+        rejected: "مرفوض",
+      } as const
+    )[status];
+  }
+
+  const header = [
+    "رقم التقرير",
+    "المحطة",
+    "الموقع",
+    "أنواع الآفات",
+    "الفني",
+    "الحالة",
+    "ملاحظات",
+    "حالة المراجعة",
+    "التاريخ",
+    "وقت الإرسال",
+  ];
   const rows = reports.map((report) => {
     const submittedAt = report.submittedAt?.toDate();
+    const locationText = report.stationLocation ?? stationLocations.get(report.stationId) ?? "";
 
     return [
       report.reportId,
       report.stationLabel,
-      stationLocations.get(report.stationId) ?? "",
+      locationText,
+      pestLabelsForCsv(report.pestTypes),
       report.technicianName,
       statusLabelsForCsv(report.status),
       report.notes ?? "",
+      reviewStatusArabic(report.reviewStatus),
       submittedAt ? new Intl.DateTimeFormat("ar-EG", { dateStyle: "medium" }).format(submittedAt) : "",
       submittedAt ? new Intl.DateTimeFormat("ar-EG", { timeStyle: "short" }).format(submittedAt) : "",
     ];

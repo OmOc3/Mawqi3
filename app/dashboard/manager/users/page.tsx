@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Fragment } from "react";
-import { toggleUserActiveAction } from "@/app/actions/users";
 import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { CreateUserForm } from "@/components/users/create-user-form";
 import { UserAccessCodeForm } from "@/components/users/user-access-code-form";
 import { UserProfileForm } from "@/components/users/user-profile-form";
+import { UserActivateToggle } from "@/components/users/user-activate-toggle";
 import { UserRoleForm } from "@/components/users/user-role-form";
 import { requireRole } from "@/lib/auth/server-session";
 import { roleLabels } from "@/lib/i18n";
@@ -109,30 +109,20 @@ function StatTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-function UserTools({
-  disabled,
-  toggleActive,
-  user,
-}: {
-  disabled: boolean;
-  toggleActive: () => Promise<void>;
-  user: AppUser;
-}) {
+function UserTools({ disabled, user }: { disabled: boolean; user: AppUser }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_minmax(220px,0.8fr)_minmax(240px,0.9fr)]">
       <UserProfileForm embedded user={{ uid: user.uid, displayName: user.displayName, image: user.image }} disabled={disabled} />
       <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
         <h3 className="text-sm font-bold text-[var(--foreground)]">الدور والحالة</h3>
         <UserRoleForm disabled={disabled} targetUid={user.uid} value={user.role} />
-        <form action={toggleActive}>
-          <button
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)] disabled:cursor-not-allowed disabled:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-            disabled={disabled}
-            type="submit"
-          >
-            {user.isActive ? "تعطيل المستخدم" : "تفعيل المستخدم"}
-          </button>
-        </form>
+        <UserActivateToggle disabled={disabled} displayName={user.displayName} isActive={user.isActive} targetUid={user.uid} />
+        {!user.isActive && user.deactivatedAt ? (
+          <p className="text-xs text-[var(--muted)]">
+            آخر تعطيل: {formatTimestamp(user.deactivatedAt)}
+            {user.deactivatedBy ? ` · بواسطة: ${user.deactivatedBy}` : null}
+          </p>
+        ) : null}
         {disabled ? <p className="text-xs leading-5 text-[var(--muted)]">لا يمكنك تعطيل حسابك أو تغيير دورك الحالي.</p> : null}
       </div>
       <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -292,11 +282,6 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
                 {filteredUsers.map((user) => {
                   const isCurrentUser = user.uid === session.uid;
 
-                  async function toggleActive(): Promise<void> {
-                    "use server";
-                    await toggleUserActiveAction(user.uid);
-                  }
-
                   return (
                     <Fragment key={user.uid}>
                       <tr className="align-top transition-colors hover:bg-[var(--surface-subtle)]" key={user.uid}>
@@ -321,7 +306,7 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
                               إدارة حساب {user.displayName}
                             </summary>
                             <div className="border-t border-[var(--border-subtle)] p-4">
-                              <UserTools disabled={isCurrentUser} toggleActive={toggleActive} user={user} />
+                              <UserTools disabled={isCurrentUser} user={user} />
                             </div>
                           </details>
                         </td>
@@ -336,11 +321,6 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
           <div className="grid gap-3 lg:hidden">
             {filteredUsers.map((user) => {
               const isCurrentUser = user.uid === session.uid;
-
-              async function toggleActive(): Promise<void> {
-                "use server";
-                await toggleUserActiveAction(user.uid);
-              }
 
               return (
                 <article className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-control" key={user.uid}>
@@ -363,7 +343,7 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
                       إدارة الحساب
                     </summary>
                     <div className="border-t border-[var(--border-subtle)] p-3">
-                      <UserTools disabled={isCurrentUser} toggleActive={toggleActive} user={user} />
+                      <UserTools disabled={isCurrentUser} user={user} />
                     </div>
                   </details>
                 </article>

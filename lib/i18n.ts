@@ -1,11 +1,13 @@
 import { BRAND } from "@/lib/brand";
 import {
+  pestTypeLabels as sharedPestTypeLabels,
   roleLabels as sharedRoleLabels,
   roleLabelsEnglish as sharedRoleLabelsEnglish,
   statusOptionLabels as sharedStatusOptionLabels,
   statusOptionLabelsEnglish as sharedStatusOptionLabelsEnglish,
 } from "@ecopest/shared/constants";
 
+export const pestTypeLabels = sharedPestTypeLabels;
 export const statusOptionLabels = sharedStatusOptionLabels;
 export const statusOptionLabelsEnglish = sharedStatusOptionLabelsEnglish;
 export const roleLabels = sharedRoleLabels;

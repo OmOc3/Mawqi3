@@ -4,6 +4,7 @@ import { mobileUserResponse, type MobileUserResponse } from "@/lib/api/mobile-se
 import { auth } from "@/lib/auth/better-auth";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
 import { writeAuditLog } from "@/lib/audit";
+import { recordUserLifecycleAfterActiveChange } from "@/lib/users/user-lifecycle";
 import { getAppUser } from "@/lib/db/repositories";
 import { db } from "@/lib/db/client";
 import { user as usersTable } from "@/lib/db/schema";
@@ -185,6 +186,8 @@ export async function PATCH(
           headers: request.headers,
         });
       }
+
+      await recordUserLifecycleAfterActiveChange(uid, session.uid, parsedActive.data.isActive);
 
       await writeAuditLog({
         actorUid: session.uid,

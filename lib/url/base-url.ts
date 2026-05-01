@@ -2,6 +2,7 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { getServerEnv } from "@/lib/env/server";
+import { signStationQrToken } from "@/lib/qr/station-qr-token";
 
 function normalizeBaseUrl(value: string): string {
   return value.replace(/\/+$/, "");
@@ -52,6 +53,7 @@ export async function getAppBaseUrl(): Promise<string> {
 
 export async function buildStationReportUrl(stationId: string): Promise<string> {
   const baseUrl = await getAppBaseUrl();
+  const token = signStationQrToken(stationId);
 
-  return `${baseUrl}/station/${encodeURIComponent(stationId)}/report`;
+  return `${baseUrl}/station/${encodeURIComponent(stationId)}/report?qr=${encodeURIComponent(token)}`;
 }

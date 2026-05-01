@@ -52,6 +52,10 @@ export function appUserFromAuthUser(row: AuthUserRow): AppUser {
     isActive: row.banned !== true,
     image: row.image ?? undefined,
     passwordChangedAt: toAppTimestamp(row.passwordChangedAt),
+    deactivatedAt: toAppTimestamp(row.deactivatedAt),
+    deactivatedBy: row.deactivatedBy ?? undefined,
+    reactivatedAt: toAppTimestamp(row.reactivatedAt),
+    reactivatedBy: row.reactivatedBy ?? undefined,
   };
 }
 
@@ -102,6 +106,7 @@ export function reportFromRow(
     editedAt: Date | null;
     editedBy: string | null;
     notes: string | null;
+    pestTypes: Report["pestTypes"] | null;
     photoPaths: Report["photoPaths"] | null;
     reportId: string;
     reviewNotes: string | null;
@@ -110,6 +115,7 @@ export function reportFromRow(
     reviewedBy: string | null;
     stationId: string;
     stationLabel: string;
+    stationLocation: string | null;
     submittedAt: Date;
     technicianName: string;
     technicianUid: string;
@@ -120,6 +126,8 @@ export function reportFromRow(
     reportId: row.reportId,
     stationId: row.stationId,
     stationLabel: row.stationLabel,
+    stationLocation: row.stationLocation ?? undefined,
+    pestTypes: row.pestTypes && row.pestTypes.length > 0 ? row.pestTypes : undefined,
     technicianUid: row.technicianUid,
     technicianName: row.technicianName,
     status,

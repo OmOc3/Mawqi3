@@ -45,6 +45,7 @@ import type {
   DailyWorkReport,
   Report,
   ReportPhoto,
+  PestTypeOption,
   ReportPhotoCategory,
   ReportPhotoPaths,
   Station,
@@ -100,6 +101,7 @@ export interface SubmitReportInput {
   actorUid: string;
   clientReportId?: string;
   notes?: string;
+  pestTypes: PestTypeOption[];
   photos?: SubmitReportPhotoInput[];
   photoPaths?: ReportPhotoPaths;
   reportId?: string;
@@ -1530,6 +1532,8 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       reportId,
       stationId: input.stationId,
       stationLabel,
+      stationLocation: station.location,
+      pestTypes: input.pestTypes,
       technicianUid: input.actorUid,
       technicianName: input.technicianName,
       clientReportId: input.clientReportId,
@@ -1575,6 +1579,7 @@ export async function submitReportRecord(input: SubmitReportInput): Promise<Subm
       metadata: {
         stationId: input.stationId,
         status: input.status,
+        pestTypes: input.pestTypes,
         hasPhotos: Boolean(input.photoPaths && Object.keys(input.photoPaths).length > 0),
         source: input.clientReportId ? "mobile" : "web",
       },
@@ -1822,9 +1827,9 @@ export async function updateReportReviewRecord(
     reviewedBy: string;
   },
 ): Promise<Report | null> {
-  const report = await getReportById(reportId);
+  const existing = await getReportById(reportId);
 
-  if (!report) {
+  if (!existing) {
     return null;
   }
 
@@ -1838,7 +1843,61 @@ export async function updateReportReviewRecord(
     })
     .where(eq(reports.reportId, reportId));
 
-  return report;
+  return getReportById(reportId);
+}
+
+export interface UpdateReportSubmissionInput {
+  actorRole: UserRole;
+  actorUid: string;
+  /** When omitted, existing notes are kept. */
+  notes?: string;
+  pestTypes: PestTypeOption[];
+  status: StatusOption[];
+}
+
+export async function updateReportSubmissionByReviewer(
+  reportId: string,
+  input: UpdateReportSubmissionInput,
+): Promise<Report | null> {
+  const existing = await getReportById(reportId);
+
+  if (!existing) {
+    return null;
+  }
+
+  const editedAt = now();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(reports)
+      .set({
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        pestTypes: input.pestTypes,
+        editedAt,
+        editedBy: input.actorUid,
+      })
+      .where(eq(reports.reportId, reportId));
+
+    await tx.delete(reportStatuses).where(eq(reportStatuses.reportId, reportId));
+    await tx.insert(reportStatuses).values(input.status.map((status) => ({ reportId, status })));
+
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
+      actorUid: input.actorUid,
+      actorRole: input.actorRole,
+      action: "report.submission_edit",
+      entityType: "report",
+      entityId: reportId,
+      createdAt: editedAt,
+      metadata: {
+        stationId: existing.stationId,
+        status: input.status,
+        pestTypes: input.pestTypes,
+      },
+    });
+  });
+
+  return getReportById(reportId);
 }
 
 export async function getStationLocations(stationIds: string[]): Promise<Map<string, string>> {
