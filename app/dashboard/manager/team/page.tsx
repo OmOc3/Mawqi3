@@ -10,8 +10,6 @@ import { UserAccessCodeForm } from "@/components/users/user-access-code-form";
 import { UserProfileForm } from "@/components/users/user-profile-form";
 import { UserActivateToggle } from "@/components/users/user-activate-toggle";
 import { UserRoleForm } from "@/components/users/user-role-form";
-import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
-import { deleteClientAccountAction } from "@/app/actions/users";
 import { requireRole } from "@/lib/auth/server-session";
 import { formatDateTimeRome } from "@/lib/datetime";
 import { roleLabels } from "@/lib/i18n";
@@ -31,8 +29,9 @@ interface ManagerUsersPageProps {
 }
 
 type StatusFilter = "active" | "all" | "inactive";
+type StaffRole = Exclude<UserRole, "client">;
 
-const roleOptions = Object.keys(roleLabels) as UserRole[];
+const roleOptions = (Object.keys(roleLabels) as UserRole[]).filter((role): role is StaffRole => role !== "client");
 
 function getInitials(name: string): string {
   const initials = name
@@ -53,8 +52,8 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
   return formatDateTimeRome(timestamp.toDate(), { locale: "ar-EG" });
 }
 
-function normalizeRoleFilter(value: string | undefined): UserRole | "all" {
-  return roleOptions.includes(value as UserRole) ? (value as UserRole) : "all";
+function normalizeRoleFilter(value: string | undefined): StaffRole | "all" {
+  return roleOptions.find((role) => role === value) ?? "all";
 }
 
 function normalizeStatusFilter(value: string | undefined): StatusFilter {
@@ -146,23 +145,6 @@ function UserTools({ disabled, user }: { disabled: boolean; user: AppUser }) {
           </Link>
         </div>
       ) : null}
-      {user.role === "client" ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 lg:col-span-3">
-          <h3 className="text-sm font-bold text-[var(--foreground)]">حذف العميل</h3>
-          <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
-            سيتم حذف حساب العميل نهائيًا. إذا كان لديه سجلات حضور مرتبطة فلن يسمح النظام بالحذف.
-          </p>
-          <form action={deleteClientAccountAction.bind(null, user.uid)}>
-            <ConfirmSubmitButton
-              className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-60"
-              disabled={disabled}
-              confirmMessage={`تأكيد حذف العميل: ${user.displayName} ؟`}
-            >
-              حذف العميل نهائيًا
-            </ConfirmSubmitButton>
-          </form>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -170,7 +152,8 @@ function UserTools({ disabled, user }: { disabled: boolean; user: AppUser }) {
 export default async function ManagerUsersPage({ searchParams }: ManagerUsersPageProps) {
   const session = await requireRole(["manager"]);
   const params = await searchParams;
-  const users = await listAppUsers();
+  const allUsers = await listAppUsers();
+  const users = allUsers.filter((user) => user.role !== "client");
   const query = (params.q ?? "").trim();
   const roleFilter = normalizeRoleFilter(params.role);
   const statusFilter = normalizeStatusFilter(params.status);
@@ -183,7 +166,6 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
   });
   const activeUsers = users.filter((user) => user.isActive).length;
   const inactiveUsers = users.length - activeUsers;
-  const clientUsers = users.filter((user) => user.role === "client").length;
   const fieldUsers = users.filter((user) => user.role === "technician").length;
 
   return (
@@ -223,7 +205,6 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
         <StatTile label="حسابات نشطة" value={activeUsers} />
         <StatTile label="حسابات غير نشطة" value={inactiveUsers} />
         <StatTile label="فنيون" value={fieldUsers} />
-        <StatTile label="عملاء" value={clientUsers} />
       </section>
 
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card transition-all duration-300 [&[open]]:shadow-card-md">

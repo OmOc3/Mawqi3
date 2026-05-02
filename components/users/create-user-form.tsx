@@ -167,7 +167,7 @@ export function CreateUserForm({ embedded = false }: { embedded?: boolean } = {}
           id="role"
           {...form.register("role")}
         >
-          {(Object.keys(roleLabels) as UserRole[]).map((role) => (
+          {(Object.keys(roleLabels) as UserRole[]).filter((role) => role !== "client").map((role) => (
             <option key={role} value={role}>
               {roleLabels[role]}
             </option>

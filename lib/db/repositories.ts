@@ -32,6 +32,7 @@ import {
 } from "@/lib/db/schema";
 import { appUserFromAuthUser, auditLogFromRow, reportFromRow, requiredTimestamp, stationFromRow } from "@/lib/db/mappers";
 import { AppError } from "@/lib/errors";
+import { stationClientNamesByStationId } from "@/lib/stations/qr-export";
 import {
   isShiftSalaryStatus,
   isValidShiftTime,
@@ -157,6 +158,11 @@ export interface StationTechnicianVisit {
   submittedAt: Date;
   technicianName: string;
   technicianUid: string;
+}
+
+export interface StationQrExportData {
+  clientNamesByStationId: Map<string, string>;
+  stations: Station[];
 }
 
 export interface PendingReviewNotificationSnapshot {
@@ -671,6 +677,54 @@ export async function listStations(query?: string): Promise<Station[]> {
     .orderBy(desc(stations.createdAt));
 
   return rows.map(stationFromRow);
+}
+
+async function getStationClientNames(stationIds: readonly string[]): Promise<Map<string, string>> {
+  const uniqueIds = Array.from(new Set(stationIds.map((stationId) => stationId.trim()).filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await db
+    .select({
+      clientName: user.name,
+      stationId: clientStationAccess.stationId,
+    })
+    .from(clientStationAccess)
+    .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
+    .where(inArray(clientStationAccess.stationId, uniqueIds))
+    .orderBy(user.name);
+
+  return stationClientNamesByStationId(rows);
+}
+
+export async function listStationsForQrExport(input: {
+  dateFrom?: Date | null;
+  stationIds?: string[];
+}): Promise<StationQrExportData> {
+  const stationIds = input.stationIds
+    ? Array.from(new Set(input.stationIds.map((stationId) => stationId.trim()).filter(Boolean)))
+    : undefined;
+
+  if (stationIds && stationIds.length === 0) {
+    return { clientNamesByStationId: new Map(), stations: [] };
+  }
+
+  const conditions = [
+    input.dateFrom ? gte(stations.createdAt, input.dateFrom) : undefined,
+    stationIds ? inArray(stations.stationId, stationIds) : undefined,
+  ].filter((condition) => condition !== undefined);
+
+  const rows = await db
+    .select()
+    .from(stations)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(stations.createdAt));
+  const exportStations = rows.map(stationFromRow);
+  const clientNamesByStationId = await getStationClientNames(exportStations.map((station) => station.stationId));
+
+  return { clientNamesByStationId, stations: exportStations };
 }
 
 export async function listNearbyStations(

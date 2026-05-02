@@ -92,6 +92,53 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
           ) : null}
         </form>
 
+        {stations.length > 0 ? (
+          <form
+            action="/api/stations/qr-export"
+            className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card"
+            id="station-qr-export-form"
+            method="get"
+          >
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-[var(--foreground)]">تصدير QR للطباعة</h2>
+                <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                  اختر محطات من القائمة أو صدّر كل المحطات حسب تاريخ الإنشاء في ملف PDF مستقل لكل محطة.
+                </p>
+              </div>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                type="submit"
+              >
+                تحميل PDF
+              </button>
+            </div>
+            <fieldset className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <legend className="sr-only">نطاق تصدير QR</legend>
+              {[
+                { label: "محطات محددة", value: "selected" },
+                { label: "كل المحطات", value: "all" },
+                { label: "آخر يوم", value: "last-day" },
+                { label: "آخر 7 أيام", value: "last-7-days" },
+              ].map((option) => (
+                <label
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] has-[:checked]:border-[var(--primary)] has-[:checked]:bg-[var(--primary-soft)]"
+                  key={option.value}
+                >
+                  <input
+                    className="h-4 w-4 accent-[var(--primary)]"
+                    defaultChecked={option.value === "selected"}
+                    name="scope"
+                    type="radio"
+                    value={option.value}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </fieldset>
+          </form>
+        ) : null}
+
         {stations.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card">
             <EmptyState
@@ -120,12 +167,22 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
                 return (
                   <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card" key={station.stationId}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[var(--muted)]" dir="ltr">
-                          #{station.stationId}
-                        </p>
-                        <h2 className="mt-1 truncate text-base font-bold text-[var(--foreground)]">{station.label}</h2>
-                        <p className="mt-1 text-sm text-[var(--muted)]">{station.location}</p>
+                      <div className="flex min-w-0 gap-3">
+                        <input
+                          aria-label={`تحديد المحطة ${station.label} للتصدير`}
+                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
+                          form="station-qr-export-form"
+                          name="stationId"
+                          type="checkbox"
+                          value={station.stationId}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-[var(--muted)]" dir="ltr">
+                            #{station.stationId}
+                          </p>
+                          <h2 className="mt-1 truncate text-base font-bold text-[var(--foreground)]">{station.label}</h2>
+                          <p className="mt-1 text-sm text-[var(--muted)]">{station.location}</p>
+                        </div>
                       </div>
                       <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${health.toneClassName}`}>
                         {health.label}
@@ -209,9 +266,12 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
             </div>
           <div className="hidden overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card lg:block">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[1060px]">
               <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
                 <tr>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    تحديد
+                  </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     رقم المحطة
                   </th>
@@ -253,6 +313,16 @@ export default async function ManagerStationsPage({ searchParams }: ManagerStati
 
                   return (
                       <tr className="transition-colors even:bg-[var(--surface-subtle)] hover:bg-[var(--primary-soft)]" key={station.stationId}>
+                        <td className="px-4 py-3">
+                          <input
+                            aria-label={`تحديد المحطة ${station.label} للتصدير`}
+                            className="h-4 w-4 accent-[var(--primary)]"
+                            form="station-qr-export-form"
+                            name="stationId"
+                            type="checkbox"
+                            value={station.stationId}
+                          />
+                        </td>
                         <td className="px-4 py-3 text-sm font-semibold text-[var(--foreground)]" dir="ltr">
                           #{station.stationId}
                         </td>
