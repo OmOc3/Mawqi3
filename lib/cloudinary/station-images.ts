@@ -112,8 +112,6 @@ export async function deleteStationImageFromCloudinary(imageUrl: string): Promis
     throw new Error("إعدادات Cloudinary غير مكتملة.");
   }
 
-  const cloudNamePattern = `https://(?:res\\.cloudinary\\.com/${config.cloudName}|api\\.ecopest\\.com|${process.env.CLOUDINARY_CUSTOM_DOMAIN?.replace(/^https?:\/\//, "")})`;
-  
   // Actually, extractPublicIdFromUrl works for any domain since it uses new URL() and looks at pathname.
   const publicId = extractPublicIdFromUrl(imageUrl, config.folder);
 
