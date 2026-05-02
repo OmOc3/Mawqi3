@@ -1,4 +1,5 @@
 import type { ShiftSalaryStatus, TechnicianWorkSchedule } from "@/types";
+import { APP_TIME_ZONE } from "@/lib/datetime";
 
 const shiftTimePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -31,11 +32,44 @@ function minutesFromTime(value: string): number {
 interface ScheduleWindowCheckOptions {
   graceAfterMinutes?: number;
   graceBeforeMinutes?: number;
+  timeZone?: string;
 }
 
 interface ScheduleWindowCheckResult {
   allowed: boolean;
   warning?: string;
+}
+
+const weekdayToDayIndex: Record<string, number> = {
+  Fri: 5,
+  Mon: 1,
+  Sat: 6,
+  Sun: 0,
+  Thu: 4,
+  Tue: 2,
+  Wed: 3,
+};
+
+function getScheduleClockParts(at: Date, timeZone: string): { day: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    timeZone,
+    weekday: "short",
+  }).formatToParts(at);
+
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  const weekday = values.get("weekday");
+  const hour = Number(values.get("hour"));
+  const minute = Number(values.get("minute"));
+  const day = weekday ? weekdayToDayIndex[weekday] : undefined;
+
+  if (day === undefined || !Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return { day: at.getDay(), minutes: at.getHours() * 60 + at.getMinutes() };
+  }
+
+  return { day, minutes: hour * 60 + minute };
 }
 
 export function isWithinScheduleWindow(
@@ -52,9 +86,10 @@ export function isWithinScheduleWindow(
 
   const graceBeforeMinutes = options.graceBeforeMinutes ?? 30;
   const graceAfterMinutes = options.graceAfterMinutes ?? 30;
-  const currentDay = at.getDay();
+  const clock = getScheduleClockParts(at, options.timeZone ?? APP_TIME_ZONE);
+  const currentDay = clock.day;
   const previousDay = (currentDay + 6) % 7;
-  const currentMinutes = at.getHours() * 60 + at.getMinutes();
+  const currentMinutes = clock.minutes;
   const crossesMidnight = endMinutes <= startMinutes;
   const workDays = new Set(schedule.workDays);
 

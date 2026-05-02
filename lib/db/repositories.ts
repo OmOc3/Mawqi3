@@ -2638,6 +2638,7 @@ export async function startShift(input: StartShiftInput): Promise<StartShiftResu
   }
 
   const nearestStation = nearbyList[0].station;
+  const startedAt = now();
 
   // Check schedule constraints.
   let scheduleRecord: TechnicianWorkSchedule | null = null;
@@ -2657,7 +2658,7 @@ export async function startShift(input: StartShiftInput): Promise<StartShiftResu
       throw new AppError("لا يوجد جدول عمل نشط لحسابك. تواصل مع المدير قبل بدء الشيفت.", "SHIFT_SCHEDULE_REQUIRED", 403);
     }
 
-    const check = isWithinScheduleWindow(scheduleRecord);
+    const check = isWithinScheduleWindow(scheduleRecord, startedAt);
     if (!check.allowed) {
       await writeAuditLogRecord({
         actorUid: input.technicianUid,
@@ -2672,7 +2673,6 @@ export async function startShift(input: StartShiftInput): Promise<StartShiftResu
   }
 
   const shiftId = crypto.randomUUID();
-  const startedAt = now();
 
   await db.insert(technicianShifts).values({
     shiftId,
@@ -2697,7 +2697,7 @@ export async function startShift(input: StartShiftInput): Promise<StartShiftResu
     salaryAmount: null,
     salaryStatus: "pending",
     notes: null,
-    createdAt: now(),
+    createdAt: startedAt,
     updatedAt: null,
   });
 
