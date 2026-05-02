@@ -14,3 +14,12 @@ ui-debug.log
 mobile/eslint/
 .env
 .env.production
+
+# IDE and temp files
+.codex-*
+.next-dev.stderr.log
+.next-dev.stdout.log
+.expo-web.stderr.log
+.expo-web.stdout.log
+scratch.js
+migrate-output.txt

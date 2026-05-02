@@ -47,7 +47,7 @@ export default async function SupervisorShiftsPage() {
                   <td className="p-3 font-medium text-[var(--foreground)]">{techMap.get(s.technicianUid) ?? s.technicianName}</td>
                   <td className="p-3 text-[var(--muted)]">{fmt(s.startedAt.toDate().getTime())}</td>
                   <td className="p-3 text-[var(--muted)]">{s.endedAt ? fmt(s.endedAt.toDate().getTime()) : <span className="font-bold text-emerald-600">نشط</span>}</td>
-                  <td className="p-3 text-[var(--muted)]">{s.totalMinutes ? minutesToDisplay(s.totalMinutes) : "—"}</td>
+                  <td className="p-3 text-[var(--muted)]">{s.totalMinutes != null ? minutesToDisplay(s.totalMinutes) : "—"}</td>
                   <td className="p-3 text-[var(--muted)]">{s.salaryAmount != null ? s.salaryAmount : "—"}</td>
                   <td className="p-3"><SalaryStatusButton shiftId={s.shiftId} current={s.salaryStatus} readOnly /></td>
                 </tr>

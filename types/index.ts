@@ -102,6 +102,7 @@ export interface AuditLog {
 
 export interface AttendanceSession {
   attendanceId: string;
+  shiftId?: string;
   technicianUid: string;
   technicianName: string;
   clockInAt: AppTimestamp;

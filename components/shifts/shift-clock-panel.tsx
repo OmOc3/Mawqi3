@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition, useEffect } from "react";
 import { startShiftAction, endShiftAction } from "@/app/actions/shifts";
 
@@ -179,6 +180,7 @@ function EarlyExitWarning({ minutesWorked, expectedMinutes, earlyExitMinutes, on
 }
 
 export function ShiftClockPanel({ openShift, schedule }: ShiftClockPanelProps) {
+  const router = useRouter();
   const elapsed = useElapsed(openShift ? openShift.startedAtMs : null);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -214,7 +216,10 @@ export function ShiftClockPanel({ openShift, schedule }: ShiftClockPanelProps) {
       if (!fd) return;
       const result = await startShiftAction(fd);
       setMessage({ type: result.success ? "success" : "error", text: result.error ?? "✅ تم تسجيل الحضور بنجاح. يمكنك الآن فحص المحطات." });
-      if (result.success) setNotes("");
+      if (result.success) {
+        setNotes("");
+        router.refresh();
+      }
     });
   }
 
@@ -247,8 +252,8 @@ export function ShiftClockPanel({ openShift, schedule }: ShiftClockPanelProps) {
     if (!earlyExitPending) return;
     const fd = earlyExitPending.formData;
     setEarlyExitPending(null);
-    startTransition(() => {
-      submitEndShift(fd);
+    startTransition(async () => {
+      await submitEndShift(fd);
     });
   }
 
@@ -261,9 +266,11 @@ export function ShiftClockPanel({ openShift, schedule }: ShiftClockPanelProps) {
         text: `⚠️ تم تسجيل الانصراف. عملت ${formatDuration(result.minutesWorked)} من أصل ${formatDuration(openShift?.expectedDurationMinutes ?? 0)} المطلوبة.`,
       });
       setNotes("");
+      router.refresh();
     } else if (result.success) {
       setMessage({ type: "success", text: `✅ تم تسجيل الانصراف. عملت ${formatDuration(result.minutesWorked ?? 0)}.` });
       setNotes("");
+      router.refresh();
     } else {
       setMessage({ type: "error", text: result.error ?? "تعذر تسجيل الانصراف." });
     }

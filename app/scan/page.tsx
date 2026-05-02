@@ -51,7 +51,7 @@ function ShiftHistoryCard({ shift }: { shift: TechnicianShift }) {
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-[var(--surface-subtle)] p-2 text-center">
           <p className="text-xs text-[var(--muted)]">المدة</p>
-          <p className="mt-0.5 text-sm font-bold text-[var(--foreground)]">{shift.totalMinutes ? minutesToDisplay(shift.totalMinutes) : "—"}</p>
+          <p className="mt-0.5 text-sm font-bold text-[var(--foreground)]">{shift.totalMinutes != null ? minutesToDisplay(shift.totalMinutes) : "—"}</p>
         </div>
         <div className="rounded-xl bg-[var(--surface-subtle)] p-2 text-center">
           <p className="text-xs text-[var(--muted)]">الراتب</p>

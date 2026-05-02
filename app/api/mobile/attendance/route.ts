@@ -29,6 +29,7 @@ interface MobileAttendanceSessionResponse {
   clockOutAt?: string;
   clockOutLocation?: MobileAttendanceLocationResponse;
   notes?: string;
+  shiftId?: string;
   technicianName: string;
   technicianUid: string;
 }
@@ -44,6 +45,7 @@ function attendanceSessionResponse(session: AttendanceSession | null): MobileAtt
 
   return {
     attendanceId: session.attendanceId,
+    ...(session.shiftId ? { shiftId: session.shiftId } : {}),
     technicianUid: session.technicianUid,
     technicianName: session.technicianName,
     ...(timestampToIso(session.clockInAt) ? { clockInAt: timestampToIso(session.clockInAt) } : {}),

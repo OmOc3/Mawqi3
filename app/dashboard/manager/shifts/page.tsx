@@ -21,6 +21,7 @@ function minutesToDisplay(minutes: number) {
 
 function ShiftRow({ shift, techName }: { shift: TechnicianShift; techName: string }) {
   const isActive = shift.status === "active";
+  const canEditSalary = !isActive && shift.salaryAmount != null;
   return (
     <tr className="border-b border-[var(--border)] text-sm transition-colors hover:bg-[var(--surface-subtle)]">
       <td className="p-3 font-medium text-[var(--foreground)]">{techName}</td>
@@ -34,7 +35,7 @@ function ShiftRow({ shift, techName }: { shift: TechnicianShift; techName: strin
       </td>
       <td className="p-3 text-[var(--muted)]">{shift.salaryAmount != null ? `${shift.salaryAmount}` : "—"}</td>
       <td className="p-3">
-        <SalaryStatusButton shiftId={shift.shiftId} current={shift.salaryStatus} />
+        <SalaryStatusButton shiftId={shift.shiftId} current={shift.salaryStatus} readOnly={!canEditSalary} />
       </td>
     </tr>
   );
@@ -49,9 +50,9 @@ export default async function ManagerShiftsPage() {
 
   const techMap = new Map(allUsers.filter((u) => u.role === "technician").map((u) => [u.uid, u.displayName]));
 
-  const totalPaid = shifts.filter((s) => s.salaryStatus === "paid" && s.salaryAmount).reduce((sum, s) => sum + (s.salaryAmount ?? 0), 0);
-  const totalPending = shifts.filter((s) => s.salaryStatus === "pending" && s.salaryAmount).reduce((sum, s) => sum + (s.salaryAmount ?? 0), 0);
-  const totalHours = shifts.filter((s) => s.totalMinutes).reduce((sum, s) => sum + (s.totalMinutes ?? 0), 0) / 60;
+  const totalPaid = shifts.filter((s) => s.salaryStatus === "paid" && s.salaryAmount != null).reduce((sum, s) => sum + (s.salaryAmount ?? 0), 0);
+  const totalPending = shifts.filter((s) => s.salaryStatus === "pending" && s.salaryAmount != null).reduce((sum, s) => sum + (s.salaryAmount ?? 0), 0);
+  const totalHours = shifts.filter((s) => s.totalMinutes != null).reduce((sum, s) => sum + (s.totalMinutes ?? 0), 0) / 60;
   const earlyExitCount = shifts.filter((s) => s.earlyExit).length;
 
   return (
