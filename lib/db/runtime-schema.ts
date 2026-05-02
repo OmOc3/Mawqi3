@@ -81,6 +81,123 @@ async function createIndexIfColumnsExist(index: string, table: string, columns: 
   await execute(`CREATE INDEX IF NOT EXISTS ${quoteSqlIdentifier(index)} ON ${quoteSqlIdentifier(table)} (${indexedColumns})`);
 }
 
+async function rebuildLegacyTechnicianShiftsTable(): Promise<void> {
+  if (!(await tableExists("technician_shifts"))) {
+    return;
+  }
+
+  const columnsInTable = await existingColumns("technician_shifts");
+
+  if (!columnsInTable.has("check_in_at")) {
+    return;
+  }
+
+  await execute("PRAGMA foreign_keys = OFF");
+
+  try {
+    await execute("DROP TABLE IF EXISTS technician_shifts_rebuilt");
+    await execute(`
+      CREATE TABLE technician_shifts_rebuilt (
+        shift_id text PRIMARY KEY NOT NULL,
+        technician_uid text NOT NULL REFERENCES user(id) ON DELETE restrict,
+        technician_name text NOT NULL,
+        schedule_id text REFERENCES technician_work_schedules(schedule_id) ON DELETE set null,
+        started_at integer NOT NULL,
+        start_lat real,
+        start_lng real,
+        start_station_id text,
+        start_station_label text,
+        ended_at integer,
+        end_lat real,
+        end_lng real,
+        end_station_id text,
+        end_station_label text,
+        status text DEFAULT 'active' NOT NULL,
+        total_hours real,
+        total_minutes integer,
+        expected_duration_minutes integer,
+        early_exit integer DEFAULT false NOT NULL,
+        base_salary real,
+        salary_amount real,
+        salary_status text DEFAULT 'pending' NOT NULL,
+        notes text,
+        created_at integer NOT NULL,
+        updated_at integer
+      )
+    `);
+    await execute(`
+      INSERT INTO technician_shifts_rebuilt (
+        shift_id,
+        technician_uid,
+        technician_name,
+        schedule_id,
+        started_at,
+        start_lat,
+        start_lng,
+        start_station_id,
+        start_station_label,
+        ended_at,
+        end_lat,
+        end_lng,
+        end_station_id,
+        end_station_label,
+        status,
+        total_hours,
+        total_minutes,
+        expected_duration_minutes,
+        early_exit,
+        base_salary,
+        salary_amount,
+        salary_status,
+        notes,
+        created_at,
+        updated_at
+      )
+      SELECT
+        shift_id,
+        technician_uid,
+        technician_name,
+        schedule_id,
+        COALESCE(started_at, check_in_at),
+        COALESCE(start_lat, check_in_lat),
+        COALESCE(start_lng, check_in_lng),
+        start_station_id,
+        start_station_label,
+        COALESCE(ended_at, check_out_at),
+        COALESCE(end_lat, check_out_lat),
+        COALESCE(end_lng, check_out_lng),
+        end_station_id,
+        end_station_label,
+        CASE
+          WHEN COALESCE(ended_at, check_out_at) IS NOT NULL THEN 'completed'
+          ELSE COALESCE(status, 'active')
+        END,
+        total_hours,
+        COALESCE(
+          total_minutes,
+          CASE
+            WHEN COALESCE(ended_at, check_out_at) IS NOT NULL
+              THEN CAST(ROUND((COALESCE(ended_at, check_out_at) - COALESCE(started_at, check_in_at)) / 60000.0) AS INTEGER)
+            ELSE NULL
+          END
+        ),
+        expected_duration_minutes,
+        COALESCE(early_exit, false),
+        base_salary,
+        salary_amount,
+        COALESCE(salary_status, 'pending'),
+        notes,
+        COALESCE(created_at, started_at, check_in_at, CAST(strftime('%s', 'now') AS INTEGER) * 1000),
+        updated_at
+      FROM technician_shifts
+    `);
+    await execute("DROP TABLE technician_shifts");
+    await execute("ALTER TABLE technician_shifts_rebuilt RENAME TO technician_shifts");
+  } finally {
+    await execute("PRAGMA foreign_keys = ON");
+  }
+}
+
 export async function ensureAuthUserColumns(): Promise<void> {
   await addMissingColumns("user", [
     { name: "password_changed_at", sql: "ALTER TABLE `user` ADD `password_changed_at` integer" },
@@ -259,6 +376,7 @@ async function ensureRuntimeSchemaInternal(): Promise<void> {
     { name: "created_at", sql: "ALTER TABLE `technician_shifts` ADD `created_at` integer" },
     { name: "updated_at", sql: "ALTER TABLE `technician_shifts` ADD `updated_at` integer" },
   ]);
+  await rebuildLegacyTechnicianShiftsTable();
   await createIndexIfColumnsExist("technician_shifts_technician_uid_idx", "technician_shifts", ["technician_uid"]);
   await createIndexIfColumnsExist("technician_shifts_started_at_idx", "technician_shifts", ["started_at"]);
   await createIndexIfColumnsExist("technician_shifts_status_idx", "technician_shifts", ["status"]);

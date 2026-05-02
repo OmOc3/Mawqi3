@@ -11,6 +11,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "res.cloudinary.com",
         pathname: "/**"
+      },
+      {
+        protocol: "https",
+        hostname: "api.ecopest.com",
+        pathname: "/**"
       }
     ]
   },

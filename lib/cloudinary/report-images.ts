@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { AppError } from "@/lib/errors";
 import { validateReportImageFile } from "@/lib/reports/image-validation";
 import { isRecord } from "@/lib/utils";
+import { rewriteCloudinaryUrl } from "@/lib/cloudinary/utils";
 
 interface CloudinaryConfig {
   apiKey: string;
@@ -98,5 +99,5 @@ export async function uploadReportImageToCloudinary(
     throw new AppError("تعذر رفع صورة التقرير إلى Cloudinary.", "REPORT_IMAGE_UPLOAD_FAILED", 502);
   }
 
-  return payload.secure_url;
+  return rewriteCloudinaryUrl(payload.secure_url, config.cloudName);
 }

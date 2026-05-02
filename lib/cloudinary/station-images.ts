@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { validateReportImageFile } from "@/lib/reports/image-validation";
 import { isRecord } from "@/lib/utils";
+import { rewriteCloudinaryUrl } from "@/lib/cloudinary/utils";
 
 interface CloudinaryConfig {
   apiKey: string;
@@ -101,7 +102,7 @@ export async function uploadStationImageToCloudinary(file: File, stationId: stri
     throw new Error("تعذر رفع صورة المحطة إلى Cloudinary.");
   }
 
-  return payload.secure_url;
+  return rewriteCloudinaryUrl(payload.secure_url, config.cloudName);
 }
 
 export async function deleteStationImageFromCloudinary(imageUrl: string): Promise<void> {
@@ -111,6 +112,9 @@ export async function deleteStationImageFromCloudinary(imageUrl: string): Promis
     throw new Error("إعدادات Cloudinary غير مكتملة.");
   }
 
+  const cloudNamePattern = `https://(?:res\\.cloudinary\\.com/${config.cloudName}|api\\.ecopest\\.com|${process.env.CLOUDINARY_CUSTOM_DOMAIN?.replace(/^https?:\/\//, "")})`;
+  
+  // Actually, extractPublicIdFromUrl works for any domain since it uses new URL() and looks at pathname.
   const publicId = extractPublicIdFromUrl(imageUrl, config.folder);
 
   if (!publicId) {
