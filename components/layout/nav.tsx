@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactElement, type SVGProps } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { BrandMark } from "@/components/layout/brand";
 import { ReportNotificationListener } from "@/components/notifications/report-notification-listener";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const managerItems: NavItem[] = [
   { href: "/dashboard/manager/attendance", icon: "attendance", label: "الحضور والانصراف" },
   { href: "/dashboard/manager/payroll", icon: "payroll", label: "الرواتب" },
   { href: "/dashboard/manager/daily-reports", icon: "reports", label: "التقارير اليومية" },
+  { href: "/dashboard/manager/area-tasks", icon: "tasks", label: "المهام اليومية للمناطق" },
   { href: "/dashboard/manager", icon: "dashboard", label: "لوحة القيادة" },
   { href: "/dashboard/manager/tasks", icon: "tasks", label: "مهام اليوم" },
   { href: "/dashboard/manager/stations", icon: "stations", label: "المحطات" },
@@ -37,8 +39,8 @@ const managerItems: NavItem[] = [
 
 const supervisorItems: NavItem[] = [
   { href: "/dashboard/supervisor/attendance", icon: "attendance", label: "الحضور والانصراف" },
-  { href: "/dashboard/supervisor/payroll", icon: "payroll", label: "مراجعة الرواتب" },
   { href: "/dashboard/supervisor/daily-reports", icon: "reports", label: "التقارير اليومية" },
+  { href: "/dashboard/supervisor/area-tasks", icon: "tasks", label: "المهام اليومية للمناطق" },
   { href: "/dashboard/supervisor", icon: "dashboard", label: "لوحة المشرف" },
   { href: "/dashboard/supervisor/tasks", icon: "tasks", label: "مهام اليوم" },
   { href: "/dashboard/supervisor/stations", icon: "stations", label: "المحطات" },
@@ -274,6 +276,7 @@ function isItemActive(pathname: string, href: string): boolean {
 
 export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
+  const { direction, translate } = useLanguage();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -281,7 +284,14 @@ export function DashboardNav({ role }: DashboardNavProps) {
   const sidebarHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const items = role === "manager" ? managerItems : supervisorItems;
   const currentPathname = pathname ?? "";
-  const mobileToggleLabel = isMobileNavOpen ? "إغلاق القائمة" : "فتح القائمة";
+  const isRtl = direction === "rtl";
+  const mobileToggleLabel = translate(isMobileNavOpen ? "إغلاق القائمة" : "فتح القائمة");
+  const closeMenuLabel = translate("إغلاق القائمة");
+  const mainMenuLabel = translate("القائمة الرئيسية");
+  const primaryNavigationLabel = translate("التنقل الرئيسي");
+  const brandArabicName = translate("إيكوبست");
+  const brandTagline = translate("إدارة محطات الطعوم");
+  const showLatinBrandAlias = isRtl;
 
   function handleSidebarMouseEnter(): void {
     sidebarHoverTimer.current = setTimeout(() => setIsSidebarOpen(true), 250);
@@ -373,7 +383,10 @@ export function DashboardNav({ role }: DashboardNavProps) {
         aria-controls="dashboard-mobile-sidebar"
         aria-expanded={isMobileNavOpen}
         aria-label={mobileToggleLabel}
-        className="fixed bottom-24 right-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-card-lg transition-all duration-150 hover:bg-[var(--sidebar-surface)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] lg:hidden"
+        className={cn(
+          "fixed bottom-24 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-card-lg transition-all duration-150 hover:bg-[var(--sidebar-surface)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] lg:hidden",
+          isRtl ? "right-4" : "left-4",
+        )}
         onClick={() => setIsMobileNavOpen((currentState) => !currentState)}
         ref={mobileMenuButtonRef}
         title={mobileToggleLabel}
@@ -386,18 +399,21 @@ export function DashboardNav({ role }: DashboardNavProps) {
       {isMobileNavOpen ? (
         <>
           <button
-            aria-label="إغلاق القائمة"
+            aria-label={closeMenuLabel}
             className="fixed inset-0 z-50 bg-[rgb(2_6_23_/_0.8)] backdrop-blur-md lg:hidden"
             onClick={() => closeMobileNav()}
             tabIndex={-1}
             type="button"
           />
           <aside
-            aria-label="القائمة الرئيسية"
+            aria-label={mainMenuLabel}
             aria-modal="true"
-            className="fixed inset-y-0 right-0 z-[55] flex w-72 max-w-[calc(100vw-3rem)] flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl lg:hidden"
+            className={cn(
+              "fixed inset-y-0 z-[55] flex w-72 max-w-[calc(100vw-3rem)] flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl lg:hidden",
+              isRtl ? "right-0" : "left-0",
+            )}
             data-dashboard-nav="mobile-drawer"
-            dir="rtl"
+            dir={direction}
             id="dashboard-mobile-sidebar"
             onKeyDown={handleMobileDrawerKeyDown}
             role="dialog"
@@ -409,30 +425,33 @@ export function DashboardNav({ role }: DashboardNavProps) {
                   <BrandMark className="h-10 w-10 shrink-0" />
                   <div className="min-w-0">
                     <p className="truncate text-base font-bold leading-tight text-[var(--sidebar-text)]">
-                      إيكوبست
-                      <span className="ms-1.5 text-xs font-semibold text-[var(--sidebar-muted)]">EcoPest</span>
+                      {brandArabicName}
+                      {showLatinBrandAlias ? (
+                        <span className="ms-1.5 text-xs font-semibold text-[var(--sidebar-muted)]">EcoPest</span>
+                      ) : null}
                     </p>
-                    <p className="text-[11px] font-medium text-teal-400 truncate">إدارة محطات الطعوم</p>
+                    <p className="text-[11px] font-medium text-teal-400 truncate">{brandTagline}</p>
                   </div>
                 </Link>
                 <button
-                  aria-label="إغلاق القائمة"
+                  aria-label={closeMenuLabel}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] text-[var(--sidebar-muted)] transition-all duration-150 hover:bg-[var(--sidebar-border)] hover:text-[var(--sidebar-text)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                   onClick={() => closeMobileNav()}
                   ref={mobileCloseButtonRef}
-                  title="إغلاق القائمة"
+                  title={closeMenuLabel}
                   type="button"
                 >
                   <MobileMenuIcon isOpen />
-                  <span className="sr-only">إغلاق القائمة</span>
+                  <span className="sr-only">{closeMenuLabel}</span>
                 </button>
               </div>
             </div>
 
-            <nav className="sidebar-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="التنقل الرئيسي">
+            <nav className="sidebar-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label={primaryNavigationLabel}>
               {items.map((item) => {
                 const isActive = isItemActive(currentPathname, item.href);
                 const Icon = icons[item.icon];
+                const itemLabel = translate(item.label);
 
                 return (
                   <Link
@@ -447,7 +466,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
                     onClick={() => closeMobileNav(false)}
                   >
                     <Icon className={cn(isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate">{itemLabel}</span>
                   </Link>
                 );
               })}
@@ -465,12 +484,13 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] lg:flex",
+          "fixed inset-y-0 z-40 hidden flex-col overflow-hidden bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-2xl transition-[width] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] lg:flex",
+          isRtl ? "right-0" : "left-0",
           isSidebarOpen ? "w-64" : "w-[4.5rem]",
         )}
         data-dashboard-nav={isSidebarOpen ? "expanded" : "collapsed"}
         id="dashboard-sidebar"
-        dir="rtl"
+        dir={direction}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
       >
@@ -486,10 +506,12 @@ export function DashboardNav({ role }: DashboardNavProps) {
                 )}
               >
                 <p className="truncate text-base font-bold leading-tight text-[var(--sidebar-text)] whitespace-nowrap">
-                  إيكوبست
-                  <span className="ms-1.5 text-xs font-semibold text-[var(--sidebar-muted)]">EcoPest</span>
+                  {brandArabicName}
+                  {showLatinBrandAlias ? (
+                    <span className="ms-1.5 text-xs font-semibold text-[var(--sidebar-muted)]">EcoPest</span>
+                  ) : null}
                 </p>
-                <p className="text-[11px] font-medium text-teal-400 truncate whitespace-nowrap">إدارة محطات الطعوم</p>
+                <p className="text-[11px] font-medium text-teal-400 truncate whitespace-nowrap">{brandTagline}</p>
               </div>
             </Link>
           </div>
@@ -497,15 +519,16 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
         <nav
           className={cn("sidebar-scrollbar relative min-h-0 flex-1 space-y-1 overflow-y-auto py-5", isSidebarOpen ? "px-3" : "px-2")}
-          aria-label="التنقل الرئيسي"
+          aria-label={primaryNavigationLabel}
         >
           {items.map((item) => {
             const isActive = isItemActive(currentPathname, item.href);
             const Icon = icons[item.icon];
+            const itemLabel = translate(item.label);
 
             return (
               <Link
-                aria-label={item.label}
+                aria-label={itemLabel}
                 className={cn(
                   "relative flex min-h-11 items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors duration-150",
                   isSidebarOpen ? "px-3" : "justify-center px-2",
@@ -515,7 +538,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
                 )}
                 href={item.href}
                 key={item.href}
-                title={item.label}
+                title={itemLabel}
               >
                 <Icon className={cn("shrink-0", isActive ? "text-[var(--sidebar)]" : "text-[var(--sidebar-muted)]")} />
                 <span
@@ -524,7 +547,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
                     isSidebarOpen ? "max-w-xs opacity-100" : "max-w-0 opacity-0",
                   )}
                 >
-                  {item.label}
+                  {itemLabel}
                 </span>
               </Link>
             );
@@ -547,13 +570,14 @@ export function DashboardNav({ role }: DashboardNavProps) {
       <nav
         className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--sidebar-border)] bg-[var(--sidebar)] px-2 py-2 shadow-2xl backdrop-blur lg:hidden"
         data-dashboard-nav="mobile"
-        dir="rtl"
-        aria-label="التنقل الرئيسي"
+        dir={direction}
+        aria-label={primaryNavigationLabel}
       >
         <div className="flex gap-2 overflow-x-auto">
           {items.map((item) => {
             const isActive = isItemActive(currentPathname, item.href);
             const Icon = icons[item.icon];
+            const itemLabel = translate(item.label);
 
             return (
               <Link
@@ -566,7 +590,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
               >
                 {isActive ? <span aria-hidden="true" className="absolute top-1 h-1.5 w-1.5 rounded-full bg-teal-300" /> : null}
                 <Icon className="h-4 w-4" />
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="whitespace-nowrap">{itemLabel}</span>
               </Link>
             );
           })}

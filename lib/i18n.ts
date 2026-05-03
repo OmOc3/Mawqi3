@@ -13,6 +13,25 @@ export const statusOptionLabelsEnglish = sharedStatusOptionLabelsEnglish;
 export const roleLabels = sharedRoleLabels;
 export const roleLabelsEnglish = sharedRoleLabelsEnglish;
 
+export const supportedLocales = ["ar", "en"] as const;
+export type Locale = (typeof supportedLocales)[number];
+export type LocaleDirection = "ltr" | "rtl";
+
+export const defaultLocale: Locale = "ar";
+export const localeCookieName = "ecopest_locale";
+
+export function isLocale(value: unknown): value is Locale {
+  return typeof value === "string" && supportedLocales.includes(value as Locale);
+}
+
+export function getLocaleFromValue(value: unknown): Locale {
+  return isLocale(value) ? value : defaultLocale;
+}
+
+export function getLocaleDirection(locale: Locale): LocaleDirection {
+  return locale === "ar" ? "rtl" : "ltr";
+}
+
 const ar = {
   appName: BRAND.name,
   appNameArabic: BRAND.nameArabic,
@@ -198,3 +217,9 @@ export const i18n = {
   ar,
   en,
 } as const;
+
+export type I18nMessages = typeof ar | typeof en;
+
+export function getI18nMessages(locale: Locale): I18nMessages {
+  return locale === "en" ? en : ar;
+}

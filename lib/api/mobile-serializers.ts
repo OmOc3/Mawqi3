@@ -113,7 +113,7 @@ export interface MobileTechnicianShiftResponse {
   expectedDurationMinutes?: number;
   notes?: string;
   salaryAmount?: number;
-  salaryStatus: TechnicianShift["salaryStatus"];
+  salaryStatus?: TechnicianShift["salaryStatus"];
   scheduleId?: string;
   shiftId: string;
   startLat?: number;
@@ -364,14 +364,13 @@ export function mobileUserResponse(user: AppUser): MobileUserResponse {
   };
 }
 
-export function mobileShiftResponse(shift: TechnicianShift): MobileTechnicianShiftResponse {
+export function mobileShiftResponse(shift: TechnicianShift, includePayroll = true): MobileTechnicianShiftResponse {
   return {
     shiftId: shift.shiftId,
     technicianUid: shift.technicianUid,
     technicianName: shift.technicianName,
     status: shift.status,
     earlyExit: shift.earlyExit,
-    salaryStatus: shift.salaryStatus,
     ...(shift.scheduleId ? { scheduleId: shift.scheduleId } : {}),
     ...(timestampToIso(shift.startedAt) ? { startedAt: timestampToIso(shift.startedAt) } : {}),
     ...(typeof shift.startLat === "number" ? { startLat: shift.startLat } : {}),
@@ -385,8 +384,9 @@ export function mobileShiftResponse(shift: TechnicianShift): MobileTechnicianShi
     ...(shift.endStationLabel ? { endStationLabel: shift.endStationLabel } : {}),
     ...(typeof shift.totalMinutes === "number" ? { totalMinutes: shift.totalMinutes } : {}),
     ...(typeof shift.expectedDurationMinutes === "number" ? { expectedDurationMinutes: shift.expectedDurationMinutes } : {}),
-    ...(typeof shift.baseSalary === "number" ? { baseSalary: shift.baseSalary } : {}),
-    ...(typeof shift.salaryAmount === "number" ? { salaryAmount: shift.salaryAmount } : {}),
+    ...(includePayroll ? { salaryStatus: shift.salaryStatus } : {}),
+    ...(includePayroll && typeof shift.baseSalary === "number" ? { baseSalary: shift.baseSalary } : {}),
+    ...(includePayroll && typeof shift.salaryAmount === "number" ? { salaryAmount: shift.salaryAmount } : {}),
     ...(shift.notes ? { notes: shift.notes } : {}),
     ...(timestampToIso(shift.createdAt) ? { createdAt: timestampToIso(shift.createdAt) } : {}),
     ...(timestampToIso(shift.updatedAt) ? { updatedAt: timestampToIso(shift.updatedAt) } : {}),

@@ -11,10 +11,11 @@ import { getCurrentSession } from "@/lib/auth/server-session";
 import {
   getOpenShift,
   getActiveWorkSchedule,
+  listDailyAreaTasks,
   listShiftsForTechnician,
   listReportsForTechnician,
 } from "@/lib/db/repositories";
-import { APP_TIME_ZONE } from "@/lib/datetime";
+import { APP_TIME_ZONE, formatIsoDateRome } from "@/lib/datetime";
 import { i18n } from "@/lib/i18n";
 import type { Report, ShiftSalaryStatus, TechnicianShift } from "@/types";
 
@@ -152,6 +153,12 @@ export default async function ScanPage() {
     isTechnician ? listShiftsForTechnician(session.uid, 20) : Promise.resolve([]),
     isTechnician ? listReportsForTechnician(session.uid, 5) : Promise.resolve([]),
   ]);
+  const today = formatIsoDateRome(new Date()) ?? new Date().toISOString().slice(0, 10);
+  const dailyAreaTasks = isTechnician
+    ? (await listDailyAreaTasks({ dateFrom: today, dateTo: today, technicianUid: session.uid }, 50)).filter(
+        (task) => task.status === "approved" || task.status === "completed",
+      )
+    : [];
 
   const isShiftActive = Boolean(openShift);
   // After a completed shift (no open shift but has past shifts), show profile/records mode
@@ -276,6 +283,26 @@ export default async function ScanPage() {
               <div className="space-y-8">
                 <div className="mx-auto max-w-lg space-y-4">
                   <p className="text-center text-sm leading-6 text-[var(--muted)]">{i18n.scan.technicianQrOnlyNote}</p>
+                  {dailyAreaTasks.length > 0 ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card">
+                      <h2 className="text-base font-bold text-[var(--foreground)]">مهامي اليومية للمناطق</h2>
+                      <ul className="mt-3 space-y-2">
+                        {dailyAreaTasks.map((task) => (
+                          <li className="rounded-lg bg-[var(--surface-subtle)] p-3 text-sm" key={task.taskId}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-[var(--foreground)]">{task.areaName ?? "منطقة"}</p>
+                                <p className="mt-1 text-xs text-[var(--muted)]">{task.areaLocation}</p>
+                              </div>
+                              <span className={task.status === "completed" ? "text-xs font-bold text-green-700" : "text-xs font-bold text-amber-700"}>
+                                {task.status === "completed" ? "تم التنفيذ" : "بانتظار scan"}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <div className="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl">
                     <h3 className="mb-4 text-lg font-bold text-[var(--foreground)]">الماسح الضوئي</h3>
                     <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-black">

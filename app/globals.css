@@ -71,10 +71,17 @@ html.dark {
 }
 
 html {
-  direction: rtl;
   min-height: 100%;
   background: var(--background);
   color-scheme: light;
+}
+
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+html[dir="ltr"] {
+  direction: ltr;
 }
 
 html.dark {

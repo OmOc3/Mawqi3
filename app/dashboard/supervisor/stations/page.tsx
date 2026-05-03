@@ -52,6 +52,15 @@ export default async function SupervisorStationsPage({ searchParams }: Superviso
         title="المحطات"
       />
 
+      <div className="flex justify-end">
+        <Link
+          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98]"
+          href="/dashboard/supervisor/stations/new"
+        >
+          إنشاء محطة
+        </Link>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-card">
           <p className="text-xs font-medium text-[var(--muted)]">إجمالي المحطات</p>

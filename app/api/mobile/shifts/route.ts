@@ -77,18 +77,19 @@ export async function GET(request: NextRequest): Promise<NextResponse<MobileShif
 
       return NextResponse.json({
         openShift: openShift ? mobileShiftResponse(openShift) : null,
-        shifts: shifts.map(mobileShiftResponse),
+        shifts: shifts.map((shift) => mobileShiftResponse(shift)),
       });
     }
 
     const technicianUid = searchParams.get("technicianUid") ?? undefined;
+    const includePayroll = session.role === "manager";
     const [openShift, shifts] = await Promise.all([
       technicianUid ? getOpenShift(technicianUid) : Promise.resolve(null),
       listShiftsForAdmin(
         {
           technicianUid,
           status: optionalStatus(searchParams.get("status")),
-          salaryStatus: optionalSalaryStatus(searchParams.get("salaryStatus")),
+          salaryStatus: includePayroll ? optionalSalaryStatus(searchParams.get("salaryStatus")) : "",
           dateFrom: optionalDate(searchParams.get("dateFrom")),
           dateTo: optionalDate(searchParams.get("dateTo")),
         },
@@ -97,8 +98,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<MobileShif
     ]);
 
     return NextResponse.json({
-      openShift: openShift ? mobileShiftResponse(openShift) : null,
-      shifts: shifts.map(mobileShiftResponse),
+      openShift: openShift ? mobileShiftResponse(openShift, includePayroll) : null,
+      shifts: shifts.map((shift) => mobileShiftResponse(shift, includePayroll)),
     });
   } catch (error: unknown) {
     return mobileApiErrorResponse(error);

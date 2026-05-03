@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { extractStationIdFromQrValue } from "@ecopest/shared/qr";
+import { parseEcoPestQrValue } from "@ecopest/shared/qr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface BarcodeDetectorResult {
@@ -211,14 +211,25 @@ export function WebQrScanner() {
           const rawValue = results[0]?.rawValue;
 
           if (rawValue) {
-            const stationId = extractStationIdFromQrValue(rawValue);
-            if (stationId) {
+            const payload = parseEcoPestQrValue(rawValue);
+            if (payload?.type === "station") {
               stopScanner();
-              router.push(`/station/${encodeURIComponent(stationId)}/report`);
+              router.push(`/station/${encodeURIComponent(payload.stationId)}/report`);
               return;
             }
 
-            setError("تم مسح QR لكنه ليس رابط محطة صالح.");
+            if (payload?.type === "area") {
+              stopScanner();
+              try {
+                const scannedUrl = new URL(rawValue, window.location.origin);
+                router.push(`${scannedUrl.pathname}${scannedUrl.search}`);
+              } catch {
+                router.push(`/area/${encodeURIComponent(payload.areaId)}/scan`);
+              }
+              return;
+            }
+
+            setError("تم مسح QR لكنه ليس رابط محطة أو منطقة صالح.");
           }
         } catch {
           setError("تعذر قراءة QR حاليًا. حرّك الكاميرا قليلاً وحاول مرة أخرى.");

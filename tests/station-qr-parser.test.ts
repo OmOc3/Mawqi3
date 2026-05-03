@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractStationIdFromQrValue } from "@ecopest/shared/qr";
+import {
+  extractServiceAreaIdFromQrValue,
+  extractStationIdFromQrValue,
+  parseEcoPestQrValue,
+} from "@ecopest/shared/qr";
 
 test("extractStationIdFromQrValue reads station report URLs", () => {
   assert.equal(
@@ -20,4 +24,15 @@ test("extractStationIdFromQrValue reads legacy client-station QR values", () => 
 test("extractStationIdFromQrValue rejects unrelated QR values", () => {
   assert.equal(extractStationIdFromQrValue("https://ecopest.example/scan"), null);
   assert.equal(extractStationIdFromQrValue("client-station:"), null);
+});
+
+test("extractServiceAreaIdFromQrValue reads area scan URLs", () => {
+  assert.equal(
+    extractServiceAreaIdFromQrValue("https://ecopest.example/area/area-123/scan?qr=token"),
+    "area-123",
+  );
+  assert.deepEqual(parseEcoPestQrValue("/area/client%20yard/scan?qr=token"), {
+    areaId: "client yard",
+    type: "area",
+  });
 });

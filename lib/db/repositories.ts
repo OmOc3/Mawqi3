@@ -14,10 +14,14 @@ import {
   attendanceSessions,
   appSettings,
   auditLogs,
+  clientAnalysisDocuments,
   clientSignupDevices,
   clientOrders,
   clientProfiles,
+  clientServiceAreas,
   clientStationAccess,
+  dailyAreaTaskScans,
+  dailyAreaTasks,
   dailyReportPhotos,
   dailyWorkReports,
   dailyWorkReportStations,
@@ -48,12 +52,17 @@ import type {
   AttendanceLocation,
   AttendanceSession,
   AuditLog,
+  ClientAnalysisDocument,
   ClientOrder,
   ClientOrderWithStation,
   ClientProfile,
+  ClientServiceArea,
   ClientStationAccess,
   ClientOrderStatus,
   Coordinates,
+  DailyAreaTask,
+  DailyAreaTaskScan,
+  DailyAreaTaskStatus,
   DailyReportPhoto,
   DailyWorkReport,
   Report,
@@ -64,6 +73,7 @@ import type {
   ShiftSalaryStatus,
   ShiftStationCompletion,
   ShiftStatus,
+  SprayStatus,
   Station,
   StatusOption,
   SupportContactSettings,
@@ -458,6 +468,7 @@ export interface AttendanceFilters {
 }
 
 export interface ClientStationAccessInput {
+  actorRole: UserRole;
   actorUid: string;
   clientUid: string;
   stationIds: string[];
@@ -494,6 +505,55 @@ export interface DailyWorkReportFilters {
   technicianUid?: string;
 }
 
+export interface CreateClientAnalysisDocumentInput {
+  actorRole: UserRole;
+  actorUid: string;
+  clientUid: string;
+  fileName: string;
+  fileType: ClientAnalysisDocument["fileType"];
+  fileUrl: string;
+  isVisibleToClient?: boolean;
+  title: string;
+}
+
+export interface CreateClientServiceAreaInput {
+  areaId: string;
+  actorRole: UserRole;
+  actorUid: string;
+  clientUid: string;
+  coordinates?: Coordinates;
+  description?: string;
+  location: string;
+  name: string;
+  qrCodeValue: string;
+}
+
+export interface DailyAreaTaskFilters {
+  clientUid?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  status?: DailyAreaTaskStatus | "";
+  technicianUid?: string;
+}
+
+export interface CreateDailyAreaTaskInput {
+  actorRole: UserRole;
+  actorUid: string;
+  areaId: string;
+  notes?: string;
+  scheduledDate: string;
+  technicianUid: string;
+}
+
+export interface CompleteDailyAreaTaskInput {
+  actorRole: UserRole;
+  actorUid: string;
+  notes?: string;
+  sprayStatus: SprayStatus;
+  taskId: string;
+  technicianName: string;
+}
+
 export interface CreateClientOrderInput {
   actorRole: UserRole;
   clientUid: string;
@@ -521,11 +581,14 @@ export interface ClientDirectoryEntry {
 
 export interface ClientAccountDetail {
   access: ClientStationAccess[];
+  analysisDocuments: ClientAnalysisDocument[];
   client: AppUser;
   dailyReports: DailyWorkReport[];
+  dailyAreaTasks: DailyAreaTask[];
   orders: ClientOrderWithStation[];
   profile?: ClientProfile;
   reports: Report[];
+  serviceAreas: ClientServiceArea[];
   stations: Station[];
 }
 
@@ -1416,6 +1479,98 @@ function clientProfileFromRow(row: typeof clientProfiles.$inferSelect): ClientPr
   };
 }
 
+function clientAnalysisDocumentFromRow(
+  row: typeof clientAnalysisDocuments.$inferSelect & { clientName?: string | null },
+): ClientAnalysisDocument {
+  return {
+    clientName: row.clientName ?? undefined,
+    clientUid: row.clientUid,
+    createdAt: requiredTimestamp(row.createdAt),
+    documentId: row.documentId,
+    fileName: row.fileName,
+    fileType: row.fileType,
+    fileUrl: normalizeCloudinaryDeliveryUrl(row.fileUrl),
+    isVisibleToClient: row.isVisibleToClient,
+    publishedAt: row.publishedAt ? requiredTimestamp(row.publishedAt) : undefined,
+    publishedBy: row.publishedBy ?? undefined,
+    title: row.title,
+    uploadedBy: row.uploadedBy,
+    uploadedByRole: row.uploadedByRole,
+    updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
+  };
+}
+
+function clientServiceAreaFromRow(
+  row: typeof clientServiceAreas.$inferSelect & { clientName?: string | null },
+): ClientServiceArea {
+  return {
+    areaId: row.areaId,
+    clientName: row.clientName ?? undefined,
+    clientUid: row.clientUid,
+    coordinates: typeof row.lat === "number" && typeof row.lng === "number" ? { lat: row.lat, lng: row.lng } : undefined,
+    createdAt: requiredTimestamp(row.createdAt),
+    createdBy: row.createdBy,
+    description: row.description ?? undefined,
+    isActive: row.isActive,
+    location: row.location,
+    name: row.name,
+    qrCodeValue: row.qrCodeValue,
+    updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
+    updatedBy: row.updatedBy ?? undefined,
+  };
+}
+
+function dailyAreaTaskFromRow(
+  row: typeof dailyAreaTasks.$inferSelect & {
+    areaLocation?: string | null;
+    areaName?: string | null;
+    clientName?: string | null;
+    scanCount?: number | null;
+    technicianName?: string | null;
+  },
+): DailyAreaTask {
+  return {
+    approvedAt: row.approvedAt ? requiredTimestamp(row.approvedAt) : undefined,
+    approvedBy: row.approvedBy ?? undefined,
+    areaId: row.areaId,
+    areaLocation: row.areaLocation ?? undefined,
+    areaName: row.areaName ?? undefined,
+    clientName: row.clientName ?? undefined,
+    clientUid: row.clientUid,
+    clientVisible: row.clientVisible,
+    completedAt: row.completedAt ? requiredTimestamp(row.completedAt) : undefined,
+    completedBy: row.completedBy ?? undefined,
+    createdAt: requiredTimestamp(row.createdAt),
+    createdBy: row.createdBy,
+    createdByRole: row.createdByRole,
+    notes: row.notes ?? undefined,
+    publishedAt: row.publishedAt ? requiredTimestamp(row.publishedAt) : undefined,
+    publishedBy: row.publishedBy ?? undefined,
+    scanCount: row.scanCount ?? 0,
+    scheduledDate: row.scheduledDate,
+    sprayStatus: row.sprayStatus ?? undefined,
+    status: row.status,
+    taskId: row.taskId,
+    technicianName: row.technicianName ?? undefined,
+    technicianUid: row.technicianUid,
+    updatedAt: row.updatedAt ? requiredTimestamp(row.updatedAt) : undefined,
+  };
+}
+
+function dailyAreaTaskScanFromRow(
+  row: typeof dailyAreaTaskScans.$inferSelect & { technicianName?: string | null },
+): DailyAreaTaskScan {
+  return {
+    createdAt: requiredTimestamp(row.createdAt),
+    notes: row.notes ?? undefined,
+    scanId: row.scanId,
+    sprayStatus: row.sprayStatus,
+    taskId: row.taskId,
+    technicianName: row.technicianName ?? undefined,
+    technicianUid: row.technicianUid,
+  };
+}
+
 export async function getClientProfile(clientUid: string): Promise<ClientProfile | null> {
   const [row] = await db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, clientUid)).limit(1);
 
@@ -1458,16 +1613,33 @@ function clientStationAccessFromRow(row: typeof clientStationAccess.$inferSelect
     clientUid: row.clientUid,
     createdAt: requiredTimestamp(row.createdAt),
     createdBy: row.createdBy,
+    reportsVisibleToClient: row.reportsVisibleToClient,
     stationId: row.stationId,
     stationLabel: row.stationLabel ?? undefined,
+    stationVisibleToClient: row.stationVisibleToClient,
+    visibilityUpdatedAt: row.visibilityUpdatedAt ? requiredTimestamp(row.visibilityUpdatedAt) : undefined,
+    visibilityUpdatedBy: row.visibilityUpdatedBy ?? undefined,
   };
 }
 
-async function clientStationIds(clientUid: string): Promise<string[]> {
+async function clientStationIds(
+  clientUid: string,
+  visibility?: "reports" | "station",
+): Promise<string[]> {
+  const visibilityCondition =
+    visibility === "station"
+      ? eq(clientStationAccess.stationVisibleToClient, true)
+      : visibility === "reports"
+        ? eq(clientStationAccess.reportsVisibleToClient, true)
+        : undefined;
   const rows = await db
     .select({ stationId: clientStationAccess.stationId })
     .from(clientStationAccess)
-    .where(eq(clientStationAccess.clientUid, clientUid));
+    .where(
+      visibilityCondition
+        ? and(eq(clientStationAccess.clientUid, clientUid), visibilityCondition)
+        : eq(clientStationAccess.clientUid, clientUid),
+    );
 
   return Array.from(new Set(rows.map((row) => row.stationId)));
 }
@@ -1488,8 +1660,12 @@ export async function listClientStationAccess(clientUid: string): Promise<Client
       clientUid: clientStationAccess.clientUid,
       createdAt: clientStationAccess.createdAt,
       createdBy: clientStationAccess.createdBy,
+      reportsVisibleToClient: clientStationAccess.reportsVisibleToClient,
       stationId: clientStationAccess.stationId,
       stationLabel: stations.label,
+      stationVisibleToClient: clientStationAccess.stationVisibleToClient,
+      visibilityUpdatedAt: clientStationAccess.visibilityUpdatedAt,
+      visibilityUpdatedBy: clientStationAccess.visibilityUpdatedBy,
     })
     .from(clientStationAccess)
     .innerJoin(user, eq(clientStationAccess.clientUid, user.id))
@@ -1569,7 +1745,11 @@ export async function replaceClientStationAccess(input: ClientStationAccessInput
           clientUid: input.clientUid,
           createdAt,
           createdBy: input.actorUid,
+          reportsVisibleToClient: true,
           stationId,
+          stationVisibleToClient: true,
+          visibilityUpdatedAt: createdAt,
+          visibilityUpdatedBy: input.actorUid,
         })),
       );
     }
@@ -1577,7 +1757,7 @@ export async function replaceClientStationAccess(input: ClientStationAccessInput
     await tx.insert(auditLogs).values({
       logId: crypto.randomUUID(),
       actorUid: input.actorUid,
-      actorRole: "manager",
+      actorRole: input.actorRole,
       action: "client_station_access.replace",
       entityType: "client",
       entityId: input.clientUid,
@@ -1689,17 +1869,31 @@ export async function listClientDirectory(): Promise<ClientDirectoryEntry[]> {
 }
 
 export async function getClientAccountDetail(clientUid: string): Promise<ClientAccountDetail | null> {
-  const [clientRow, profileRows, orderRowsInfer, clientReports, accessRows, assignedStations, dailyReports] =
+  const [
+    clientRow,
+    profileRows,
+    orderRowsInfer,
+    clientReports,
+    accessRows,
+    assignedStations,
+    dailyReports,
+    analysisDocuments,
+    serviceAreas,
+    dailyAreaTasks,
+  ] =
     await Promise.all([
       db.query.user.findFirst({
         where: and(eq(user.id, clientUid), eq(user.role, "client")),
       }),
       db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, clientUid)).limit(1),
       db.select().from(clientOrders).where(eq(clientOrders.clientUid, clientUid)).orderBy(desc(clientOrders.createdAt)),
-      listReportsForClientOrderedStations(clientUid, 200),
+      listReportsForClientStationsAdmin(clientUid, 200),
       listClientStationAccess(clientUid),
-      listOrderedStationsForClient(clientUid),
+      listAssignedStationsForClientAdmin(clientUid),
       listDailyWorkReports({ clientUid }, 200),
+      listClientAnalysisDocumentsForAdmin(clientUid),
+      listClientServiceAreas(clientUid),
+      listDailyAreaTasks({ clientUid }, 200),
     ]);
 
   if (!clientRow) {
@@ -1746,11 +1940,14 @@ export async function getClientAccountDetail(clientUid: string): Promise<ClientA
 
   return {
     access: accessRows,
+    analysisDocuments,
     client: appUserFromAuthUser(clientRow),
     dailyReports,
+    dailyAreaTasks,
     orders,
     profile: profileRows[0] ? clientProfileFromRow(profileRows[0]) : undefined,
     reports: clientReports,
+    serviceAreas,
     stations: assignedStations,
   };
 }
@@ -1800,6 +1997,726 @@ export async function upsertClientProfile(input: UpsertClientProfileInput): Prom
   const [profileRow] = await db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, input.clientUid)).limit(1);
 
   return profileRow ? clientProfileFromRow(profileRow) : clientProfileFromRow(record);
+}
+
+export async function createClientAnalysisDocument(
+  input: CreateClientAnalysisDocumentInput,
+): Promise<ClientAnalysisDocument> {
+  const targetClient = await getAppUser(input.clientUid);
+
+  if (!targetClient || targetClient.role !== "client") {
+    throw new AppError("العميل غير موجود.", "CLIENT_NOT_FOUND", 404);
+  }
+
+  const timestamp = now();
+  const record = {
+    clientUid: input.clientUid,
+    createdAt: timestamp,
+    documentId: crypto.randomUUID(),
+    fileName: input.fileName,
+    fileType: input.fileType,
+    fileUrl: input.fileUrl,
+    isVisibleToClient: input.isVisibleToClient ?? true,
+    publishedAt: input.isVisibleToClient === false ? null : timestamp,
+    publishedBy: input.isVisibleToClient === false ? null : input.actorUid,
+    title: input.title.trim(),
+    uploadedBy: input.actorUid,
+    uploadedByRole: input.actorRole,
+    updatedAt: null,
+  };
+
+  await db.insert(clientAnalysisDocuments).values(record);
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "client_analysis_document.create",
+    entityType: "client_analysis_document",
+    entityId: record.documentId,
+    metadata: {
+      clientUid: input.clientUid,
+      fileType: input.fileType,
+      visible: record.isVisibleToClient,
+    },
+  });
+
+  return clientAnalysisDocumentFromRow(record);
+}
+
+export async function listClientAnalysisDocumentsForAdmin(clientUid: string): Promise<ClientAnalysisDocument[]> {
+  const rows = await db
+    .select({
+      clientName: user.name,
+      clientUid: clientAnalysisDocuments.clientUid,
+      createdAt: clientAnalysisDocuments.createdAt,
+      documentId: clientAnalysisDocuments.documentId,
+      fileName: clientAnalysisDocuments.fileName,
+      fileType: clientAnalysisDocuments.fileType,
+      fileUrl: clientAnalysisDocuments.fileUrl,
+      isVisibleToClient: clientAnalysisDocuments.isVisibleToClient,
+      publishedAt: clientAnalysisDocuments.publishedAt,
+      publishedBy: clientAnalysisDocuments.publishedBy,
+      title: clientAnalysisDocuments.title,
+      uploadedBy: clientAnalysisDocuments.uploadedBy,
+      uploadedByRole: clientAnalysisDocuments.uploadedByRole,
+      updatedAt: clientAnalysisDocuments.updatedAt,
+    })
+    .from(clientAnalysisDocuments)
+    .innerJoin(user, eq(clientAnalysisDocuments.clientUid, user.id))
+    .where(eq(clientAnalysisDocuments.clientUid, clientUid))
+    .orderBy(desc(clientAnalysisDocuments.createdAt));
+
+  return rows.map(clientAnalysisDocumentFromRow);
+}
+
+export async function listVisibleClientAnalysisDocuments(clientUid: string): Promise<ClientAnalysisDocument[]> {
+  const rows = await db
+    .select()
+    .from(clientAnalysisDocuments)
+    .where(and(eq(clientAnalysisDocuments.clientUid, clientUid), eq(clientAnalysisDocuments.isVisibleToClient, true)))
+    .orderBy(desc(clientAnalysisDocuments.createdAt));
+
+  return rows.map(clientAnalysisDocumentFromRow);
+}
+
+export async function setClientAnalysisDocumentVisibility(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  documentId: string;
+  isVisibleToClient: boolean;
+}): Promise<string> {
+  const [existing] = await db
+    .select()
+    .from(clientAnalysisDocuments)
+    .where(eq(clientAnalysisDocuments.documentId, input.documentId))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError("ملف التحليل غير موجود.", "CLIENT_ANALYSIS_DOCUMENT_NOT_FOUND", 404);
+  }
+
+  const timestamp = now();
+
+  await db
+    .update(clientAnalysisDocuments)
+    .set({
+      isVisibleToClient: input.isVisibleToClient,
+      publishedAt: input.isVisibleToClient ? timestamp : null,
+      publishedBy: input.isVisibleToClient ? input.actorUid : null,
+      updatedAt: timestamp,
+    })
+    .where(eq(clientAnalysisDocuments.documentId, input.documentId));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: input.isVisibleToClient ? "client_analysis_document.publish" : "client_analysis_document.hide",
+    entityType: "client_analysis_document",
+    entityId: input.documentId,
+    metadata: { clientUid: existing.clientUid },
+  });
+
+  return existing.clientUid;
+}
+
+export async function createClientServiceArea(input: CreateClientServiceAreaInput): Promise<ClientServiceArea> {
+  const targetClient = await getAppUser(input.clientUid);
+
+  if (!targetClient || targetClient.role !== "client") {
+    throw new AppError("العميل غير موجود.", "CLIENT_NOT_FOUND", 404);
+  }
+
+  const record = {
+    areaId: input.areaId,
+    clientUid: input.clientUid,
+    createdAt: now(),
+    createdBy: input.actorUid,
+    description: input.description ?? null,
+    isActive: true,
+    lat: input.coordinates?.lat ?? null,
+    lng: input.coordinates?.lng ?? null,
+    location: input.location.trim(),
+    name: input.name.trim(),
+    qrCodeValue: input.qrCodeValue,
+    updatedAt: null,
+    updatedBy: null,
+  };
+
+  await db.insert(clientServiceAreas).values(record);
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "client_service_area.create",
+    entityType: "client_service_area",
+    entityId: record.areaId,
+    metadata: { clientUid: input.clientUid, name: record.name },
+  });
+
+  return clientServiceAreaFromRow(record);
+}
+
+export async function updateClientServiceAreaQrCode(areaId: string, qrCodeValue: string, updatedBy: string): Promise<void> {
+  await db
+    .update(clientServiceAreas)
+    .set({ qrCodeValue, updatedAt: now(), updatedBy })
+    .where(eq(clientServiceAreas.areaId, areaId));
+}
+
+export async function getClientServiceAreaById(areaId: string): Promise<ClientServiceArea | null> {
+  const [row] = await db
+    .select({
+      areaId: clientServiceAreas.areaId,
+      clientName: user.name,
+      clientUid: clientServiceAreas.clientUid,
+      createdAt: clientServiceAreas.createdAt,
+      createdBy: clientServiceAreas.createdBy,
+      description: clientServiceAreas.description,
+      isActive: clientServiceAreas.isActive,
+      lat: clientServiceAreas.lat,
+      lng: clientServiceAreas.lng,
+      location: clientServiceAreas.location,
+      name: clientServiceAreas.name,
+      qrCodeValue: clientServiceAreas.qrCodeValue,
+      updatedAt: clientServiceAreas.updatedAt,
+      updatedBy: clientServiceAreas.updatedBy,
+    })
+    .from(clientServiceAreas)
+    .innerJoin(user, eq(clientServiceAreas.clientUid, user.id))
+    .where(eq(clientServiceAreas.areaId, areaId))
+    .limit(1);
+
+  return row ? clientServiceAreaFromRow(row) : null;
+}
+
+export async function listClientServiceAreas(clientUid?: string): Promise<ClientServiceArea[]> {
+  const rows = await db
+    .select({
+      areaId: clientServiceAreas.areaId,
+      clientName: user.name,
+      clientUid: clientServiceAreas.clientUid,
+      createdAt: clientServiceAreas.createdAt,
+      createdBy: clientServiceAreas.createdBy,
+      description: clientServiceAreas.description,
+      isActive: clientServiceAreas.isActive,
+      lat: clientServiceAreas.lat,
+      lng: clientServiceAreas.lng,
+      location: clientServiceAreas.location,
+      name: clientServiceAreas.name,
+      qrCodeValue: clientServiceAreas.qrCodeValue,
+      updatedAt: clientServiceAreas.updatedAt,
+      updatedBy: clientServiceAreas.updatedBy,
+    })
+    .from(clientServiceAreas)
+    .innerJoin(user, eq(clientServiceAreas.clientUid, user.id))
+    .where(clientUid ? eq(clientServiceAreas.clientUid, clientUid) : undefined)
+    .orderBy(user.name, clientServiceAreas.name);
+
+  return rows.map(clientServiceAreaFromRow);
+}
+
+export async function setClientServiceAreaStatus(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  areaId: string;
+  isActive: boolean;
+}): Promise<string> {
+  const [existing] = await db.select().from(clientServiceAreas).where(eq(clientServiceAreas.areaId, input.areaId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("المنطقة غير موجودة.", "CLIENT_SERVICE_AREA_NOT_FOUND", 404);
+  }
+
+  await db
+    .update(clientServiceAreas)
+    .set({ isActive: input.isActive, updatedAt: now(), updatedBy: input.actorUid })
+    .where(eq(clientServiceAreas.areaId, input.areaId));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: input.isActive ? "client_service_area.activate" : "client_service_area.deactivate",
+    entityType: "client_service_area",
+    entityId: input.areaId,
+    metadata: { clientUid: existing.clientUid },
+  });
+
+  return existing.clientUid;
+}
+
+export async function updateClientStationVisibility(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  clientUid: string;
+  reportsVisibleToClient: boolean;
+  stationId: string;
+  stationVisibleToClient: boolean;
+}): Promise<void> {
+  const [existing] = await db
+    .select()
+    .from(clientStationAccess)
+    .where(and(eq(clientStationAccess.clientUid, input.clientUid), eq(clientStationAccess.stationId, input.stationId)))
+    .limit(1);
+
+  if (!existing) {
+    throw new AppError("المحطة غير مرتبطة بهذا العميل.", "CLIENT_STATION_ACCESS_NOT_FOUND", 404);
+  }
+
+  const timestamp = now();
+  await db
+    .update(clientStationAccess)
+    .set({
+      reportsVisibleToClient: input.reportsVisibleToClient,
+      stationVisibleToClient: input.stationVisibleToClient,
+      visibilityUpdatedAt: timestamp,
+      visibilityUpdatedBy: input.actorUid,
+    })
+    .where(and(eq(clientStationAccess.clientUid, input.clientUid), eq(clientStationAccess.stationId, input.stationId)));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "client_station_access.visibility_update",
+    entityType: "client_station_access",
+    entityId: existing.accessId,
+    metadata: {
+      clientUid: input.clientUid,
+      reportsVisibleToClient: input.reportsVisibleToClient,
+      stationId: input.stationId,
+      stationVisibleToClient: input.stationVisibleToClient,
+    },
+  });
+}
+
+function dailyAreaTaskConditions(filters: DailyAreaTaskFilters): SQL[] {
+  return [
+    filters.clientUid ? eq(dailyAreaTasks.clientUid, filters.clientUid) : undefined,
+    filters.technicianUid ? eq(dailyAreaTasks.technicianUid, filters.technicianUid) : undefined,
+    filters.status ? eq(dailyAreaTasks.status, filters.status) : undefined,
+    filters.dateFrom ? gte(dailyAreaTasks.scheduledDate, filters.dateFrom) : undefined,
+    filters.dateTo ? lte(dailyAreaTasks.scheduledDate, filters.dateTo) : undefined,
+  ].filter((condition): condition is SQL => condition !== undefined);
+}
+
+export async function listDailyAreaTasks(
+  filters: DailyAreaTaskFilters = {},
+  limit = 200,
+): Promise<DailyAreaTask[]> {
+  const conditions = dailyAreaTaskConditions(filters);
+  const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const rows = await db
+    .select({
+      approvedAt: dailyAreaTasks.approvedAt,
+      approvedBy: dailyAreaTasks.approvedBy,
+      areaId: dailyAreaTasks.areaId,
+      areaLocation: clientServiceAreas.location,
+      areaName: clientServiceAreas.name,
+      clientUid: dailyAreaTasks.clientUid,
+      clientVisible: dailyAreaTasks.clientVisible,
+      completedAt: dailyAreaTasks.completedAt,
+      completedBy: dailyAreaTasks.completedBy,
+      createdAt: dailyAreaTasks.createdAt,
+      createdBy: dailyAreaTasks.createdBy,
+      createdByRole: dailyAreaTasks.createdByRole,
+      notes: dailyAreaTasks.notes,
+      publishedAt: dailyAreaTasks.publishedAt,
+      publishedBy: dailyAreaTasks.publishedBy,
+      scanCount: count(dailyAreaTaskScans.scanId),
+      scheduledDate: dailyAreaTasks.scheduledDate,
+      sprayStatus: dailyAreaTasks.sprayStatus,
+      status: dailyAreaTasks.status,
+      taskId: dailyAreaTasks.taskId,
+      technicianUid: dailyAreaTasks.technicianUid,
+      updatedAt: dailyAreaTasks.updatedAt,
+    })
+    .from(dailyAreaTasks)
+    .innerJoin(clientServiceAreas, eq(dailyAreaTasks.areaId, clientServiceAreas.areaId))
+    .leftJoin(dailyAreaTaskScans, eq(dailyAreaTasks.taskId, dailyAreaTaskScans.taskId))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(dailyAreaTasks.taskId)
+    .orderBy(desc(dailyAreaTasks.scheduledDate), desc(dailyAreaTasks.createdAt))
+    .limit(safeLimit);
+
+  return rows.map(dailyAreaTaskFromRow);
+}
+
+export async function listPublishedDailyAreaTasksForClient(clientUid: string, limit = 100): Promise<DailyAreaTask[]> {
+  const safeLimit = Math.min(Math.max(limit, 1), 300);
+  const rows = await db
+    .select({
+      approvedAt: dailyAreaTasks.approvedAt,
+      approvedBy: dailyAreaTasks.approvedBy,
+      areaId: dailyAreaTasks.areaId,
+      areaLocation: clientServiceAreas.location,
+      areaName: clientServiceAreas.name,
+      clientUid: dailyAreaTasks.clientUid,
+      clientVisible: dailyAreaTasks.clientVisible,
+      completedAt: dailyAreaTasks.completedAt,
+      completedBy: dailyAreaTasks.completedBy,
+      createdAt: dailyAreaTasks.createdAt,
+      createdBy: dailyAreaTasks.createdBy,
+      createdByRole: dailyAreaTasks.createdByRole,
+      notes: dailyAreaTasks.notes,
+      publishedAt: dailyAreaTasks.publishedAt,
+      publishedBy: dailyAreaTasks.publishedBy,
+      scanCount: count(dailyAreaTaskScans.scanId),
+      scheduledDate: dailyAreaTasks.scheduledDate,
+      sprayStatus: dailyAreaTasks.sprayStatus,
+      status: dailyAreaTasks.status,
+      taskId: dailyAreaTasks.taskId,
+      technicianUid: dailyAreaTasks.technicianUid,
+      updatedAt: dailyAreaTasks.updatedAt,
+    })
+    .from(dailyAreaTasks)
+    .innerJoin(clientServiceAreas, eq(dailyAreaTasks.areaId, clientServiceAreas.areaId))
+    .leftJoin(dailyAreaTaskScans, eq(dailyAreaTasks.taskId, dailyAreaTaskScans.taskId))
+    .where(
+      and(
+        eq(dailyAreaTasks.clientUid, clientUid),
+        eq(dailyAreaTasks.clientVisible, true),
+        eq(dailyAreaTasks.status, "completed"),
+      ),
+    )
+    .groupBy(dailyAreaTasks.taskId)
+    .orderBy(desc(dailyAreaTasks.scheduledDate), desc(dailyAreaTasks.completedAt))
+    .limit(safeLimit);
+
+  return rows.map(dailyAreaTaskFromRow);
+}
+
+export async function getDailyAreaTaskById(taskId: string): Promise<DailyAreaTask | null> {
+  const rows = await db
+    .select({
+      approvedAt: dailyAreaTasks.approvedAt,
+      approvedBy: dailyAreaTasks.approvedBy,
+      areaId: dailyAreaTasks.areaId,
+      areaLocation: clientServiceAreas.location,
+      areaName: clientServiceAreas.name,
+      clientUid: dailyAreaTasks.clientUid,
+      clientVisible: dailyAreaTasks.clientVisible,
+      completedAt: dailyAreaTasks.completedAt,
+      completedBy: dailyAreaTasks.completedBy,
+      createdAt: dailyAreaTasks.createdAt,
+      createdBy: dailyAreaTasks.createdBy,
+      createdByRole: dailyAreaTasks.createdByRole,
+      notes: dailyAreaTasks.notes,
+      publishedAt: dailyAreaTasks.publishedAt,
+      publishedBy: dailyAreaTasks.publishedBy,
+      scanCount: count(dailyAreaTaskScans.scanId),
+      scheduledDate: dailyAreaTasks.scheduledDate,
+      sprayStatus: dailyAreaTasks.sprayStatus,
+      status: dailyAreaTasks.status,
+      taskId: dailyAreaTasks.taskId,
+      technicianUid: dailyAreaTasks.technicianUid,
+      updatedAt: dailyAreaTasks.updatedAt,
+    })
+    .from(dailyAreaTasks)
+    .innerJoin(clientServiceAreas, eq(dailyAreaTasks.areaId, clientServiceAreas.areaId))
+    .leftJoin(dailyAreaTaskScans, eq(dailyAreaTasks.taskId, dailyAreaTaskScans.taskId))
+    .where(eq(dailyAreaTasks.taskId, taskId))
+    .groupBy(dailyAreaTasks.taskId)
+    .limit(1);
+
+  return rows[0] ? dailyAreaTaskFromRow(rows[0]) : null;
+}
+
+export async function getActiveDailyAreaTaskForScan(input: {
+  areaId: string;
+  scheduledDate: string;
+  technicianUid: string;
+}): Promise<DailyAreaTask | null> {
+  const rows = await listDailyAreaTasks(
+    {
+      dateFrom: input.scheduledDate,
+      dateTo: input.scheduledDate,
+      technicianUid: input.technicianUid,
+    },
+    50,
+  );
+
+  return (
+    rows.find(
+      (task) =>
+        task.areaId === input.areaId &&
+        (task.status === "approved" || task.status === "completed"),
+    ) ?? null
+  );
+}
+
+export async function createDailyAreaTask(input: CreateDailyAreaTaskInput): Promise<DailyAreaTask> {
+  const [area] = await db.select().from(clientServiceAreas).where(eq(clientServiceAreas.areaId, input.areaId)).limit(1);
+
+  if (!area || !area.isActive) {
+    throw new AppError("المنطقة غير موجودة أو غير نشطة.", "CLIENT_SERVICE_AREA_NOT_FOUND", 404);
+  }
+
+  const technician = await getAppUser(input.technicianUid);
+
+  if (!technician || technician.role !== "technician") {
+    throw new AppError("الفني غير موجود.", "TECHNICIAN_NOT_FOUND", 404);
+  }
+
+  const [existing] = await db
+    .select({ taskId: dailyAreaTasks.taskId })
+    .from(dailyAreaTasks)
+    .where(
+      and(
+        eq(dailyAreaTasks.areaId, input.areaId),
+        eq(dailyAreaTasks.technicianUid, input.technicianUid),
+        eq(dailyAreaTasks.scheduledDate, input.scheduledDate),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    throw new AppError("يوجد بالفعل مهمة لنفس الفني والمنطقة في هذا اليوم.", "DAILY_AREA_TASK_DUPLICATE", 409);
+  }
+
+  const timestamp = now();
+  const status: DailyAreaTaskStatus = input.actorRole === "manager" ? "approved" : "pending_manager_approval";
+  const taskId = crypto.randomUUID();
+
+  await db.insert(dailyAreaTasks).values({
+    approvedAt: status === "approved" ? timestamp : null,
+    approvedBy: status === "approved" ? input.actorUid : null,
+    areaId: input.areaId,
+    clientUid: area.clientUid,
+    clientVisible: false,
+    completedAt: null,
+    completedBy: null,
+    createdAt: timestamp,
+    createdBy: input.actorUid,
+    createdByRole: input.actorRole,
+    notes: input.notes ?? null,
+    publishedAt: null,
+    publishedBy: null,
+    scheduledDate: input.scheduledDate,
+    sprayStatus: null,
+    status,
+    taskId,
+    technicianUid: input.technicianUid,
+    updatedAt: null,
+  });
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "daily_area_task.create",
+    entityType: "daily_area_task",
+    entityId: taskId,
+    metadata: {
+      areaId: input.areaId,
+      scheduledDate: input.scheduledDate,
+      status,
+      technicianUid: input.technicianUid,
+    },
+  });
+
+  const created = await getDailyAreaTaskById(taskId);
+
+  if (!created) {
+    throw new AppError("تعذر استرجاع المهمة بعد إنشائها.", "DAILY_AREA_TASK_CREATE_FAILED", 500);
+  }
+
+  return created;
+}
+
+export async function approveDailyAreaTask(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  taskId: string;
+}): Promise<void> {
+  if (input.actorRole !== "manager") {
+    throw new AppError("اعتماد المهام اليومية للمدير فقط.", "DAILY_AREA_TASK_APPROVE_FORBIDDEN", 403);
+  }
+
+  const [existing] = await db.select().from(dailyAreaTasks).where(eq(dailyAreaTasks.taskId, input.taskId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("المهمة غير موجودة.", "DAILY_AREA_TASK_NOT_FOUND", 404);
+  }
+
+  if (existing.status !== "pending_manager_approval") {
+    return;
+  }
+
+  await db
+    .update(dailyAreaTasks)
+    .set({
+      approvedAt: now(),
+      approvedBy: input.actorUid,
+      status: "approved",
+      updatedAt: now(),
+    })
+    .where(eq(dailyAreaTasks.taskId, input.taskId));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "daily_area_task.approve",
+    entityType: "daily_area_task",
+    entityId: input.taskId,
+    metadata: { technicianUid: existing.technicianUid },
+  });
+}
+
+export async function cancelDailyAreaTask(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  taskId: string;
+}): Promise<void> {
+  const [existing] = await db.select().from(dailyAreaTasks).where(eq(dailyAreaTasks.taskId, input.taskId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("المهمة غير موجودة.", "DAILY_AREA_TASK_NOT_FOUND", 404);
+  }
+
+  if (existing.status === "completed") {
+    throw new AppError("لا يمكن إلغاء مهمة تم تنفيذها.", "DAILY_AREA_TASK_CANCEL_COMPLETED", 409);
+  }
+
+  if (existing.status === "cancelled") {
+    return;
+  }
+
+  await db
+    .update(dailyAreaTasks)
+    .set({
+      clientVisible: false,
+      publishedAt: null,
+      publishedBy: null,
+      status: "cancelled",
+      updatedAt: now(),
+    })
+    .where(eq(dailyAreaTasks.taskId, input.taskId));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: "daily_area_task.cancel",
+    entityType: "daily_area_task",
+    entityId: input.taskId,
+    metadata: { previousStatus: existing.status },
+  });
+}
+
+export async function setDailyAreaTaskClientVisibility(input: {
+  actorRole: UserRole;
+  actorUid: string;
+  clientVisible: boolean;
+  taskId: string;
+}): Promise<void> {
+  const [existing] = await db.select().from(dailyAreaTasks).where(eq(dailyAreaTasks.taskId, input.taskId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("المهمة غير موجودة.", "DAILY_AREA_TASK_NOT_FOUND", 404);
+  }
+
+  if (input.clientVisible && existing.status !== "completed") {
+    throw new AppError("لا يمكن نشر نتيجة الرش للعميل قبل تنفيذ المهمة.", "DAILY_AREA_TASK_PUBLISH_INCOMPLETE", 409);
+  }
+
+  const timestamp = now();
+  await db
+    .update(dailyAreaTasks)
+    .set({
+      clientVisible: input.clientVisible,
+      publishedAt: input.clientVisible ? timestamp : null,
+      publishedBy: input.clientVisible ? input.actorUid : null,
+      updatedAt: timestamp,
+    })
+    .where(eq(dailyAreaTasks.taskId, input.taskId));
+
+  await writeAuditLogRecord({
+    actorUid: input.actorUid,
+    actorRole: input.actorRole,
+    action: input.clientVisible ? "daily_area_task.publish" : "daily_area_task.hide",
+    entityType: "daily_area_task",
+    entityId: input.taskId,
+    metadata: { clientUid: existing.clientUid },
+  });
+}
+
+export async function completeDailyAreaTask(input: CompleteDailyAreaTaskInput): Promise<DailyAreaTask> {
+  const [existing] = await db.select().from(dailyAreaTasks).where(eq(dailyAreaTasks.taskId, input.taskId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("المهمة غير موجودة.", "DAILY_AREA_TASK_NOT_FOUND", 404);
+  }
+
+  if (input.actorRole === "technician" && existing.technicianUid !== input.actorUid) {
+    throw new AppError("هذه المهمة ليست مخصصة لهذا الفني.", "DAILY_AREA_TASK_TECHNICIAN_MISMATCH", 403);
+  }
+
+  if (existing.status !== "approved" && existing.status !== "completed") {
+    throw new AppError("المهمة لم يتم اعتمادها من المدير بعد.", "DAILY_AREA_TASK_NOT_APPROVED", 409);
+  }
+
+  const timestamp = now();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(dailyAreaTaskScans).values({
+      createdAt: timestamp,
+      notes: input.notes ?? null,
+      scanId: crypto.randomUUID(),
+      sprayStatus: input.sprayStatus,
+      taskId: input.taskId,
+      technicianUid: input.actorUid,
+    });
+
+    await tx
+      .update(dailyAreaTasks)
+      .set({
+        clientVisible: false,
+        completedAt: timestamp,
+        completedBy: input.actorUid,
+        publishedAt: null,
+        publishedBy: null,
+        sprayStatus: input.sprayStatus,
+        status: "completed",
+        updatedAt: timestamp,
+      })
+      .where(eq(dailyAreaTasks.taskId, input.taskId));
+
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
+      actorUid: input.actorUid,
+      actorRole: input.actorRole,
+      action: "daily_area_task.scan_complete",
+      entityType: "daily_area_task",
+      entityId: input.taskId,
+      createdAt: timestamp,
+      metadata: {
+        sprayStatus: input.sprayStatus,
+        technicianName: input.technicianName,
+      },
+    });
+  });
+
+  const updated = await getDailyAreaTaskById(input.taskId);
+
+  if (!updated) {
+    throw new AppError("تعذر استرجاع المهمة بعد التنفيذ.", "DAILY_AREA_TASK_COMPLETE_FAILED", 500);
+  }
+
+  return updated;
+}
+
+export async function listDailyAreaTaskScans(taskId: string): Promise<DailyAreaTaskScan[]> {
+  const rows = await db
+    .select({
+      createdAt: dailyAreaTaskScans.createdAt,
+      notes: dailyAreaTaskScans.notes,
+      scanId: dailyAreaTaskScans.scanId,
+      sprayStatus: dailyAreaTaskScans.sprayStatus,
+      taskId: dailyAreaTaskScans.taskId,
+      technicianName: user.name,
+      technicianUid: dailyAreaTaskScans.technicianUid,
+    })
+    .from(dailyAreaTaskScans)
+    .innerJoin(user, eq(dailyAreaTaskScans.technicianUid, user.id))
+    .where(eq(dailyAreaTaskScans.taskId, taskId))
+    .orderBy(desc(dailyAreaTaskScans.createdAt));
+
+  return rows.map(dailyAreaTaskScanFromRow);
 }
 
 export async function createClientOrder(input: CreateClientOrderInput): Promise<ClientOrder> {
@@ -1893,7 +2810,7 @@ export async function approveClientOrder(orderId: string, reviewerUid: string, a
 
     await tx.insert(stations).values({
       createdAt: timestamp,
-      createdBy: order.clientUid,
+      createdBy: reviewerUid,
       description: order.proposalDescription ?? null,
       isActive: true,
       stationId: stationIdGenerated,
@@ -1929,8 +2846,12 @@ export async function approveClientOrder(orderId: string, reviewerUid: string, a
         accessId: crypto.randomUUID(),
         clientUid: order.clientUid,
         createdAt: timestamp,
-        createdBy: order.clientUid,
+        createdBy: reviewerUid,
+        reportsVisibleToClient: true,
         stationId: stationIdGenerated,
+        stationVisibleToClient: true,
+        visibilityUpdatedAt: timestamp,
+        visibilityUpdatedBy: reviewerUid,
       })
       .onConflictDoNothing();
 
@@ -2167,6 +3088,26 @@ export async function updateClientOrderStatus(
 }
 
 export async function listReportsForClientOrderedStations(clientUid: string, limit = 100): Promise<Report[]> {
+  const stationIds = await clientStationIds(clientUid, "reports");
+
+  if (stationIds.length === 0) {
+    return [];
+  }
+
+  const safeLimit = Math.min(Math.max(limit, 1), 300);
+  const rows = await db
+    .select()
+    .from(reports)
+    .where(and(inArray(reports.stationId, stationIds), eq(reports.reviewStatus, "reviewed")))
+    .orderBy(desc(reports.submittedAt), desc(reports.reportId))
+    .limit(safeLimit);
+
+  const reportIds = rows.map((row) => row.reportId);
+  const [statuses, photos] = await Promise.all([statusesByReportId(reportIds), photosByReportId(reportIds)]);
+  return rows.map((row) => withReportPhotos(reportFromRow(row, statuses.get(row.reportId) ?? []), photos.get(row.reportId)));
+}
+
+export async function listReportsForClientStationsAdmin(clientUid: string, limit = 100): Promise<Report[]> {
   const stationIds = await clientStationIds(clientUid);
 
   if (stationIds.length === 0) {
@@ -2187,6 +3128,17 @@ export async function listReportsForClientOrderedStations(clientUid: string, lim
 }
 
 export async function listOrderedStationsForClient(clientUid: string): Promise<Station[]> {
+  const stationIds = await clientStationIds(clientUid, "station");
+
+  if (stationIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db.select().from(stations).where(inArray(stations.stationId, stationIds)).orderBy(desc(stations.createdAt));
+  return rows.map(stationFromRow);
+}
+
+export async function listAssignedStationsForClientAdmin(clientUid: string): Promise<Station[]> {
   const stationIds = await clientStationIds(clientUid);
 
   if (stationIds.length === 0) {

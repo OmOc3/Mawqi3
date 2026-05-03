@@ -115,6 +115,7 @@ export async function PATCH(
       }
 
       await replaceClientStationAccess({
+        actorRole: session.role,
         actorUid: session.uid,
         clientUid: parsed.data.clientUid,
         stationIds: parsed.data.stationIds,

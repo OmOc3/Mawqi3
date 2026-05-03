@@ -89,7 +89,7 @@ function booleanFromFormData(formData: FormData, key: string): boolean {
 }
 
 export async function createStationAction(formData: FormData): Promise<StationActionResult> {
-  const session = await requireRole(["manager"]);
+  const session = await requireRole(["manager", "supervisor"]);
   const stationId = await generateNextStationId();
   let uploadedPhotoUrls: string[];
 
@@ -150,7 +150,8 @@ export async function createStationAction(formData: FormData): Promise<StationAc
   });
 
   revalidatePath("/dashboard/manager/stations");
-  redirect("/dashboard/manager/stations");
+  revalidatePath("/dashboard/supervisor/stations");
+  redirect(session.role === "supervisor" ? "/dashboard/supervisor/stations" : "/dashboard/manager/stations");
 }
 
 export async function updateStationAction(stationId: string, formData: FormData): Promise<StationActionResult> {

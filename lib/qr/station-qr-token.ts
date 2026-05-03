@@ -27,6 +27,13 @@ export function signStationQrToken(stationId: string): string {
     .slice(0, 48);
 }
 
+export function signServiceAreaQrToken(areaId: string): string {
+  return createHmac("sha256", getStationQrSecret())
+    .update(`ecopest:area-qr:v1:${areaId}`)
+    .digest("base64url")
+    .slice(0, 48);
+}
+
 /** Legacy URLs without `qr` still work. If `qr` is present it must match. */
 export function verifyStationQrToken(stationId: string, token: string | undefined): boolean {
   if (token === undefined || token === "") {
@@ -34,6 +41,27 @@ export function verifyStationQrToken(stationId: string, token: string | undefine
   }
 
   const expected = signStationQrToken(stationId);
+
+  try {
+    const a = Buffer.from(token, "utf8");
+    const b = Buffer.from(expected, "utf8");
+
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+export function verifyServiceAreaQrToken(areaId: string, token: string | undefined): boolean {
+  if (token === undefined || token === "") {
+    return false;
+  }
+
+  const expected = signServiceAreaQrToken(areaId);
 
   try {
     const a = Buffer.from(token, "utf8");

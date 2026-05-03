@@ -128,8 +128,87 @@ export interface ClientStationAccess {
   clientUid: string;
   createdAt: AppTimestamp;
   createdBy: string;
+  reportsVisibleToClient: boolean;
   stationId: string;
   stationLabel?: string;
+  stationVisibleToClient: boolean;
+  visibilityUpdatedAt?: AppTimestamp;
+  visibilityUpdatedBy?: string;
+}
+
+export type ClientAnalysisDocumentFileType = "doc" | "docx" | "pdf";
+
+export interface ClientAnalysisDocument {
+  clientName?: string;
+  clientUid: string;
+  createdAt: AppTimestamp;
+  documentId: string;
+  fileName: string;
+  fileType: ClientAnalysisDocumentFileType;
+  fileUrl: string;
+  isVisibleToClient: boolean;
+  publishedAt?: AppTimestamp;
+  publishedBy?: string;
+  title: string;
+  uploadedBy: string;
+  uploadedByRole: UserRole;
+  updatedAt?: AppTimestamp;
+}
+
+export interface ClientServiceArea {
+  areaId: string;
+  clientName?: string;
+  clientUid: string;
+  coordinates?: Coordinates;
+  createdAt: AppTimestamp;
+  createdBy: string;
+  description?: string;
+  isActive: boolean;
+  location: string;
+  name: string;
+  qrCodeValue: string;
+  updatedAt?: AppTimestamp;
+  updatedBy?: string;
+}
+
+export type DailyAreaTaskStatus = "approved" | "cancelled" | "completed" | "pending_manager_approval";
+export type SprayStatus = "not_sprayed" | "sprayed";
+
+export interface DailyAreaTask {
+  approvedAt?: AppTimestamp;
+  approvedBy?: string;
+  areaId: string;
+  areaLocation?: string;
+  areaName?: string;
+  clientName?: string;
+  clientUid: string;
+  clientVisible: boolean;
+  completedAt?: AppTimestamp;
+  completedBy?: string;
+  createdAt: AppTimestamp;
+  createdBy: string;
+  createdByRole: UserRole;
+  notes?: string;
+  publishedAt?: AppTimestamp;
+  publishedBy?: string;
+  scanCount: number;
+  scheduledDate: string;
+  sprayStatus?: SprayStatus;
+  status: DailyAreaTaskStatus;
+  taskId: string;
+  technicianName?: string;
+  technicianUid: string;
+  updatedAt?: AppTimestamp;
+}
+
+export interface DailyAreaTaskScan {
+  createdAt: AppTimestamp;
+  notes?: string;
+  scanId: string;
+  sprayStatus: SprayStatus;
+  taskId: string;
+  technicianName?: string;
+  technicianUid: string;
 }
 
 export interface ReportPhoto {

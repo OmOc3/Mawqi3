@@ -1,5 +1,16 @@
 const stationReportPathPattern = /\/station\/([^/?#]+)\/report(?:[?#]|$)/;
+const serviceAreaScanPathPattern = /\/area\/([^/?#]+)\/scan(?:[?#]|$)/;
 const legacyClientStationPattern = /^client-station:([^:\s]+):[A-Za-z0-9-]+$/;
+
+export type EcoPestQrPayload =
+  | {
+      stationId: string;
+      type: "station";
+    }
+  | {
+      areaId: string;
+      type: "area";
+    };
 
 function decodeStationId(value: string): string | null {
   try {
@@ -24,6 +35,33 @@ export function extractStationIdFromQrValue(value: string): string | null {
 
   if (legacyMatch?.[1]) {
     return decodeStationId(legacyMatch[1]);
+  }
+
+  return null;
+}
+
+export function extractServiceAreaIdFromQrValue(value: string): string | null {
+  const trimmed = value.trim();
+  const areaUrlMatch = trimmed.match(serviceAreaScanPathPattern);
+
+  if (areaUrlMatch?.[1]) {
+    return decodeStationId(areaUrlMatch[1]);
+  }
+
+  return null;
+}
+
+export function parseEcoPestQrValue(value: string): EcoPestQrPayload | null {
+  const stationId = extractStationIdFromQrValue(value);
+
+  if (stationId) {
+    return { stationId, type: "station" };
+  }
+
+  const areaId = extractServiceAreaIdFromQrValue(value);
+
+  if (areaId) {
+    return { areaId, type: "area" };
   }
 
   return null;

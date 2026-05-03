@@ -13,10 +13,9 @@ export function DashboardShell({ children, className, contentClassName, role }: 
   return (
     <main
       className={cn(
-        "dashboard-shell min-h-dvh bg-[var(--background)] text-right",
+        "dashboard-shell min-h-dvh bg-[var(--background)] text-start",
         className,
       )}
-      dir="rtl"
     >
       <section className={cn("dashboard-shell__content mx-auto", contentClassName ?? "max-w-7xl")}>
         {children}

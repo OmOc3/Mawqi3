@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/utils";
 
 interface SubmitButtonProps {
@@ -11,6 +12,7 @@ interface SubmitButtonProps {
 
 export function SubmitButton({ children, className, pendingLabel = "جار الحفظ..." }: SubmitButtonProps) {
   const { pending } = useFormStatus();
+  const { translate } = useLanguage();
 
   return (
     <button
@@ -27,7 +29,7 @@ export function SubmitButton({ children, className, pendingLabel = "جار ال�
           className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
         />
       ) : null}
-      {pending ? pendingLabel : children}
+      {pending ? translate(pendingLabel) : translate(children)}
     </button>
   );
 }

@@ -3,7 +3,6 @@ import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireRole } from "@/lib/auth/server-session";
 import { listShiftsForAdmin, listAppUsers } from "@/lib/db/repositories";
-import { SalaryStatusButton } from "@/components/shifts/salary-status-button";
 import { APP_TIME_ZONE } from "@/lib/datetime";
 
 
@@ -35,21 +34,17 @@ export default async function SupervisorShiftsPage() {
                 <th className="p-3">البداية</th>
                 <th className="p-3">النهاية</th>
                 <th className="p-3">المدة</th>
-                <th className="p-3">الراتب</th>
-                <th className="p-3">حالة الدفع</th>
               </tr>
             </thead>
             <tbody>
               {shifts.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-sm text-[var(--muted)]">لا توجد شيفتات.</td></tr>
+                <tr><td colSpan={4} className="p-8 text-center text-sm text-[var(--muted)]">لا توجد شيفتات.</td></tr>
               ) : shifts.map((s) => (
                 <tr key={s.shiftId} className="border-b border-[var(--border)] text-sm hover:bg-[var(--surface-subtle)]">
                   <td className="p-3 font-medium text-[var(--foreground)]">{techMap.get(s.technicianUid) ?? s.technicianName}</td>
                   <td className="p-3 text-[var(--muted)]">{fmt(s.startedAt.toDate().getTime())}</td>
                   <td className="p-3 text-[var(--muted)]">{s.endedAt ? fmt(s.endedAt.toDate().getTime()) : <span className="font-bold text-emerald-600">نشط</span>}</td>
                   <td className="p-3 text-[var(--muted)]">{s.totalMinutes != null ? minutesToDisplay(s.totalMinutes) : "—"}</td>
-                  <td className="p-3 text-[var(--muted)]">{s.salaryAmount != null ? s.salaryAmount : "—"}</td>
-                  <td className="p-3"><SalaryStatusButton shiftId={s.shiftId} current={s.salaryStatus} readOnly /></td>
                 </tr>
               ))}
             </tbody>

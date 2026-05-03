@@ -6,6 +6,7 @@ import {
   ClientOrderReviewActions,
   isOrderAwaitingAdminApproval,
 } from "@/components/client-orders/client-order-review-actions";
+import { ClientVisibilityAdminPanel } from "@/components/client-visibility/client-visibility-admin-panel";
 import { ClientProfileForm } from "@/components/client-orders/client-profile-form";
 import { ClientStationAccessForm } from "@/components/client-orders/client-station-access-form";
 import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
@@ -358,6 +359,13 @@ export default async function ClientProfilePage({ params }: ClientProfilePagePro
             <ClientProfileForm addresses={addresses} clientUid={detail.client.uid} phone={detail.profile?.phone} />
           </aside>
         </div>
+
+        <ClientVisibilityAdminPanel
+          access={detail.access}
+          analysisDocuments={detail.analysisDocuments}
+          clientUid={detail.client.uid}
+          serviceAreas={detail.serviceAreas}
+        />
 
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card">
           <div className="flex flex-wrap items-end justify-between gap-3">

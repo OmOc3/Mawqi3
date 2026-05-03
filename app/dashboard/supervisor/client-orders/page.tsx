@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   ClientOrderOperationalStatusForm,
   ClientOrderReviewActions,
@@ -103,7 +104,11 @@ function OrderCard({ attendance, location, order }: { attendance: AttendanceInfo
       <dl className="mt-4 grid gap-3 text-sm">
         <div>
           <dt className="font-medium text-[var(--muted)]">العميل</dt>
-          <dd className="mt-1 text-[var(--foreground)]">{order.clientName}</dd>
+          <dd className="mt-1 text-[var(--foreground)]">
+            <Link className="font-semibold text-[var(--primary)] hover:underline" href={`/dashboard/supervisor/client-orders/${order.clientUid}`}>
+              {order.clientName}
+            </Link>
+          </dd>
         </div>
         <div>
           <dt className="font-medium text-[var(--muted)]">الموقع المقترح</dt>
@@ -233,7 +238,11 @@ export default async function SupervisorClientOrdersPage() {
                     const attendance = findAttendanceForOrder(order, attendanceLogs);
                     return (
                     <tr className="transition-colors hover:bg-[var(--surface-subtle)]" key={order.orderId}>
-                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{order.clientName}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                        <Link className="text-[var(--primary)] hover:underline" href={`/dashboard/supervisor/client-orders/${order.clientUid}`}>
+                          {order.clientName}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">{order.stationLabel}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted)]">{resolveOrderLocationText(order, stationLocations)}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(order.createdAt)}</td>

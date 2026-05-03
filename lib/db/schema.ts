@@ -2,11 +2,14 @@ import { relations } from "drizzle-orm";
 import { customType, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { booleanFlagFromDriver } from "@/lib/db/boolean";
 import type {
+  ClientAnalysisDocumentFileType,
   ClientOrderStatus,
   Coordinates,
+  DailyAreaTaskStatus,
   PestTypeOption,
   ReportPhotoCategory,
   ReportPhotoPaths,
+  SprayStatus,
   StatusOption,
   UserRole,
 } from "@/types";
@@ -427,11 +430,130 @@ export const clientStationAccess = sqliteTable(
       .references(() => stations.stationId, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").notNull(),
     createdBy: text("created_by").notNull(),
+    stationVisibleToClient: booleanFlag("station_visible_to_client").notNull().default(false),
+    reportsVisibleToClient: booleanFlag("reports_visible_to_client").notNull().default(false),
+    visibilityUpdatedAt: timestamp("visibility_updated_at"),
+    visibilityUpdatedBy: text("visibility_updated_by"),
   },
   (table) => [
     uniqueIndex("client_station_access_unique").on(table.clientUid, table.stationId),
     index("client_station_access_client_uid_idx").on(table.clientUid),
     index("client_station_access_station_id_idx").on(table.stationId),
+    index("client_station_access_station_visible_idx").on(table.stationVisibleToClient),
+    index("client_station_access_reports_visible_idx").on(table.reportsVisibleToClient),
+  ],
+);
+
+export const clientAnalysisDocuments = sqliteTable(
+  "client_analysis_documents",
+  {
+    documentId: text("document_id").primaryKey(),
+    clientUid: text("client_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    fileName: text("file_name").notNull(),
+    fileType: text("file_type").$type<ClientAnalysisDocumentFileType>().notNull(),
+    fileUrl: text("file_url").notNull(),
+    isVisibleToClient: booleanFlag("is_visible_to_client").notNull().default(true),
+    uploadedBy: text("uploaded_by").notNull(),
+    uploadedByRole: text("uploaded_by_role").$type<UserRole>().notNull(),
+    publishedAt: timestamp("published_at"),
+    publishedBy: text("published_by"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    index("client_analysis_documents_client_uid_idx").on(table.clientUid),
+    index("client_analysis_documents_visible_idx").on(table.isVisibleToClient),
+    index("client_analysis_documents_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const clientServiceAreas = sqliteTable(
+  "client_service_areas",
+  {
+    areaId: text("area_id").primaryKey(),
+    clientUid: text("client_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    location: text("location").notNull(),
+    description: text("description"),
+    lat: real("lat"),
+    lng: real("lng"),
+    qrCodeValue: text("qr_code_value").notNull(),
+    isActive: booleanFlag("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull(),
+    createdBy: text("created_by").notNull(),
+    updatedAt: timestamp("updated_at"),
+    updatedBy: text("updated_by"),
+  },
+  (table) => [
+    index("client_service_areas_client_uid_idx").on(table.clientUid),
+    index("client_service_areas_active_idx").on(table.isActive),
+    index("client_service_areas_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const dailyAreaTasks = sqliteTable(
+  "daily_area_tasks",
+  {
+    taskId: text("task_id").primaryKey(),
+    areaId: text("area_id")
+      .notNull()
+      .references(() => clientServiceAreas.areaId, { onDelete: "cascade" }),
+    clientUid: text("client_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    technicianUid: text("technician_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    scheduledDate: text("scheduled_date").notNull(),
+    status: text("status").$type<DailyAreaTaskStatus>().notNull().default("pending_manager_approval"),
+    sprayStatus: text("spray_status").$type<SprayStatus>(),
+    notes: text("notes"),
+    clientVisible: booleanFlag("client_visible").notNull().default(false),
+    createdAt: timestamp("created_at").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdByRole: text("created_by_role").$type<UserRole>().notNull(),
+    approvedAt: timestamp("approved_at"),
+    approvedBy: text("approved_by"),
+    completedAt: timestamp("completed_at"),
+    completedBy: text("completed_by"),
+    publishedAt: timestamp("published_at"),
+    publishedBy: text("published_by"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    uniqueIndex("daily_area_tasks_unique_area_tech_date").on(table.areaId, table.technicianUid, table.scheduledDate),
+    index("daily_area_tasks_area_id_idx").on(table.areaId),
+    index("daily_area_tasks_client_uid_idx").on(table.clientUid),
+    index("daily_area_tasks_technician_uid_idx").on(table.technicianUid),
+    index("daily_area_tasks_status_idx").on(table.status),
+    index("daily_area_tasks_scheduled_date_idx").on(table.scheduledDate),
+    index("daily_area_tasks_client_visible_idx").on(table.clientVisible),
+  ],
+);
+
+export const dailyAreaTaskScans = sqliteTable(
+  "daily_area_task_scans",
+  {
+    scanId: text("scan_id").primaryKey(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => dailyAreaTasks.taskId, { onDelete: "cascade" }),
+    technicianUid: text("technician_uid")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    sprayStatus: text("spray_status").$type<SprayStatus>().notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    index("daily_area_task_scans_task_id_idx").on(table.taskId),
+    index("daily_area_task_scans_technician_uid_idx").on(table.technicianUid),
+    index("daily_area_task_scans_created_at_idx").on(table.createdAt),
   ],
 );
 
@@ -505,6 +627,36 @@ export const stationRelations = relations(stations, ({ many }) => ({
   clientAccess: many(clientStationAccess),
   dailyReports: many(dailyWorkReportStations),
   reports: many(reports),
+}));
+
+export const clientAnalysisDocumentRelations = relations(clientAnalysisDocuments, ({ one }) => ({
+  client: one(user, {
+    fields: [clientAnalysisDocuments.clientUid],
+    references: [user.id],
+  }),
+}));
+
+export const clientServiceAreaRelations = relations(clientServiceAreas, ({ many, one }) => ({
+  client: one(user, {
+    fields: [clientServiceAreas.clientUid],
+    references: [user.id],
+  }),
+  tasks: many(dailyAreaTasks),
+}));
+
+export const dailyAreaTaskRelations = relations(dailyAreaTasks, ({ many, one }) => ({
+  area: one(clientServiceAreas, {
+    fields: [dailyAreaTasks.areaId],
+    references: [clientServiceAreas.areaId],
+  }),
+  scans: many(dailyAreaTaskScans),
+}));
+
+export const dailyAreaTaskScanRelations = relations(dailyAreaTaskScans, ({ one }) => ({
+  task: one(dailyAreaTasks, {
+    fields: [dailyAreaTaskScans.taskId],
+    references: [dailyAreaTasks.taskId],
+  }),
 }));
 
 export const reportRelations = relations(reports, ({ many, one }) => ({

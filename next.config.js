@@ -4,7 +4,7 @@ const nextConfig = {
   serverExternalPackages: ["@resvg/resvg-js"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "12mb"
+      bodySizeLimit: "16mb"
     },
     staticGenerationMaxConcurrency: 1,
     staticGenerationMinPagesPerWorker: 1,

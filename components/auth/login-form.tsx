@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { i18n } from "@/lib/i18n";
@@ -50,6 +51,7 @@ interface LoginFormProps {
 
 export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {}) {
   const router = useRouter();
+  const { translate } = useLanguage();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     formState: { errors, isSubmitting },
@@ -76,19 +78,21 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
       const payload = (await response.json()) as unknown;
 
       if (!response.ok) {
-        setFormError(isApiErrorResponse(payload) ? formatApiErrorMessage(payload) : i18n.auth.genericLoginError);
+        setFormError(
+          isApiErrorResponse(payload) ? translate(formatApiErrorMessage(payload)) : translate(i18n.auth.genericLoginError),
+        );
         return;
       }
 
       if (!isLoginSuccessResponse(payload)) {
-        setFormError(i18n.errors.unexpected);
+        setFormError(translate(i18n.errors.unexpected));
         return;
       }
 
       router.replace(payload.redirectTo);
       router.refresh();
     } catch (_error: unknown) {
-      setFormError(i18n.errors.unexpected);
+      setFormError(translate(i18n.errors.unexpected));
     }
   }
 
@@ -97,10 +101,10 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
       <TextField
         autoComplete="email"
         dir="ltr"
-        error={errors.email?.message}
+        error={errors.email?.message ? translate(errors.email.message) : undefined}
         id="email"
         inputMode="email"
-        label={i18n.auth.email}
+        label={translate(i18n.auth.email)}
         placeholder={i18n.auth.emailPlaceholder}
         type="email"
         {...register("email")}
@@ -108,10 +112,10 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
       <TextField
         autoComplete="current-password"
         dir="ltr"
-        error={errors.password?.message}
+        error={errors.password?.message ? translate(errors.password.message) : undefined}
         id="password"
-        label={i18n.auth.password}
-        placeholder={i18n.auth.passwordPlaceholder}
+        label={translate(i18n.auth.password)}
+        placeholder={translate(i18n.auth.passwordPlaceholder)}
         type="password"
         {...register("password")}
       />
@@ -124,7 +128,7 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
         </div>
       ) : null}
       <Button isLoading={isSubmitting} type="submit">
-        {isSubmitting ? i18n.auth.signingIn : i18n.actions.login}
+        {isSubmitting ? translate(i18n.auth.signingIn) : translate(i18n.actions.login)}
       </Button>
     </form>
   );

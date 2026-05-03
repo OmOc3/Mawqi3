@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ interface LogoutButtonProps {
 
 export function LogoutButton({ buttonClassName, className, redirectTo = "/login" }: LogoutButtonProps = {}) {
   const router = useRouter();
+  const { translate } = useLanguage();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export function LogoutButton({ buttonClassName, className, redirectTo = "/login"
       router.replace(redirectTo);
       router.refresh();
     } catch (_error: unknown) {
-      setError(i18n.auth.logoutError);
+      setError(translate(i18n.auth.logoutError));
     } finally {
       setIsPending(false);
     }
@@ -34,7 +36,7 @@ export function LogoutButton({ buttonClassName, className, redirectTo = "/login"
   return (
     <div className={cn("space-y-2", className)}>
       <Button className={buttonClassName} isLoading={isPending} onClick={handleLogout} variant="secondary">
-        {i18n.actions.logout}
+        {translate(i18n.actions.logout)}
       </Button>
       {error ? (
         <p className="text-center text-sm font-medium text-[var(--danger)]" role="alert">

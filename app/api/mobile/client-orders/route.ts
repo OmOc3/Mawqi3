@@ -10,9 +10,7 @@ import {
   type MobileStationResponse,
 } from "@/lib/api/mobile-serializers";
 import { requireBearerRole } from "@/lib/auth/bearer-session";
-import { createClientOrderSchema } from "@/lib/validation/client-orders";
 import {
-  createClientOrder,
   getStationLocations,
   listAttendanceSessionsForClient,
   listClientOrders,
@@ -79,59 +77,16 @@ export async function POST(
   request: NextRequest,
 ): Promise<NextResponse<MobileClientOrderResponse | ApiErrorResponse>> {
   try {
-    const session = await requireBearerRole(request, ["client"]);
-    const body = (await request.json()) as unknown;
-    const bodyObj = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
-    const latRaw = bodyObj.lat;
-    const lngRaw = bodyObj.lng;
-    const lat = typeof latRaw === "number" ? latRaw : latRaw !== undefined ? Number(latRaw) : undefined;
-    const lng = typeof lngRaw === "number" ? lngRaw : lngRaw !== undefined ? Number(lngRaw) : undefined;
+    await requireBearerRole(request, ["manager", "supervisor"]);
 
-    const parsed = createClientOrderSchema.safeParse({
-      lat: lat !== undefined && !Number.isNaN(lat) ? lat : undefined,
-      lng: lng !== undefined && !Number.isNaN(lng) ? lng : undefined,
-      note:
-        typeof bodyObj.note === "string" ? bodyObj.note : bodyObj.note === null || bodyObj.note === undefined ? undefined : "",
-      stationDescription:
-        typeof bodyObj.stationDescription === "string"
-          ? bodyObj.stationDescription
-          : bodyObj.stationDescription === null || bodyObj.stationDescription === undefined
-            ? undefined
-            : "",
-      stationLabel:
-        typeof bodyObj.stationLabel === "string" ? bodyObj.stationLabel : bodyObj.stationLabel === undefined ? "" : "",
-      stationLocation:
-        typeof bodyObj.stationLocation === "string"
-          ? bodyObj.stationLocation
-          : bodyObj.stationLocation === undefined
-            ? ""
-            : "",
-    });
+    return NextResponse.json(
+      {
+        code: "MOBILE_CLIENT_ORDER_CREATION_DISABLED",
+        message: "إنشاء طلبات الفحص من العميل متوقف. استخدم لوحة الإدارة لإنشاء المحطات وربطها بالعميل.",
+      },
+      { status: 403 },
+    );
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { code: "MOBILE_CLIENT_ORDER_INVALID", message: "تحقق من اسم المحطة والموقع." },
-        { status: 400 },
-      );
-    }
-
-    const coordinates =
-      typeof parsed.data.lat === "number" && typeof parsed.data.lng === "number"
-        ? { lat: parsed.data.lat, lng: parsed.data.lng }
-        : undefined;
-
-    const order = await createClientOrder({
-      actorRole: session.role,
-      clientName: session.user.displayName,
-      clientUid: session.uid,
-      coordinates,
-      note: parsed.data.note,
-      stationDescription: parsed.data.stationDescription,
-      stationLabel: parsed.data.stationLabel,
-      stationLocation: parsed.data.stationLocation,
-    });
-
-    return NextResponse.json(mobileClientOrderResponse(order));
   } catch (error: unknown) {
     return mobileApiErrorResponse(error);
   }

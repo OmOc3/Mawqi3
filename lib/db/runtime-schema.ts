@@ -389,20 +389,146 @@ async function ensureRuntimeSchemaInternal(): Promise<void> {
       client_uid text NOT NULL REFERENCES user(id) ON DELETE cascade,
       station_id text NOT NULL REFERENCES stations(station_id) ON DELETE cascade,
       created_at integer NOT NULL,
-      created_by text NOT NULL
+      created_by text NOT NULL,
+      station_visible_to_client integer DEFAULT false NOT NULL,
+      reports_visible_to_client integer DEFAULT false NOT NULL,
+      visibility_updated_at integer,
+      visibility_updated_by text
     )
   `);
+  await addMissingColumns("client_station_access", [
+    {
+      name: "station_visible_to_client",
+      sql: "ALTER TABLE `client_station_access` ADD `station_visible_to_client` integer DEFAULT false NOT NULL",
+    },
+    {
+      name: "reports_visible_to_client",
+      sql: "ALTER TABLE `client_station_access` ADD `reports_visible_to_client` integer DEFAULT false NOT NULL",
+    },
+    { name: "visibility_updated_at", sql: "ALTER TABLE `client_station_access` ADD `visibility_updated_at` integer" },
+    { name: "visibility_updated_by", sql: "ALTER TABLE `client_station_access` ADD `visibility_updated_by` text" },
+  ]);
   await execute("CREATE UNIQUE INDEX IF NOT EXISTS client_station_access_unique ON client_station_access (client_uid, station_id)");
   await execute("CREATE INDEX IF NOT EXISTS client_station_access_client_uid_idx ON client_station_access (client_uid)");
   await execute("CREATE INDEX IF NOT EXISTS client_station_access_station_id_idx ON client_station_access (station_id)");
+  await execute("CREATE INDEX IF NOT EXISTS client_station_access_station_visible_idx ON client_station_access (station_visible_to_client)");
+  await execute("CREATE INDEX IF NOT EXISTS client_station_access_reports_visible_idx ON client_station_access (reports_visible_to_client)");
 
   await execute(`
-    INSERT OR IGNORE INTO client_station_access (access_id, client_uid, station_id, created_at, created_by)
-    SELECT 'legacy_' || client_uid || '_' || station_id, client_uid, station_id, min(created_at), client_uid
+    INSERT OR IGNORE INTO client_station_access (
+      access_id,
+      client_uid,
+      station_id,
+      created_at,
+      created_by,
+      station_visible_to_client,
+      reports_visible_to_client,
+      visibility_updated_at,
+      visibility_updated_by
+    )
+    SELECT
+      'legacy_' || client_uid || '_' || station_id,
+      client_uid,
+      station_id,
+      min(created_at),
+      client_uid,
+      false,
+      false,
+      NULL,
+      NULL
     FROM client_orders
     WHERE station_id IS NOT NULL AND station_id <> ''
     GROUP BY client_uid, station_id
   `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS client_analysis_documents (
+      document_id text PRIMARY KEY NOT NULL,
+      client_uid text NOT NULL REFERENCES user(id) ON DELETE cascade,
+      title text NOT NULL,
+      file_name text NOT NULL,
+      file_type text NOT NULL,
+      file_url text NOT NULL,
+      is_visible_to_client integer DEFAULT true NOT NULL,
+      uploaded_by text NOT NULL,
+      uploaded_by_role text NOT NULL,
+      published_at integer,
+      published_by text,
+      created_at integer NOT NULL,
+      updated_at integer
+    )
+  `);
+  await execute("CREATE INDEX IF NOT EXISTS client_analysis_documents_client_uid_idx ON client_analysis_documents (client_uid)");
+  await execute("CREATE INDEX IF NOT EXISTS client_analysis_documents_visible_idx ON client_analysis_documents (is_visible_to_client)");
+  await execute("CREATE INDEX IF NOT EXISTS client_analysis_documents_created_at_idx ON client_analysis_documents (created_at)");
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS client_service_areas (
+      area_id text PRIMARY KEY NOT NULL,
+      client_uid text NOT NULL REFERENCES user(id) ON DELETE cascade,
+      name text NOT NULL,
+      location text NOT NULL,
+      description text,
+      lat real,
+      lng real,
+      qr_code_value text NOT NULL,
+      is_active integer DEFAULT true NOT NULL,
+      created_at integer NOT NULL,
+      created_by text NOT NULL,
+      updated_at integer,
+      updated_by text
+    )
+  `);
+  await execute("CREATE INDEX IF NOT EXISTS client_service_areas_client_uid_idx ON client_service_areas (client_uid)");
+  await execute("CREATE INDEX IF NOT EXISTS client_service_areas_active_idx ON client_service_areas (is_active)");
+  await execute("CREATE INDEX IF NOT EXISTS client_service_areas_created_at_idx ON client_service_areas (created_at)");
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS daily_area_tasks (
+      task_id text PRIMARY KEY NOT NULL,
+      area_id text NOT NULL REFERENCES client_service_areas(area_id) ON DELETE cascade,
+      client_uid text NOT NULL REFERENCES user(id) ON DELETE cascade,
+      technician_uid text NOT NULL REFERENCES user(id) ON DELETE restrict,
+      scheduled_date text NOT NULL,
+      status text DEFAULT 'pending_manager_approval' NOT NULL,
+      spray_status text,
+      notes text,
+      client_visible integer DEFAULT false NOT NULL,
+      created_at integer NOT NULL,
+      created_by text NOT NULL,
+      created_by_role text NOT NULL,
+      approved_at integer,
+      approved_by text,
+      completed_at integer,
+      completed_by text,
+      published_at integer,
+      published_by text,
+      updated_at integer
+    )
+  `);
+  await execute(
+    "CREATE UNIQUE INDEX IF NOT EXISTS daily_area_tasks_unique_area_tech_date ON daily_area_tasks (area_id, technician_uid, scheduled_date)",
+  );
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_area_id_idx ON daily_area_tasks (area_id)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_client_uid_idx ON daily_area_tasks (client_uid)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_technician_uid_idx ON daily_area_tasks (technician_uid)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_status_idx ON daily_area_tasks (status)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_scheduled_date_idx ON daily_area_tasks (scheduled_date)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_tasks_client_visible_idx ON daily_area_tasks (client_visible)");
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS daily_area_task_scans (
+      scan_id text PRIMARY KEY NOT NULL,
+      task_id text NOT NULL REFERENCES daily_area_tasks(task_id) ON DELETE cascade,
+      technician_uid text NOT NULL REFERENCES user(id) ON DELETE restrict,
+      spray_status text NOT NULL,
+      notes text,
+      created_at integer NOT NULL
+    )
+  `);
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_task_scans_task_id_idx ON daily_area_task_scans (task_id)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_task_scans_technician_uid_idx ON daily_area_task_scans (technician_uid)");
+  await execute("CREATE INDEX IF NOT EXISTS daily_area_task_scans_created_at_idx ON daily_area_task_scans (created_at)");
 
   await execute(`
     CREATE TABLE IF NOT EXISTS report_photos (

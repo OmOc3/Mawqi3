@@ -8,17 +8,14 @@ import { requireRole } from "@/lib/auth/server-session";
 import { db } from "@/lib/db/client";
 import { user as usersTable } from "@/lib/db/schema";
 import {
-  createClientOrder,
   getClientProfile,
   replaceClientStationAccess,
   updateClientOrderStatus,
   upsertClientProfile,
 } from "@/lib/db/repositories";
 import { writeAuditLog } from "@/lib/audit";
-import { storeReportImage } from "@/lib/reports/store-report-image";
 import {
   clientAddressLinesFromText,
-  createClientOrderSchema,
   updateClientAccountPasswordSchema,
   updateClientAccountProfileSchema,
   updateClientOrderStatusSchema,
@@ -143,73 +140,13 @@ export async function updateClientAccountPasswordAction(formData: FormData): Pro
 }
 
 export async function createClientOrderAction(formData: FormData): Promise<ClientOrderActionResult> {
-  const session = await requireRole(["client"]);
-  const latRaw = formData.get("lat");
-  const lngRaw = formData.get("lng");
-  const lat = latRaw ? parseFloat(String(latRaw)) : undefined;
-  const lng = lngRaw ? parseFloat(String(lngRaw)) : undefined;
+  await requireRole(["manager", "supervisor"]);
+  void formData;
 
-  const parsed = createClientOrderSchema.safeParse({
-    stationDescription: optionalString(formData, "stationDescription"),
-    stationLabel: formData.get("stationLabel"),
-    stationLocation: formData.get("stationLocation"),
-    note: optionalString(formData, "note"),
-    lat: lat !== undefined && !Number.isNaN(lat) ? lat : undefined,
-    lng: lng !== undefined && !Number.isNaN(lng) ? lng : undefined,
-  });
+  return {
+    error: "إنشاء طلبات الفحص من بوابة العميل متوقف. استخدم إنشاء المحطات وإدارة العميل من لوحة الإدارة.",
+  };
 
-  if (!parsed.success) {
-    return { error: "تحقق من بيانات الطلب." };
-  }
-
-  // Handle photo upload
-  let photoUrl: string | undefined;
-  const photoFile = formData.get("photo");
-
-  if (photoFile instanceof File && photoFile.size > 0) {
-    try {
-      photoUrl = await storeReportImage(
-        photoFile,
-        `client-order-${session.uid}`,
-        `client-order-${crypto.randomUUID()}`,
-      );
-    } catch (error: unknown) {
-      return { error: error instanceof Error ? error.message : "تعذر رفع صورة الطلب. تحقق من الصورة وحاول مرة أخرى." };
-    }
-  }
-
-  const coordinates =
-    typeof parsed.data.lat === "number" && typeof parsed.data.lng === "number"
-      ? { lat: parsed.data.lat, lng: parsed.data.lng }
-      : undefined;
-
-  try {
-    await createClientOrder({
-      actorRole: session.role,
-      clientUid: session.uid,
-      clientName: session.user.displayName,
-      stationLabel: parsed.data.stationLabel,
-      stationLocation: parsed.data.stationLocation,
-      stationDescription: parsed.data.stationDescription,
-      note: parsed.data.note,
-      photoUrl,
-      coordinates,
-    });
-
-    await writeAuditLog({
-      actorUid: session.uid,
-      actorRole: session.role,
-      action: "client_order.submit",
-      entityType: "client_order",
-      entityId: session.uid,
-      metadata: { stationLabel: parsed.data.stationLabel, hasCoordinates: Boolean(coordinates) },
-    });
-
-    revalidatePath("/client/portal");
-    return { success: true };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "تعذر إرسال الطلب. حاول مرة أخرى." };
-  }
 }
 
 export async function updateClientOrderStatusAction(formData: FormData): Promise<ClientOrderActionResult> {
@@ -289,6 +226,7 @@ export async function updateClientStationAccessAction(formData: FormData): Promi
 
   try {
     await replaceClientStationAccess({
+      actorRole: session.role,
       actorUid: session.uid,
       clientUid: parsed.data.clientUid,
       stationIds: parsed.data.stationIds,
