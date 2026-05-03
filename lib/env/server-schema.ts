@@ -1,11 +1,5 @@
 import { z } from "zod";
 
-const optionalUrlSchema = (message: string) =>
-  z.preprocess(
-    (value) => (typeof value === "string" && value.trim().length === 0 ? undefined : value),
-    z.string().url(message).optional(),
-  );
-
 const envSchema = z
   .object({
     AUTH_ROLE_COOKIE_SECRET: z.string().min(32, "AUTH_ROLE_COOKIE_SECRET must be at least 32 characters.").optional(),
@@ -15,8 +9,6 @@ const envSchema = z
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
     CLOUDINARY_CLOUD_NAME: z.string().optional(),
-    CLOUDINARY_CUSTOM_DOMAIN: optionalUrlSchema("CLOUDINARY_CUSTOM_DOMAIN must be a valid URL."),
-    CLOUDINARY_PROFILE_FOLDER: z.string().optional(),
     CLOUDINARY_REPORT_FOLDER: z.string().optional(),
     CLOUDINARY_STATION_FOLDER: z.string().optional(),
     DATABASE_AUTH_TOKEN: z.string().optional(),

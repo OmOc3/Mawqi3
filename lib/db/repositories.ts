@@ -31,6 +31,7 @@ import {
   technicianWorkSchedules,
   user,
 } from "@/lib/db/schema";
+import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinary/utils";
 import { appUserFromAuthUser, auditLogFromRow, reportFromRow, requiredTimestamp, stationFromRow } from "@/lib/db/mappers";
 import { AppError } from "@/lib/errors";
 import { stationClientNamesByStationId } from "@/lib/stations/qr-export";
@@ -945,7 +946,7 @@ function reportPhotoFromRow(row: typeof reportPhotos.$inferSelect): ReportPhoto 
     sortOrder: row.sortOrder,
     uploadedAt: requiredTimestamp(row.uploadedAt),
     uploadedBy: row.uploadedBy,
-    url: row.url,
+    url: normalizeCloudinaryDeliveryUrl(row.url),
   };
 }
 
@@ -1392,7 +1393,7 @@ function clientOrderFromRow(row: typeof clientOrders.$inferSelect): ClientOrder 
     decisionNote: row.decisionNote ?? undefined,
     note: row.note ?? undefined,
     orderId: row.orderId,
-    photoUrl: row.photoUrl ?? undefined,
+    photoUrl: row.photoUrl ? normalizeCloudinaryDeliveryUrl(row.photoUrl) : undefined,
     proposalDescription: row.proposalDescription ?? undefined,
     proposalLocation: row.proposalLocation ?? undefined,
     reviewedAt: row.reviewedAt ? requiredTimestamp(row.reviewedAt) : undefined,
@@ -2300,7 +2301,7 @@ function dailyReportPhotoFromRow(row: typeof dailyReportPhotos.$inferSelect): Da
     sortOrder: row.sortOrder,
     uploadedAt: requiredTimestamp(row.uploadedAt),
     uploadedBy: row.uploadedBy,
-    url: row.url,
+    url: normalizeCloudinaryDeliveryUrl(row.url),
   };
 }
 

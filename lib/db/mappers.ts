@@ -1,4 +1,5 @@
 import type { AppTimestamp, AppUser, AuditLog, Report, Station, UserRole } from "@/types";
+import { normalizeCloudinaryDeliveryUrl, normalizeCloudinaryDeliveryUrls, normalizeCloudinaryReportPhotoPaths } from "@/lib/cloudinary/utils";
 import type { user } from "@/lib/db/schema";
 import { isBlockedAccountFlag } from "@/lib/db/boolean";
 import { coordinatesFromRow } from "@/lib/db/schema";
@@ -51,7 +52,7 @@ export function appUserFromAuthUser(row: AuthUserRow): AppUser {
     role: row.role,
     createdAt: requiredTimestamp(row.createdAt),
     isActive: !isBlockedAccountFlag(row.banned),
-    image: row.image ?? undefined,
+    image: row.image ? normalizeCloudinaryDeliveryUrl(row.image) : undefined,
     passwordChangedAt: toAppTimestamp(row.passwordChangedAt),
     deactivatedAt: toAppTimestamp(row.deactivatedAt),
     deactivatedBy: row.deactivatedBy ?? undefined,
@@ -86,7 +87,7 @@ export function stationFromRow(row: {
     location: row.location,
     description: row.description ?? undefined,
     zone: row.zone ?? undefined,
-    photoUrls: row.photoUrls ?? undefined,
+    photoUrls: normalizeCloudinaryDeliveryUrls(row.photoUrls),
     coordinates: coordinatesFromRow(row),
     qrCodeValue: row.qrCodeValue,
     isActive: row.isActive,
@@ -134,7 +135,7 @@ export function reportFromRow(
     status,
     clientReportId: row.clientReportId ?? undefined,
     notes: row.notes ?? undefined,
-    photoPaths: row.photoPaths ?? undefined,
+    photoPaths: normalizeCloudinaryReportPhotoPaths(row.photoPaths),
     submittedAt: requiredTimestamp(row.submittedAt),
     reviewStatus: row.reviewStatus,
     editedAt: toAppTimestamp(row.editedAt),

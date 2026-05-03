@@ -120,7 +120,6 @@ const alwaysPublicPrefixes = [
   "/account-disabled",
   "/scan",
   "/client/view",
-  "/image/upload",
   "/api/auth",
   "/api/mobile/web-session/consume",
   "/api/maintenance/status",
@@ -128,40 +127,18 @@ const alwaysPublicPrefixes = [
 
 const mobileApiPrefix = "/api/mobile";
 
-function getCloudinaryImageSources(): string[] {
-  const sources = ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://api.ecopest.com"];
-  const customDomain = process.env.CLOUDINARY_CUSTOM_DOMAIN?.trim();
-
-  if (customDomain) {
-    try {
-      const origin = new URL(customDomain).origin;
-
-      if (!sources.includes(origin)) {
-        sources.push(origin);
-      }
-    } catch {
-      // Invalid values are reported by the env schema; keep the middleware CSP stable.
-    }
-  }
-
-  sources.push("https://tile.openstreetmap.org");
-
-  return sources;
-}
-
 function createContentSecurityPolicy(nonce: string): string {
   const isProduction = process.env.NODE_ENV === "production";
   const scriptSrc = isProduction
     ? `script-src 'self' 'nonce-${nonce}'`
     : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
-  const imgSrc = getCloudinaryImageSources();
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `img-src ${imgSrc.join(" ")}`,
+    "img-src 'self' data: blob: https://res.cloudinary.com https://tile.openstreetmap.org",
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     scriptSrc,
@@ -248,8 +225,6 @@ function maintenanceResponseForApi(): NextResponse {
 function isMaintenanceBypassPath(pathname: string): boolean {
   return (
     pathname === "/maintenance" ||
-    pathname === "/image/upload" ||
-    pathname.startsWith("/image/upload/") ||
     pathname === "/api/maintenance/status" ||
     pathname === "/api/auth" ||
     pathname.startsWith("/api/auth/") ||

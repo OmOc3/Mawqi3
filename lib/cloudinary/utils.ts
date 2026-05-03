@@ -1,39 +1,29 @@
-const DEFAULT_CLOUDINARY_DELIVERY_BASE_URL = "https://api.ecopest.com";
+import type { ReportPhotoPaths } from "@/types";
 
-function normalizeBaseUrl(value: string | undefined): string {
-  const candidate = value?.trim() || DEFAULT_CLOUDINARY_DELIVERY_BASE_URL;
-  const url = new URL(candidate);
-
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  url.search = "";
-  url.hash = "";
-
-  return url.toString().replace(/\/$/, "");
+export function rewriteCloudinaryUrl(url: string, _cloudName: string): string {
+  return url;
 }
 
-export function getCloudinaryDeliveryBaseUrl(): string {
-  return normalizeBaseUrl(process.env.CLOUDINARY_CUSTOM_DOMAIN);
-}
+export function normalizeCloudinaryDeliveryUrl(url: string, cloudName = process.env.CLOUDINARY_CLOUD_NAME): string {
+  const resolvedCloudName = cloudName?.trim();
 
-export function rewriteCloudinaryUrl(url: string, cloudName: string): string {
+  if (!resolvedCloudName) {
+    return url;
+  }
+
   try {
     const parsedUrl = new URL(url);
-    const cloudinaryPrefix = `/${cloudName}`;
 
     if (
       parsedUrl.protocol !== "https:" ||
-      parsedUrl.hostname !== "res.cloudinary.com" ||
-      !parsedUrl.pathname.startsWith(`${cloudinaryPrefix}/`)
+      parsedUrl.hostname !== "api.ecopest.com" ||
+      !parsedUrl.pathname.startsWith("/image/upload/")
     ) {
       return url;
     }
 
-    const deliveryBaseUrl = new URL(getCloudinaryDeliveryBaseUrl());
-    const deliveryPathname = deliveryBaseUrl.pathname === "/" ? "" : deliveryBaseUrl.pathname.replace(/\/+$/, "");
-
-    parsedUrl.protocol = deliveryBaseUrl.protocol;
-    parsedUrl.host = deliveryBaseUrl.host;
-    parsedUrl.pathname = `${deliveryPathname}${parsedUrl.pathname.slice(cloudinaryPrefix.length)}`;
+    parsedUrl.hostname = "res.cloudinary.com";
+    parsedUrl.pathname = `/${resolvedCloudName}${parsedUrl.pathname}`;
 
     return parsedUrl.toString();
   } catch {
@@ -41,11 +31,18 @@ export function rewriteCloudinaryUrl(url: string, cloudName: string): string {
   }
 }
 
-export function buildCloudinaryProxyTargetUrl(pathSegments: string[], cloudName: string, search: string): string {
-  const encodedPath = pathSegments.map((segment) => encodeURIComponent(segment)).join("/");
-  const targetUrl = new URL(`https://res.cloudinary.com/${encodeURIComponent(cloudName)}/image/upload/${encodedPath}`);
+export function normalizeCloudinaryDeliveryUrls(urls: string[] | null | undefined): string[] | undefined {
+  return urls?.map((url) => normalizeCloudinaryDeliveryUrl(url));
+}
 
-  targetUrl.search = search.startsWith("?") ? search.slice(1) : search;
+export function normalizeCloudinaryReportPhotoPaths(paths: ReportPhotoPaths | null | undefined): ReportPhotoPaths | undefined {
+  if (!paths) {
+    return undefined;
+  }
 
-  return targetUrl.toString();
+  return {
+    ...(paths.after ? { after: normalizeCloudinaryDeliveryUrl(paths.after) } : {}),
+    ...(paths.before ? { before: normalizeCloudinaryDeliveryUrl(paths.before) } : {}),
+    ...(paths.station ? { station: normalizeCloudinaryDeliveryUrl(paths.station) } : {}),
+  };
 }
