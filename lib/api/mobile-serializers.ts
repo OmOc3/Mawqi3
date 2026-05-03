@@ -58,12 +58,17 @@ export interface MobileClientOrderResponse {
   clientName: string;
   clientUid: string;
   createdAt?: string;
+  decisionNote?: string;
   note?: string;
   orderId: string;
   photoUrl?: string;
+  proposalDescription?: string;
+  proposalLat?: number;
+  proposalLng?: number;
+  proposalLocation?: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  stationId: string;
+  stationId?: string;
   stationLabel: string;
   stationLocation?: string;
   status: ClientOrder["status"];
@@ -155,17 +160,27 @@ export function mobileAuditLogResponse(log: AuditLog): MobileAuditLogResponse {
 }
 
 export function mobileClientOrderResponse(order: ClientOrder, stationLocation?: string): MobileClientOrderResponse {
+  const locFromProposal = order.proposalLocation?.trim();
+  const fallbackLocation =
+    stationLocation ??
+    (locFromProposal !== undefined && locFromProposal.length > 0 ? locFromProposal : undefined);
+
   return {
-    orderId: order.orderId,
-    clientUid: order.clientUid,
     clientName: order.clientName,
-    stationId: order.stationId,
+    clientUid: order.clientUid,
+    orderId: order.orderId,
     stationLabel: order.stationLabel,
     status: order.status,
     ...(order.note ? { note: order.note } : {}),
     ...(order.photoUrl ? { photoUrl: order.photoUrl } : {}),
-    ...(stationLocation ? { stationLocation } : {}),
+    ...(fallbackLocation ? { stationLocation: fallbackLocation } : {}),
+    ...(typeof order.coordinates?.lat === "number" ? { proposalLat: order.coordinates.lat } : {}),
+    ...(typeof order.coordinates?.lng === "number" ? { proposalLng: order.coordinates.lng } : {}),
+    ...(order.decisionNote ? { decisionNote: order.decisionNote } : {}),
+    ...(order.proposalDescription ? { proposalDescription: order.proposalDescription } : {}),
+    ...(locFromProposal !== undefined && locFromProposal.length > 0 ? { proposalLocation: locFromProposal } : {}),
     ...(order.reviewedBy ? { reviewedBy: order.reviewedBy } : {}),
+    ...(typeof order.stationId === "string" && order.stationId.length > 0 ? { stationId: order.stationId } : {}),
     ...(timestampToIso(order.createdAt) ? { createdAt: timestampToIso(order.createdAt) } : {}),
     ...(timestampToIso(order.reviewedAt) ? { reviewedAt: timestampToIso(order.reviewedAt) } : {}),
   };

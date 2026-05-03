@@ -49,7 +49,9 @@ const copy = {
   ar: {
     accessDeniedBody: 'هذه الشاشة مخصصة لعملاء النظام لمتابعة طلبات الفحص.',
     clientName: 'العميل',
-    createBody: 'أضف موقع المحطة وسيتم إنشاء محطة مرتبطة بطلب الفحص في نفس قاعدة بيانات الويب.',
+    awaitingApproval: 'بانتظار موافقة الإدارة',
+    approveOrder: 'اعتماد',
+    createBody: 'أضف موقع المحطة؛ بعد موافقة المشرف أو المدير تُنشأ المحطة وتُربط بحسابك.',
     createTitle: 'طلب فحص محطة',
     emptyOrdersBody: 'طلبات الفحص الجديدة ستظهر هنا بعد الإرسال.',
     emptyOrdersTitle: 'لا توجد طلبات بعد',
@@ -61,6 +63,7 @@ const copy = {
     note: 'ملاحظات الطلب',
     notePlaceholder: 'أي تفاصيل تساعد فريق الفحص',
     orders: 'طلبات العملاء',
+    rejectOrder: 'رفض',
     orderSaved: 'تم إرسال طلب الفحص.',
     orderStatusSaved: 'تم تحديث حالة الطلب.',
     refresh: 'تحديث',
@@ -80,7 +83,10 @@ const copy = {
   en: {
     accessDeniedBody: 'This screen is for client accounts that track inspection requests.',
     clientName: 'Client',
-    createBody: 'Add the station location and the request will create a linked station in the same web database.',
+    awaitingApproval: 'Awaiting admin approval',
+    approveOrder: 'Approve',
+    createBody:
+      'Add the station details. Once a supervisor or manager approves, the station record is created and linked to your account.',
     createTitle: 'Request station inspection',
     emptyOrdersBody: 'New inspection requests will appear here after submission.',
     emptyOrdersTitle: 'No orders yet',
@@ -92,6 +98,7 @@ const copy = {
     note: 'Request notes',
     notePlaceholder: 'Any details that help the inspection team',
     orders: 'Client orders',
+    rejectOrder: 'Reject',
     orderSaved: 'Inspection request sent.',
     orderStatusSaved: 'Order status updated.',
     refresh: 'Refresh',
@@ -124,6 +131,10 @@ const statusCopy: Record<Language, Record<ClientOrderStatus, string>> = {
     cancelled: 'Cancelled',
   },
 };
+
+function orderNeedsAdminApproval(order: MobileClientOrder): boolean {
+  return order.status === 'pending' && (!order.stationId || order.stationId.length === 0);
+}
 
 function statusTone(status: ClientOrderStatus): OrderTone {
   if (status === 'completed') {
@@ -188,6 +199,7 @@ function OrderCard({
   const theme = useTheme();
   const t = copy[language];
   const isUpdating = updatingStatus === order.orderId;
+  const needsApproval = orderNeedsAdminApproval(order);
 
   return (
     <Card>
@@ -195,10 +207,15 @@ function OrderCard({
         <View style={styles.cardCopy}>
           <ThemedText type="title">{order.stationLabel}</ThemedText>
           <ThemedText selectable type="small" themeColor="textSecondary">
-            #{order.stationId} · {order.stationLocation ?? strings.report.locationUnavailable}
+            {order.stationId
+              ? `#${order.stationId} · ${order.stationLocation ?? strings.report.locationUnavailable}`
+              : `${t.awaitingApproval} · ${order.stationLocation ?? order.proposalLocation ?? strings.report.locationUnavailable}`}
           </ThemedText>
         </View>
-        <StatusChip label={statusCopy[language][order.status]} tone={statusTone(order.status)} />
+        <StatusChip
+          label={needsApproval ? t.awaitingApproval : statusCopy[language][order.status]}
+          tone={needsApproval ? 'warning' : statusTone(order.status)}
+        />
       </View>
       <View style={[styles.metaRow, { flexDirection: 'row' }]}>
         <StatusChip label={`${t.clientName}: ${order.clientName}`} tone="info" />
@@ -210,17 +227,28 @@ function OrderCard({
         </ThemedText>
       ) : null}
       {onStatusChange ? (
-        <View style={[styles.statusActions, { flexDirection: 'row' }]}>
-          {orderStatuses.map((status) => (
-            <SecondaryButton
-              key={status}
-              loading={isUpdating && order.status !== status}
-              onPress={() => onStatusChange(order, status)}
-              selected={order.status === status}
-              stretch>
-              {statusCopy[language][status]}
-            </SecondaryButton>
-          ))}
+        <View style={[styles.statusActions, { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }]}>
+          {needsApproval ? (
+            <>
+              <SecondaryButton loading={isUpdating} onPress={() => onStatusChange(order, 'in_progress')} stretch>
+                {t.approveOrder}
+              </SecondaryButton>
+              <SecondaryButton loading={isUpdating} onPress={() => onStatusChange(order, 'cancelled')} stretch>
+                {t.rejectOrder}
+              </SecondaryButton>
+            </>
+          ) : (
+            orderStatuses.map((status) => (
+              <SecondaryButton
+                key={status}
+                loading={isUpdating && order.status !== status}
+                onPress={() => onStatusChange(order, status)}
+                selected={order.status === status}
+                stretch>
+                {statusCopy[language][status]}
+              </SecondaryButton>
+            ))
+          )}
         </View>
       ) : null}
       {order.photoUrl ? (

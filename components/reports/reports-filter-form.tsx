@@ -17,12 +17,49 @@ const reportsFilterSchema = z.object({
 
 export type ReportsFilterValues = z.infer<typeof reportsFilterSchema>;
 
+/** Preserve current filters while changing المراجعة (e.g. quick shortcuts on listing pages). */
+export function buildReportsListingHref(
+  basePath: string,
+  filters: ReportsFilterValues,
+  reviewStatus: ReportsFilterValues["reviewStatus"],
+): string {
+  const merged: ReportsFilterValues = {
+    stationId: filters.stationId,
+    technicianUid: filters.technicianUid,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    reviewStatus: reviewStatus ?? "",
+  };
+  const params = new URLSearchParams();
+
+  Object.entries(merged).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+
+  return query.length > 0 ? `${basePath}?${query}` : basePath;
+}
+
+export interface ReportFilterStationOption {
+  label: string;
+  stationId: string;
+}
+
 interface ReportsFilterFormProps {
   basePath?: string;
   defaultValues: ReportsFilterValues;
+  /** When set, المحطة renders as select by name/id (serializable from RSC). */
+  stations?: ReportFilterStationOption[];
 }
 
-export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", defaultValues }: ReportsFilterFormProps) {
+export function ReportsFilterForm({
+  basePath = "/dashboard/supervisor/reports",
+  defaultValues,
+  stations,
+}: ReportsFilterFormProps) {
   const router = useRouter();
   const form = useForm<ReportsFilterValues>({
     resolver: zodResolver(reportsFilterSchema),
@@ -49,13 +86,29 @@ export function ReportsFilterForm({ basePath = "/dashboard/supervisor/reports", 
     >
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="stationId">
-          رقم المحطة
+          المحطة
         </label>
-        <input
-          className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_50%,var(--foreground)_50%)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-          id="stationId"
-          {...form.register("stationId")}
-        />
+        {stations?.length ? (
+          <select
+            className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--foreground)] transition-colors hover:border-[color-mix(in_srgb,var(--border)_50%,var(--foreground)_50%)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            id="stationId"
+            {...form.register("stationId")}
+          >
+            <option value="">كل المحطات</option>
+            {stations.map((station) => (
+              <option key={station.stationId} value={station.stationId}>
+                {station.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--foreground)] transition-colors placeholder:text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_50%,var(--foreground)_50%)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            id="stationId"
+            placeholder="معرّف المحطة"
+            {...form.register("stationId")}
+          />
+        )}
       </div>
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[var(--foreground)]" htmlFor="technicianUid">

@@ -37,7 +37,13 @@ export async function PATCH(
       );
     }
 
-    await updateClientOrderStatus(parsed.data.orderId, parsed.data.status, session.uid, session.role);
+    await updateClientOrderStatus(
+      parsed.data.orderId,
+      parsed.data.status,
+      session.uid,
+      session.role,
+      parsed.data.decisionNote,
+    );
 
     revalidatePath("/client/portal");
     revalidatePath("/dashboard/manager/client-orders");

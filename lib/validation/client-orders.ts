@@ -18,6 +18,7 @@ export const createClientOrderSchema = z.object({
 });
 
 export const updateClientOrderStatusSchema = z.object({
+  decisionNote: z.string().trim().max(600).optional(),
   orderId: z.string().trim().min(1),
   status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
 });

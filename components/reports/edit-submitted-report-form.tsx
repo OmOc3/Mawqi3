@@ -13,10 +13,23 @@ import { pestTypeOptions } from "@ecopest/shared/constants";
 
 const statusOptions = Object.keys(statusOptionLabels) as StatusOption[];
 
+/** Serializable subset for passage from Server → Client Components (no AppTimestamp/functions). */
+export type EditableSubmittedReportFields = Pick<Report, "reportId" | "notes" | "pestTypes" | "status">;
+
+/** Use when rendering from a server page so only JSON-serializable fields cross the client boundary. */
+export function editableSubmittedReportFields(report: Report): EditableSubmittedReportFields {
+  return {
+    reportId: report.reportId,
+    notes: report.notes,
+    pestTypes: report.pestTypes,
+    status: report.status,
+  };
+}
+
 interface EditSubmittedReportFormProps {
   canEdit: boolean;
   instanceId?: string;
-  report: Report;
+  report: EditableSubmittedReportFields;
 }
 
 function toFormData(values: EditSubmittedReportValues): FormData {

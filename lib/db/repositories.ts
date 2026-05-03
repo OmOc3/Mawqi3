@@ -59,6 +59,7 @@ import type {
   ReportPhotoCategory,
   ReportPhotoPaths,
   ShiftSalaryStatus,
+  ShiftStationCompletion,
   ShiftStatus,
   Station,
   StatusOption,
@@ -1207,17 +1208,24 @@ export async function listAttendanceSessionsForClient(clientUid: string, limit =
 
 function clientOrderFromRow(row: typeof clientOrders.$inferSelect): ClientOrder {
   return {
-    orderId: row.orderId,
-    clientUid: row.clientUid,
     clientName: row.clientName,
-    stationId: row.stationId,
-    stationLabel: row.stationLabel,
+    clientUid: row.clientUid,
+    coordinates:
+      typeof row.proposalLat === "number" && typeof row.proposalLng === "number"
+        ? { lat: row.proposalLat, lng: row.proposalLng }
+        : undefined,
+    decisionNote: row.decisionNote ?? undefined,
     note: row.note ?? undefined,
+    orderId: row.orderId,
     photoUrl: row.photoUrl ?? undefined,
-    status: row.status,
-    createdAt: requiredTimestamp(row.createdAt),
+    proposalDescription: row.proposalDescription ?? undefined,
+    proposalLocation: row.proposalLocation ?? undefined,
     reviewedAt: row.reviewedAt ? requiredTimestamp(row.reviewedAt) : undefined,
     reviewedBy: row.reviewedBy ?? undefined,
+    stationId: row.stationId ?? undefined,
+    stationLabel: row.stationLabel,
+    status: row.status,
+    createdAt: requiredTimestamp(row.createdAt),
   };
 }
 
@@ -1419,7 +1427,12 @@ export async function listClientDirectory(): Promise<ClientDirectoryEntry[]> {
     db.select().from(clientOrders).where(inArray(clientOrders.clientUid, clientUids)).orderBy(desc(clientOrders.createdAt)),
     db.select().from(clientStationAccess).where(inArray(clientStationAccess.clientUid, clientUids)),
   ]);
-  const stationIds = Array.from(new Set([...orderRows.map((order) => order.stationId), ...accessRows.map((access) => access.stationId)]));
+  const stationIds = Array.from(
+    new Set([
+      ...orderRows.map((order) => order.stationId).filter((stationId): stationId is string => stationId != null && stationId.length > 0),
+      ...accessRows.map((access) => access.stationId),
+    ]),
+  );
   const stationLocationRows =
     stationIds.length > 0
       ? await db
@@ -1476,11 +1489,15 @@ export async function listClientDirectory(): Promise<ClientDirectoryEntry[]> {
 
     if (!entry.latestOrderAt) {
       entry.latestOrderAt = requiredTimestamp(row.createdAt);
-      latestStationByClient.set(row.clientUid, row.stationId);
+      if (row.stationId != null && row.stationId.length > 0) {
+        latestStationByClient.set(row.clientUid, row.stationId);
+      }
     }
 
     const stationSet = stationIdsByClient.get(row.clientUid) ?? new Set<string>();
-    stationSet.add(row.stationId);
+    if (row.stationId != null && row.stationId.length > 0) {
+      stationSet.add(row.stationId);
+    }
     stationIdsByClient.set(row.clientUid, stationSet);
   });
 
@@ -1495,76 +1512,52 @@ export async function listClientDirectory(): Promise<ClientDirectoryEntry[]> {
 }
 
 export async function getClientAccountDetail(clientUid: string): Promise<ClientAccountDetail | null> {
-  const [clientRow, profileRows, orderRows, clientReports, accessRows, assignedStations, dailyReports] = await Promise.all([
-    db.query.user.findFirst({
-      where: and(eq(user.id, clientUid), eq(user.role, "client")),
-    }),
-    db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, clientUid)).limit(1),
-    db
-      .select({
-        clientName: clientOrders.clientName,
-        clientUid: clientOrders.clientUid,
-        createdAt: clientOrders.createdAt,
-        note: clientOrders.note,
-        orderId: clientOrders.orderId,
-        photoUrl: clientOrders.photoUrl,
-        reviewedAt: clientOrders.reviewedAt,
-        reviewedBy: clientOrders.reviewedBy,
-        stationCreatedAt: stations.createdAt,
-        stationDescription: stations.description,
-        stationId: clientOrders.stationId,
-        stationIsActive: stations.isActive,
-        stationLabel: clientOrders.stationLabel,
-        stationLastVisitedAt: stations.lastVisitedAt,
-        stationLat: stations.lat,
-        stationLng: stations.lng,
-        stationLocation: stations.location,
-        stationTotalReports: stations.totalReports,
-        stationZone: stations.zone,
-        status: clientOrders.status,
-      })
-      .from(clientOrders)
-      .leftJoin(stations, eq(clientOrders.stationId, stations.stationId))
-      .where(eq(clientOrders.clientUid, clientUid))
-      .orderBy(desc(clientOrders.createdAt)),
-    listReportsForClientOrderedStations(clientUid, 200),
-    listClientStationAccess(clientUid),
-    listOrderedStationsForClient(clientUid),
-    listDailyWorkReports({ clientUid }, 200),
-  ]);
+  const [clientRow, profileRows, orderRowsInfer, clientReports, accessRows, assignedStations, dailyReports] =
+    await Promise.all([
+      db.query.user.findFirst({
+        where: and(eq(user.id, clientUid), eq(user.role, "client")),
+      }),
+      db.select().from(clientProfiles).where(eq(clientProfiles.clientUid, clientUid)).limit(1),
+      db.select().from(clientOrders).where(eq(clientOrders.clientUid, clientUid)).orderBy(desc(clientOrders.createdAt)),
+      listReportsForClientOrderedStations(clientUid, 200),
+      listClientStationAccess(clientUid),
+      listOrderedStationsForClient(clientUid),
+      listDailyWorkReports({ clientUid }, 200),
+    ]);
 
   if (!clientRow) {
     return null;
   }
 
-  const orders: ClientOrderWithStation[] = orderRows.map((row) => {
-    const order = clientOrderFromRow({
-      clientName: row.clientName,
-      clientUid: row.clientUid,
-      createdAt: row.createdAt,
-      note: row.note,
-      orderId: row.orderId,
-      photoUrl: row.photoUrl,
-      reviewedAt: row.reviewedAt,
-      reviewedBy: row.reviewedBy,
-      stationId: row.stationId,
-      stationLabel: row.stationLabel,
-      status: row.status,
-    });
+  const orderedStationIds = Array.from(
+    new Set(orderRowsInfer.map((o) => o.stationId).filter((id): id is string => id != null && id.length > 0)),
+  );
+
+  const stationDetailRows =
+    orderedStationIds.length > 0
+      ? await db.select().from(stations).where(inArray(stations.stationId, orderedStationIds))
+      : [];
+
+  const stationById = new Map(stationDetailRows.map((s) => [s.stationId, s]));
+
+  const orders: ClientOrderWithStation[] = orderRowsInfer.map((orderRow) => {
+    const order = clientOrderFromRow(orderRow);
+    const stationEntity = orderRow.stationId ? stationById.get(orderRow.stationId) : undefined;
+
     const station =
-      row.stationLocation && row.stationCreatedAt && typeof row.stationIsActive === "boolean" && typeof row.stationTotalReports === "number"
+      stationEntity && stationEntity.location && stationEntity.createdAt
         ? {
             coordinates:
-              typeof row.stationLat === "number" && typeof row.stationLng === "number"
-                ? { lat: row.stationLat, lng: row.stationLng }
+              typeof stationEntity.lat === "number" && typeof stationEntity.lng === "number"
+                ? { lat: stationEntity.lat, lng: stationEntity.lng }
                 : undefined,
-            createdAt: requiredTimestamp(row.stationCreatedAt),
-            description: row.stationDescription ?? undefined,
-            isActive: row.stationIsActive,
-            lastVisitedAt: row.stationLastVisitedAt ? requiredTimestamp(row.stationLastVisitedAt) : undefined,
-            location: row.stationLocation,
-            totalReports: row.stationTotalReports,
-            zone: row.stationZone ?? undefined,
+            createdAt: requiredTimestamp(stationEntity.createdAt),
+            description: stationEntity.description ?? undefined,
+            isActive: stationEntity.isActive,
+            lastVisitedAt: stationEntity.lastVisitedAt ? requiredTimestamp(stationEntity.lastVisitedAt) : undefined,
+            location: stationEntity.location,
+            totalReports: stationEntity.totalReports,
+            zone: stationEntity.zone ?? undefined,
           }
         : undefined;
 
@@ -1658,55 +1651,171 @@ export async function createClientOrder(input: CreateClientOrderInput): Promise<
     }
   }
 
-  const stationId = await generateNextStationId();
-  const qrCodeValue = `client-station:${stationId}:${crypto.randomUUID()}`;
-
-  await createStationRecord({
-    stationId,
-    label: input.stationLabel,
-    location: input.stationLocation,
-    description: input.stationDescription,
-    coordinates: input.coordinates,
-    photoUrls: input.photoUrl ? [input.photoUrl] : undefined,
-    qrCodeValue,
-    createdBy: input.clientUid,
-  });
-
+  const createdAt = now();
+  const proposalLocationTrimmed = input.stationLocation.trim();
+  const proposalDesc = input.stationDescription?.trim();
   const record = {
-    orderId: crypto.randomUUID(),
-    clientUid: input.clientUid,
     clientName: input.clientName,
-    stationId,
-    stationLabel: input.stationLabel,
+    clientUid: input.clientUid,
+    createdAt,
+    decisionNote: null as string | null,
     note: input.note ?? null,
+    orderId: crypto.randomUUID(),
     photoUrl: input.photoUrl ?? null,
+    proposalDescription:
+      proposalDesc !== undefined && proposalDesc.length > 0 ? proposalDesc : null,
+    proposalLat: input.coordinates?.lat ?? null,
+    proposalLng: input.coordinates?.lng ?? null,
+    proposalLocation: proposalLocationTrimmed,
+    reviewedAt: null as Date | null,
+    reviewedBy: null as string | null,
+    stationId: null as string | null,
+    stationLabel: input.stationLabel.trim(),
     status: "pending" as ClientOrderStatus,
-    createdAt: now(),
-    reviewedAt: null,
-    reviewedBy: null,
   };
 
   await db.insert(clientOrders).values(record);
-  await db
-    .insert(clientStationAccess)
-    .values({
-      accessId: crypto.randomUUID(),
-      clientUid: input.clientUid,
-      createdAt: now(),
-      createdBy: input.clientUid,
-      stationId,
-    })
-    .onConflictDoNothing();
   await writeAuditLogRecord({
     actorUid: input.clientUid,
     actorRole: input.actorRole,
     action: "client_order.create",
     entityType: "client_order",
     entityId: record.orderId,
-    metadata: { stationId },
+    metadata: { awaitingApproval: true, stationLabel: record.stationLabel },
   });
 
-  return clientOrderFromRow(record);
+  const [inserted] = await db.select().from(clientOrders).where(eq(clientOrders.orderId, record.orderId)).limit(1);
+  if (!inserted) {
+    throw new AppError("تعذر استرجاع الطلب بعد الإنشاء.", "CLIENT_ORDER_CREATE_FAILED", 500);
+  }
+
+  return clientOrderFromRow(inserted);
+}
+
+export async function approveClientOrder(orderId: string, reviewerUid: string, actorRole: UserRole): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [order] = await tx.select().from(clientOrders).where(eq(clientOrders.orderId, orderId)).limit(1);
+
+    if (!order) {
+      throw new AppError("الطلب غير موجود.", "CLIENT_ORDER_NOT_FOUND", 404);
+    }
+    if (order.stationId != null && order.stationId.length > 0) {
+      throw new AppError("تم اعتماد هذا الطلب وإنشاء المحطة من قبل.", "CLIENT_ORDER_ALREADY_APPROVED", 409);
+    }
+    if (order.status !== "pending") {
+      throw new AppError("لا يمكن اعتماد هذا الطلب في حالته الحالية.", "CLIENT_ORDER_APPROVE_INVALID", 409);
+    }
+
+    const stationIdGenerated = await generateNextStationId();
+    const qrCodeValue = `client-station:${stationIdGenerated}:${crypto.randomUUID()}`;
+    const timestamp = now();
+    const locationText =
+      typeof order.proposalLocation === "string" && order.proposalLocation.trim().length > 0
+        ? order.proposalLocation.trim()
+        : "غير محدد";
+
+    await tx.insert(stations).values({
+      createdAt: timestamp,
+      createdBy: order.clientUid,
+      description: order.proposalDescription ?? null,
+      isActive: true,
+      stationId: stationIdGenerated,
+      label: order.stationLabel,
+      lastVisitedAt: null,
+      lastVisitedBy: null,
+      lat: typeof order.proposalLat === "number" ? order.proposalLat : null,
+      lng: typeof order.proposalLng === "number" ? order.proposalLng : null,
+      location: locationText,
+      photoUrls: order.photoUrl ? [order.photoUrl] : null,
+      qrCodeValue,
+      requiresImmediateSupervision: false,
+      totalReports: 0,
+      updatedAt: null,
+      updatedBy: null,
+      zone: null,
+    });
+
+    await tx
+      .update(clientOrders)
+      .set({
+        decisionNote: null,
+        reviewedAt: timestamp,
+        reviewedBy: reviewerUid,
+        stationId: stationIdGenerated,
+        status: "in_progress",
+      })
+      .where(eq(clientOrders.orderId, orderId));
+
+    await tx
+      .insert(clientStationAccess)
+      .values({
+        accessId: crypto.randomUUID(),
+        clientUid: order.clientUid,
+        createdAt: timestamp,
+        createdBy: order.clientUid,
+        stationId: stationIdGenerated,
+      })
+      .onConflictDoNothing();
+
+    await tx.insert(auditLogs).values({
+      logId: crypto.randomUUID(),
+      action: "client_order.approve",
+      actorRole,
+      actorUid: reviewerUid,
+      createdAt: timestamp,
+      entityId: orderId,
+      entityType: "client_order",
+      metadata: { stationId: stationIdGenerated },
+    });
+  });
+}
+
+export async function rejectClientOrder(input: {
+  actorRole: UserRole;
+  decisionNote?: string | undefined;
+  orderId: string;
+  reviewerUid: string;
+}): Promise<void> {
+  const note = input.decisionNote?.trim() ? input.decisionNote.trim() : null;
+  const [existing] = await db.select().from(clientOrders).where(eq(clientOrders.orderId, input.orderId)).limit(1);
+
+  if (!existing) {
+    throw new AppError("الطلب غير موجود.", "CLIENT_ORDER_NOT_FOUND", 404);
+  }
+  if (existing.stationId != null && existing.stationId.length > 0) {
+    throw new AppError(
+      "لا يمكن رفض طلب تم اعتماده. استخدم تحديث الحالة لإلغاء التنفيذ إن لزم.",
+      "CLIENT_ORDER_REJECT_FORBIDDEN",
+      409,
+    );
+  }
+  if (existing.status === "cancelled") {
+    return;
+  }
+  if (existing.status !== "pending") {
+    throw new AppError("لا يمكن رفض هذا الطلب في حالته الحالية.", "CLIENT_ORDER_REJECT_INVALID", 409);
+  }
+
+  const timestamp = now();
+
+  await db
+    .update(clientOrders)
+    .set({
+      decisionNote: note,
+      reviewedAt: timestamp,
+      reviewedBy: input.reviewerUid,
+      status: "cancelled",
+    })
+    .where(eq(clientOrders.orderId, input.orderId));
+
+  await writeAuditLogRecord({
+    action: "client_order.reject",
+    actorRole: input.actorRole,
+    actorUid: input.reviewerUid,
+    entityType: "client_order",
+    entityId: input.orderId,
+    metadata: { hasDecisionNote: Boolean(note) },
+  });
 }
 
 export async function deleteStationIfSafe(input: {
@@ -1824,36 +1933,60 @@ export async function updateClientOrderStatus(
   status: ClientOrderStatus,
   reviewerUid: string,
   actorRole: UserRole,
+  decisionNote?: string,
 ): Promise<string> {
-  const [existingOrder] = await db
-    .select({ clientUid: clientOrders.clientUid })
-    .from(clientOrders)
-    .where(eq(clientOrders.orderId, orderId))
-    .limit(1);
+  const [existing] = await db.select().from(clientOrders).where(eq(clientOrders.orderId, orderId)).limit(1);
 
-  if (!existingOrder) {
+  if (!existing) {
     throw new AppError("الطلب غير موجود.", "CLIENT_ORDER_NOT_FOUND", 404);
   }
+
+  const awaitingApproval =
+    (existing.stationId == null || existing.stationId.length === 0) && existing.status === "pending";
+
+  if (awaitingApproval && status === "pending") {
+    return existing.clientUid;
+  }
+
+  if (awaitingApproval) {
+    if (status === "in_progress") {
+      await approveClientOrder(orderId, reviewerUid, actorRole);
+      return existing.clientUid;
+    }
+
+    if (status === "cancelled") {
+      await rejectClientOrder({ actorRole, decisionNote, orderId, reviewerUid });
+      return existing.clientUid;
+    }
+
+    throw new AppError(
+      "في انتظار موافقة الإدارة يمكن اعتماد الطلب (حالة قيد التنفيذ بعد الاعتماد) أو رفضه (ملغي).",
+      "CLIENT_ORDER_AWAITING_APPROVAL_TRANSITION",
+      400,
+    );
+  }
+
+  const timestamp = now();
 
   await db
     .update(clientOrders)
     .set({
       status,
-      reviewedAt: now(),
+      reviewedAt: timestamp,
       reviewedBy: reviewerUid,
     })
     .where(eq(clientOrders.orderId, orderId));
 
   await writeAuditLogRecord({
-    actorUid: reviewerUid,
     actorRole,
     action: "client_order.status_update",
+    actorUid: reviewerUid,
     entityType: "client_order",
     entityId: orderId,
     metadata: { status },
   });
 
-  return existingOrder.clientUid;
+  return existing.clientUid;
 }
 
 export async function listReportsForClientOrderedStations(clientUid: string, limit = 100): Promise<Report[]> {
@@ -2859,6 +2992,39 @@ export type PayrollFilters = Pick<ShiftFilters, "dateFrom" | "dateTo" | "salaryS
 
 export async function listPayrollShifts(filters: PayrollFilters = {}, limit = 200): Promise<TechnicianShift[]> {
   return listShiftsForAdmin({ ...filters, status: "completed" }, limit);
+}
+
+export async function listStationCompletionsDuringShift(input: TechnicianShift): Promise<ShiftStationCompletion[]> {
+  if (input.status !== "completed" || !input.endedAt) {
+    return [];
+  }
+
+  const windowStart = input.startedAt.toDate();
+  const windowEnd = input.endedAt.toDate();
+
+  const rows = await db
+    .select({
+      reportCount: count(),
+      stationId: reports.stationId,
+      stationLabel: reports.stationLabel,
+    })
+    .from(reports)
+    .where(
+      and(
+        eq(reports.technicianUid, input.technicianUid),
+        gte(reports.submittedAt, windowStart),
+        lte(reports.submittedAt, windowEnd),
+      ),
+    )
+    .groupBy(reports.stationId, reports.stationLabel);
+
+  rows.sort((a, b) => b.reportCount - a.reportCount);
+
+  return rows.map((row) => ({
+    reportCount: row.reportCount,
+    stationId: row.stationId,
+    stationLabel: row.stationLabel,
+  }));
 }
 
 export interface UpdateShiftPayrollInput {

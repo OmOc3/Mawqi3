@@ -168,17 +168,23 @@ export interface DailyWorkReport {
 export type ClientOrderStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
 export interface ClientOrder {
-  orderId: string;
-  clientUid: string;
   clientName: string;
-  stationId: string;
-  stationLabel: string;
+  clientUid: string;
+  coordinates?: Coordinates;
+  decisionNote?: string;
+  /** Set after admin approval creates the station row */
   note?: string;
+  orderId: string;
   photoUrl?: string;
-  status: ClientOrderStatus;
-  createdAt: AppTimestamp;
+  proposalDescription?: string;
+  proposalLocation?: string;
   reviewedAt?: AppTimestamp;
   reviewedBy?: string;
+  /** Null/undefined until a supervisor/manager approves the request */
+  stationId?: string | null;
+  stationLabel: string;
+  status: ClientOrderStatus;
+  createdAt: AppTimestamp;
 }
 
 export interface ClientProfile {
@@ -306,4 +312,11 @@ export interface TechnicianShift {
   notes?: string;
   createdAt: AppTimestamp;
   updatedAt?: AppTimestamp;
+}
+
+/** Stations that had at least one report filed during an ended shift window */
+export interface ShiftStationCompletion {
+  reportCount: number;
+  stationId: string;
+  stationLabel: string;
 }

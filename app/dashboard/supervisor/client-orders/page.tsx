@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { updateClientOrderStatusAction } from "@/app/actions/client-orders";
+import {
+  ClientOrderOperationalStatusForm,
+  ClientOrderReviewActions,
+  isOrderAwaitingAdminApproval,
+  resolveOrderLocationText,
+} from "@/components/client-orders/client-order-review-actions";
+import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
 import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
-import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
 import { getStationLocations, listClientOrders, listAttendanceSessionsForAdmin } from "@/lib/db/repositories";
@@ -12,7 +17,7 @@ import type { AppTimestamp, ClientOrder, ClientOrderStatus } from "@/types";
 interface SerializableOrder {
   orderId: string;
   clientUid: string;
-  stationId: string;
+  stationId?: string | null;
   stationLabel: string;
   clientName: string;
   status: ClientOrderStatus;
@@ -40,13 +45,6 @@ export const metadata: Metadata = {
   title: "العملاء والطلبات - المشرف",
 };
 
-const statusOptions: { value: ClientOrderStatus; label: string }[] = [
-  { value: "pending", label: "جديد" },
-  { value: "in_progress", label: "قيد التنفيذ" },
-  { value: "completed", label: "مكتمل" },
-  { value: "cancelled", label: "ملغي" },
-];
-
 function formatTimestamp(timestamp?: AppTimestamp): string {
   if (!timestamp) {
     return "غير متاح";
@@ -66,6 +64,8 @@ interface AttendanceInfo {
 
 // Find attendance session and convert to serializable data
 function findAttendanceForOrder(order: ClientOrder, attendanceLogs: Array<{ technicianName: string; clockInAt?: AppTimestamp | null; clockOutAt?: AppTimestamp | null; clockInLocation?: { stationId: string } | null }>): AttendanceInfo | null {
+  if (!order.stationId || order.stationId.length === 0) return null;
+
   const stationAttendance = attendanceLogs.find(
     (log) => log.clockInLocation?.stationId === order.stationId
   );
@@ -78,8 +78,10 @@ function findAttendanceForOrder(order: ClientOrder, attendanceLogs: Array<{ tech
   };
 }
 
-function OrderCard({ order, location, attendance }: { order: ClientOrder; location: string; attendance: AttendanceInfo | null }) {
+function OrderCard({ attendance, location, order }: { attendance: AttendanceInfo | null; location: string; order: ClientOrder }) {
   const serializableOrder = toSerializableOrder(order);
+  const needsDecision = isOrderAwaitingAdminApproval(order);
+
   return (
     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
@@ -104,7 +106,7 @@ function OrderCard({ order, location, attendance }: { order: ClientOrder; locati
           <dd className="mt-1 text-[var(--foreground)]">{order.clientName}</dd>
         </div>
         <div>
-          <dt className="font-medium text-[var(--muted)]">الموقع</dt>
+          <dt className="font-medium text-[var(--muted)]">الموقع المقترح</dt>
           <dd className="mt-1 text-[var(--muted)]">{location}</dd>
         </div>
         <div>
@@ -113,44 +115,34 @@ function OrderCard({ order, location, attendance }: { order: ClientOrder; locati
         </div>
       </dl>
 
+      {order.proposalDescription ? (
+        <div className="mt-3 text-sm">
+          <p className="text-xs font-medium text-[var(--muted)]">وصف المحطة من العميل</p>
+          <p className="mt-1 text-[var(--foreground)]">{order.proposalDescription}</p>
+        </div>
+      ) : null}
+      {order.decisionNote ? (
+        <div className="mt-3 text-sm">
+          <p className="text-xs font-medium text-[var(--muted)]">ملاحظة القرار</p>
+          <p className="mt-1 text-[var(--foreground)]">{order.decisionNote}</p>
+        </div>
+      ) : null}
+
       <div className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3">
         <p className="text-xs font-medium text-[var(--muted)]">ملاحظات</p>
         <p className="mt-1 text-sm text-[var(--foreground)]">{order.note ?? "لا توجد ملاحظات"}</p>
       </div>
 
-      <form
-        action={async (formData) => {
-          "use server";
-          await updateClientOrderStatusAction(formData);
-        }}
-        className="mt-4 flex flex-col gap-2"
-      >
-        <input name="orderId" type="hidden" value={order.orderId} />
-        <label className="text-xs font-medium text-[var(--muted)]" htmlFor={`status-${order.orderId}`}>
-          تحديث الحالة
-        </label>
-        <div className="flex gap-2">
-          <select
-            id={`status-${order.orderId}`}
-            aria-label="حالة الطلب"
-            className="min-h-11 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            defaultValue={order.status}
-            name="status"
-          >
-            {statusOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <button
-            className="min-h-11 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all hover:bg-[var(--primary-hover)] active:scale-[0.98]"
-            type="submit"
-          >
-            حفظ
-          </button>
-        </div>
-      </form>
+      <div className="mt-4 space-y-3">
+        {needsDecision ? (
+          <ClientOrderReviewActions orderId={order.orderId} />
+        ) : (
+          <div>
+            <p className="mb-2 text-xs font-medium text-[var(--muted)]">تحديث حالة التنفيذ</p>
+            <ClientOrderOperationalStatusForm defaultStatus={order.status} orderId={order.orderId} />
+          </div>
+        )}
+      </div>
     </article>
   );
 }
@@ -158,7 +150,10 @@ function OrderCard({ order, location, attendance }: { order: ClientOrder; locati
 export default async function SupervisorClientOrdersPage() {
   await requireRole(["supervisor", "manager"]);
   const orders = await listClientOrders();
-  const stationLocations = await getStationLocations(orders.map((order) => order.stationId));
+  const assignedStationIds = orders
+    .map((order) => order.stationId)
+    .filter((stationId): stationId is string => stationId != null && stationId.length > 0);
+  const stationLocations = await getStationLocations(assignedStationIds);
   const attendanceLogs = await listAttendanceSessionsForAdmin({}, 100);
 
   const stats = {
@@ -173,7 +168,7 @@ export default async function SupervisorClientOrdersPage() {
     <DashboardShell role="supervisor">
       <PageHeader
         backHref="/dashboard/supervisor"
-        description="متابعة طلبات العملاء وتحديث حالة التنفيذ لكل محطة."
+        description="مراجعة طلبات الفحص: اعتماد الطلب قبل إنشاء المحطة أو رفضه، ثم متابعة حالة التنفيذ."
         title="العملاء والطلبات"
       />
 
@@ -214,7 +209,7 @@ export default async function SupervisorClientOrdersPage() {
               <OrderCard
                 key={order.orderId}
                 attendance={findAttendanceForOrder(order, attendanceLogs)}
-                location={stationLocations.get(order.stationId) ?? "غير متاح"}
+                location={resolveOrderLocationText(order, stationLocations)}
                 order={order}
               />
             ))}
@@ -240,39 +235,21 @@ export default async function SupervisorClientOrdersPage() {
                     <tr className="transition-colors hover:bg-[var(--surface-subtle)]" key={order.orderId}>
                       <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">{order.clientName}</td>
                       <td className="px-4 py-3 text-sm text-[var(--foreground)]">{order.stationLabel}</td>
-                      <td className="px-4 py-3 text-sm text-[var(--muted)]">{stationLocations.get(order.stationId) ?? "غير متاح"}</td>
+                      <td className="px-4 py-3 text-sm text-[var(--muted)]">{resolveOrderLocationText(order, stationLocations)}</td>
                       <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(order.createdAt)}</td>
                       <td className="px-4 py-3">
                         <OrderStatusTimeline compact order={toSerializableOrder(order)} attendanceSession={attendance} />
                       </td>
                       <td className="px-4 py-3">
-                        <form
-                          action={async (formData) => {
-                            "use server";
-                            await updateClientOrderStatusAction(formData);
-                          }}
-                          className="flex gap-2"
-                        >
-                          <input name="orderId" type="hidden" value={order.orderId} />
-                          <select
-                            aria-label="حالة الطلب"
-                            className="min-h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm transition-colors focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                            defaultValue={order.status}
-                            name="status"
-                          >
-                            {statusOptions.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            className="min-h-10 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all hover:bg-[var(--primary-hover)] active:scale-[0.98]"
-                            type="submit"
-                          >
-                            حفظ
-                          </button>
-                        </form>
+                        {isOrderAwaitingAdminApproval(order) ? (
+                          <ClientOrderReviewActions compact orderId={order.orderId} />
+                        ) : (
+                          <ClientOrderOperationalStatusForm
+                            defaultStatus={order.status}
+                            orderId={order.orderId}
+                            variant="compact"
+                          />
+                        )}
                       </td>
                     </tr>
                   );})}

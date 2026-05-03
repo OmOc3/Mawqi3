@@ -6,5 +6,5 @@ export function formatPestTypesLine(report: Report): string {
     return "—";
   }
 
-  return report.pestTypes.map((p) => pestTypeLabels[p]).join("، ");
+  return report.pestTypes.map((p) => pestTypeLabels[p] ?? String(p)).join("، ");
 }

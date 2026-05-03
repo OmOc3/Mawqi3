@@ -212,17 +212,23 @@ const adminCopy = {
 
 const clientOrdersCopy = {
   ar: {
+    approveOrder: 'اعتماد الطلب',
+    awaitingApproval: 'بانتظار موافقة الإدارة',
     clientOrders: 'طلبات العملاء',
     loadError: 'تعذر تحميل طلبات العملاء.',
     noOrders: 'لا توجد طلبات عملاء مطابقة.',
     orderStatusSaved: 'تم تحديث حالة الطلب.',
+    rejectOrder: 'رفض الطلب',
     statusFilters: 'حالة الطلب',
   },
   en: {
+    approveOrder: 'Approve request',
+    awaitingApproval: 'Awaiting approval',
     clientOrders: 'Client orders',
     loadError: 'Could not load client orders.',
     noOrders: 'No matching client orders.',
     orderStatusSaved: 'Order status updated.',
+    rejectOrder: 'Reject',
     statusFilters: 'Order status',
   },
 } as const;
@@ -301,6 +307,10 @@ function stationHealth(station: Station): { label: string; tone: 'danger' | 'neu
   }
 
   return { label: 'مستقرة', tone: 'success' };
+}
+
+function orderNeedsAdminApproval(order: MobileClientOrder): boolean {
+  return order.status === 'pending' && (!order.stationId || order.stationId.length === 0);
 }
 
 function clientOrderTone(status: ClientOrderStatus): 'danger' | 'info' | 'success' | 'warning' {
@@ -689,7 +699,7 @@ export default function AdminScreen() {
         return true;
       }
 
-      const haystack = `${order.orderId} ${order.clientName} ${order.clientUid} ${order.stationId} ${order.stationLabel} ${order.stationLocation ?? ''}`.toLowerCase();
+      const haystack = `${order.orderId} ${order.clientName} ${order.clientUid} ${order.stationId ?? ''} ${order.stationLabel} ${order.stationLocation ?? ''} ${order.proposalLocation ?? ''} ${order.decisionNote ?? ''}`.toLowerCase();
       return haystack.includes(cleanQuery);
     });
   }, [clientOrderFilter, clientOrderSearch, clientOrders]);
@@ -740,7 +750,11 @@ export default function AdminScreen() {
     }
   }
 
-  async function updateClientOrderStatus(order: MobileClientOrder, status: ClientOrderStatus): Promise<void> {
+  async function updateClientOrderStatus(
+    order: MobileClientOrder,
+    status: ClientOrderStatus,
+    decisionNote?: string,
+  ): Promise<void> {
     if (order.status === status) {
       return;
     }
@@ -748,9 +762,14 @@ export default function AdminScreen() {
     setUpdatingClientOrderId(order.orderId);
 
     try {
-      await apiPatch<{ success: true }, { status: ClientOrderStatus }>(
+      const trimmedNote = decisionNote?.trim();
+      const body =
+        trimmedNote !== undefined && trimmedNote.length > 0
+          ? ({ decisionNote: trimmedNote, status } as const)
+          : ({ status } as const);
+      await apiPatch<{ success: true }, typeof body>(
         `/api/mobile/client-orders/${encodeURIComponent(order.orderId)}`,
-        { status },
+        body,
         {
           authRequiredMessage: strings.auth.sessionExpired,
           fallbackErrorMessage: clientT.loadError,
@@ -1132,10 +1151,16 @@ export default function AdminScreen() {
                 <View style={styles.summaryCopy}>
                   <ThemedText type="title">{order.stationLabel}</ThemedText>
                   <ThemedText selectable type="small" themeColor="textSecondary">
-                    {order.clientName} · #{order.stationId}
+                    {order.clientName}
+                    {order.stationId ? ` · #${order.stationId}` : ` · ${clientT.awaitingApproval}`}
                   </ThemedText>
                 </View>
-                <StatusChip label={clientOrderStatusLabels[language][order.status]} tone={clientOrderTone(order.status)} />
+                <StatusChip
+                  label={
+                    orderNeedsAdminApproval(order) ? clientT.awaitingApproval : clientOrderStatusLabels[language][order.status]
+                  }
+                  tone={orderNeedsAdminApproval(order) ? 'warning' : clientOrderTone(order.status)}
+                />
               </View>
               <View style={[styles.metaRow, { flexDirection: 'row' }]}>
                 <StatusChip label={formatDate(order.createdAt, locale, t.dateUnavailable)} tone="neutral" />
@@ -1146,16 +1171,31 @@ export default function AdminScreen() {
                   {order.note}
                 </ThemedText>
               ) : null}
-              <View style={[styles.reviewActions, { flexDirection: 'row' }]}>
-                {(['pending', 'in_progress', 'completed', 'cancelled'] as const).map((status) => (
-                  <SecondaryButton
-                    key={status}
-                    loading={updatingClientOrderId === order.orderId && order.status !== status}
-                    onPress={() => void updateClientOrderStatus(order, status)}
-                    selected={order.status === status}>
-                    {clientOrderStatusLabels[language][status]}
-                  </SecondaryButton>
-                ))}
+              <View style={[styles.reviewActions, { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }]}>
+                {orderNeedsAdminApproval(order) ? (
+                  <>
+                    <SecondaryButton
+                      loading={updatingClientOrderId === order.orderId}
+                      onPress={() => void updateClientOrderStatus(order, 'in_progress')}>
+                      {clientT.approveOrder}
+                    </SecondaryButton>
+                    <SecondaryButton
+                      loading={updatingClientOrderId === order.orderId}
+                      onPress={() => void updateClientOrderStatus(order, 'cancelled')}>
+                      {clientT.rejectOrder}
+                    </SecondaryButton>
+                  </>
+                ) : (
+                  (['pending', 'in_progress', 'completed', 'cancelled'] as const).map((status) => (
+                    <SecondaryButton
+                      key={status}
+                      loading={updatingClientOrderId === order.orderId && order.status !== status}
+                      onPress={() => void updateClientOrderStatus(order, status)}
+                      selected={order.status === status}>
+                      {clientOrderStatusLabels[language][status]}
+                    </SecondaryButton>
+                  ))
+                )}
               </View>
             </Card>
           ))}

@@ -368,16 +368,21 @@ export const clientOrders = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
     clientName: text("client_name").notNull(),
-    stationId: text("station_id")
-      .notNull()
-      .references(() => stations.stationId, { onDelete: "restrict" }),
+    /** Assigned after manager/supervisor approval; null while awaiting approval */
+    stationId: text("station_id").references(() => stations.stationId, { onDelete: "restrict" }),
     stationLabel: text("station_label").notNull(),
+    /** Snapshot for display before a station row exists */
+    proposalLocation: text("proposal_location"),
+    proposalDescription: text("proposal_description"),
+    proposalLat: real("proposal_lat"),
+    proposalLng: real("proposal_lng"),
     note: text("note"),
     photoUrl: text("photo_url"),
     status: text("status").$type<ClientOrderStatus>().notNull().default("pending"),
     createdAt: timestamp("created_at").notNull(),
     reviewedAt: timestamp("reviewed_at"),
     reviewedBy: text("reviewed_by"),
+    decisionNote: text("decision_note"),
   },
   (table) => [
     index("client_orders_client_uid_idx").on(table.clientUid),

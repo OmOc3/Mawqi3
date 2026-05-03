@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Native bindings cannot be bundled by webpack; keep on the Node server runtime.
+  serverExternalPackages: ["@resvg/resvg-js"],
   experimental: {
     staticGenerationMaxConcurrency: 1,
     staticGenerationMinPagesPerWorker: 1,

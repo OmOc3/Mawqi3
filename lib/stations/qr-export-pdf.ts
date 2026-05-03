@@ -2,47 +2,20 @@ import "server-only";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { Resvg } from "@resvg/resvg-js";
 import { PDFDocument, rgb } from "pdf-lib";
 import QRCode from "qrcode";
-import sharp from "sharp";
+import { createElement } from "react";
+import satori from "satori";
 import { formatDateRome } from "@/lib/datetime";
 import { technicianScanUrl, type StationQrExportItem } from "@/lib/stations/qr-export";
 
 const a4Width = 595.28;
 const a4Height = 841.89;
 const pdfScale = 2;
-const fontPath = path.join(process.cwd(), "mobile", "assets", "fonts", "Tajawal-Bold.ttf");
+const fontPath = path.join(process.cwd(), "assets", "fonts", "Tajawal-Bold.ttf");
 
-let tajawalBoldDataUrl: string | undefined;
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function pngBytesFromDataUrl(dataUrl: string): Buffer {
-  const [, base64] = dataUrl.split(",", 2);
-
-  if (!base64) {
-    throw new Error("Invalid QR image data.");
-  }
-
-  return Buffer.from(base64, "base64");
-}
-
-async function getTajawalBoldDataUrl(): Promise<string> {
-  if (tajawalBoldDataUrl) {
-    return tajawalBoldDataUrl;
-  }
-
-  const fontBytes = await readFile(fontPath);
-  tajawalBoldDataUrl = `data:font/truetype;base64,${fontBytes.toString("base64")}`;
-  return tajawalBoldDataUrl;
-}
+let tajawalBoldBuffer: Buffer | undefined;
 
 function clampText(value: string, maxLength: number): string {
   const normalized = value.trim().replace(/\s+/g, " ");
@@ -52,6 +25,14 @@ function clampText(value: string, maxLength: number): string {
   }
 
   return `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+async function getTajawalBold(): Promise<Buffer> {
+  if (!tajawalBoldBuffer) {
+    tajawalBoldBuffer = await readFile(fontPath);
+  }
+
+  return tajawalBoldBuffer;
 }
 
 async function renderTextPng(input: {
@@ -64,32 +45,55 @@ async function renderTextPng(input: {
   text: string;
   width: number;
 }): Promise<Buffer> {
-  const fontDataUrl = await getTajawalBoldDataUrl();
+  const fontData = await getTajawalBold();
+  const w = Math.ceil(input.width * pdfScale);
+  const h = Math.ceil(input.height * pdfScale);
+  const fontSizePx = Math.round(input.fontSize * pdfScale);
   const direction = input.direction ?? "rtl";
-  const align = input.align ?? "center";
-  const anchor = align === "left" ? "start" : align === "right" ? "end" : "middle";
-  const x = align === "left" ? 0 : align === "right" ? input.width : input.width / 2;
-  const y = input.height / 2 + input.fontSize * 0.36;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}" viewBox="0 0 ${input.width} ${input.height}">
-      <defs>
-        <style>
-          @font-face {
-            font-family: "TajawalExport";
-            src: url("${fontDataUrl}") format("truetype");
-            font-weight: 700;
-          }
-          text {
-            font-family: "TajawalExport", "Arial", sans-serif;
-            font-weight: ${input.fontWeight ?? 700};
-          }
-        </style>
-      </defs>
-      <text x="${x}" y="${y}" direction="${direction}" unicode-bidi="plaintext" text-anchor="${anchor}" font-size="${input.fontSize}" fill="${input.color ?? "#111827"}">${escapeXml(input.text)}</text>
-    </svg>
-  `;
+  const justifyContent =
+    input.align === "left" ? "flex-start" : input.align === "right" ? "flex-end" : "center";
 
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  const fontWeightCss = input.fontWeight === 800 ? 800 : 700;
+
+  const element = createElement(
+    "div",
+    {
+      style: {
+        alignItems: "center",
+        color: input.color ?? "#111827",
+        direction,
+        display: "flex",
+        fontFamily: "Tajawal",
+        fontSize: `${fontSizePx}px`,
+        fontWeight: fontWeightCss,
+        height: `${h}px`,
+        justifyContent,
+        width: `${w}px`,
+      },
+    },
+    input.text,
+  );
+
+  const svg = await satori(element, {
+    fonts: [
+      {
+        data: fontData,
+        name: "Tajawal",
+        style: "normal",
+        weight: 700,
+      },
+      {
+        data: fontData,
+        name: "Tajawal",
+        style: "normal",
+        weight: 800,
+      },
+    ],
+    height: h,
+    width: w,
+  });
+
+  return new Resvg(svg).render().asPng();
 }
 
 async function drawTextImage(
@@ -105,6 +109,16 @@ async function drawTextImage(
     x: input.x,
     y: input.y,
   });
+}
+
+function pngBytesFromDataUrl(dataUrl: string): Buffer {
+  const [, base64] = dataUrl.split(",", 2);
+
+  if (!base64) {
+    throw new Error("Invalid QR image data.");
+  }
+
+  return Buffer.from(base64, "base64");
 }
 
 export async function createStationQrExportPdf(items: readonly StationQrExportItem[]): Promise<Uint8Array> {
@@ -157,6 +171,7 @@ export async function createStationQrExportPdf(items: readonly StationQrExportIt
 
     await drawTextImage(pdfDoc, page, {
       color: "#0f172a",
+      direction: "rtl",
       fontSize: 34,
       fontWeight: 800,
       height: 54,
@@ -167,6 +182,7 @@ export async function createStationQrExportPdf(items: readonly StationQrExportIt
     });
     await drawTextImage(pdfDoc, page, {
       color: "#334155",
+      direction: "rtl",
       fontSize: 24,
       height: 42,
       text: `العميل: ${clampText(item.clientName, 52)}`,
@@ -176,6 +192,7 @@ export async function createStationQrExportPdf(items: readonly StationQrExportIt
     });
     await drawTextImage(pdfDoc, page, {
       color: "#475569",
+      direction: "rtl",
       fontSize: 22,
       height: 38,
       text: `تاريخ الإنشاء: ${formatDateRome(item.createdAt, { locale: "ar-EG" })}`,

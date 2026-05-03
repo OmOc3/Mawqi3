@@ -137,12 +137,17 @@ export interface MobileClientOrder {
   clientName: string;
   clientUid: string;
   createdAt?: string;
+  decisionNote?: string;
   note?: string;
   orderId: string;
   photoUrl?: string;
+  proposalDescription?: string;
+  proposalLat?: number;
+  proposalLng?: number;
+  proposalLocation?: string;
   reviewedAt?: string;
   reviewedBy?: string;
-  stationId: string;
+  stationId?: string;
   stationLabel: string;
   stationLocation?: string;
   status: ClientOrderStatus;

@@ -75,7 +75,7 @@ export function CreateClientOrderForm() {
         <p className="text-sm font-semibold text-[var(--primary)]">طلب جديد</p>
         <h2 className="mt-1 text-lg font-bold text-[var(--foreground)]">طلب فحص محطة</h2>
         <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-          أرسل بيانات المحطة وسيقوم الفريق بمراجعة الطلب وربطه بحسابك.
+          أرسل تفاصيل المحطة. سيقوم المشرف أو المدير بمراجعتها؛ عند الموافقة تُنشأ المحطة وتُربط بحسابك.
         </p>
       </div>
 

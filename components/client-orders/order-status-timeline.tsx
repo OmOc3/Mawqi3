@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 interface SerializableOrder {
   orderId: string;
   clientUid: string;
-  stationId: string;
+  stationId?: string | null;
   stationLabel: string;
   clientName: string;
   status: "pending" | "in_progress" | "completed" | "cancelled";
@@ -85,6 +85,41 @@ interface OrderStatusTimelineProps {
 }
 
 export function OrderStatusTimeline({ order, attendanceSession, className, compact }: OrderStatusTimelineProps) {
+  const awaitingAdminApproval =
+    order.status === "pending" && (!order.stationId || String(order.stationId).trim().length === 0);
+
+  if (awaitingAdminApproval) {
+    const inner = (
+      <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
+        <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-amber-500" aria-hidden="true" />
+        في انتظار موافقة الإدارة
+      </div>
+    );
+    if (compact) {
+      return (
+        <div
+          className={cn(
+            "inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-1 dark:border-amber-800 dark:bg-amber-950/40",
+            className,
+          )}
+        >
+          {inner}
+        </div>
+      );
+    }
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30",
+          className,
+        )}
+      >
+        {inner}
+        <p className="mt-2 text-xs text-[var(--muted)]">لم تُنشأ المحطة بعد. بعد الموافقة ستظهر المحطة وسيتمكن الفريق من العمل عليها.</p>
+      </div>
+    );
+  }
+
   // Determine current stage based on order status and attendance
   const getCurrentStageIndex = (): number => {
     // Cancelled orders show as cancelled
@@ -108,7 +143,6 @@ export function OrderStatusTimeline({ order, attendanceSession, className, compa
     // In progress
     if (order.status === "in_progress") return 1;
     
-    // Default: pending (order placed)
     return 0;
   };
 

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ClientAccountSettingsForm } from "@/components/client-orders/client-account-settings-form";
 import { CreateClientOrderForm } from "@/components/client-orders/create-client-order-form";
+import { isOrderAwaitingAdminApproval } from "@/components/client-orders/client-order-review-actions";
 import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
 import { BrandLockup } from "@/components/layout/brand";
 import { StatusPills } from "@/components/reports/status-pills";
@@ -45,6 +46,10 @@ function orderStatusLabel(status: ClientOrderStatus): string {
   )[status];
 }
 
+function clientFacingStatusLabel(order: ClientOrder): string {
+  return isOrderAwaitingAdminApproval(order) ? "في انتظار موافقة الإدارة" : orderStatusLabel(order.status);
+}
+
 function orderStatusTone(status: ClientOrderStatus): "active" | "inactive" | "pending" | "rejected" | "reviewed" {
   if (status === "pending") {
     return "pending";
@@ -74,7 +79,7 @@ interface SerializableOrder {
   note?: string | null;
   orderId: string;
   photoUrl?: string | null;
-  stationId: string;
+  stationId?: string | null;
   stationLabel: string;
   status: ClientOrderStatus;
 }
@@ -102,6 +107,8 @@ function findAttendanceForOrder(
     technicianName: string;
   }>,
 ): AttendanceInfo | null {
+  if (!order.stationId || order.stationId.length === 0) return null;
+
   const stationAttendance = attendanceLogs.find((log) => log.clockInLocation?.stationId === order.stationId);
 
   if (!stationAttendance) {
@@ -234,7 +241,7 @@ export default async function ClientPortalPage() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="truncate text-base font-bold text-[var(--foreground)]">{order.stationLabel}</h3>
-                              <StatusBadge tone={orderStatusTone(order.status)}>{orderStatusLabel(order.status)}</StatusBadge>
+                              <StatusBadge tone={orderStatusTone(order.status)}>{clientFacingStatusLabel(order)}</StatusBadge>
                             </div>
                             <p className="mt-1 text-sm text-[var(--muted)]">تاريخ الطلب: {formatTimestamp(order.createdAt)}</p>
                             {order.note ? <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{order.note}</p> : null}
@@ -255,7 +262,8 @@ export default async function ClientPortalPage() {
                             <OrderStatusTimeline order={serializableOrder} attendanceSession={attendance} />
                             <div className="rounded-lg bg-[var(--surface-subtle)] p-3 text-sm leading-6 text-[var(--muted)]">
                               <p>المحطة: {order.stationLabel}</p>
-                              <p>الحالة: {orderStatusLabel(order.status)}</p>
+                              <p>الموقع المقترح: {order.proposalLocation ?? "—"}</p>
+                              <p>الحالة: {clientFacingStatusLabel(order)}</p>
                               {order.photoUrl ? (
                                 <a className="mt-2 inline-flex font-semibold text-[var(--primary)] hover:underline" href={order.photoUrl} rel="noreferrer" target="_blank">
                                   فتح الصورة المرفقة

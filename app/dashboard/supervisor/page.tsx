@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireRole } from "@/lib/auth/server-session";
 import { i18n } from "@/lib/i18n";
+import { getOperationTasks } from "@/lib/operations-tasks";
 import { getSupervisorDashboardStats } from "@/lib/stats/dashboard-stats";
 
 export const metadata: Metadata = {
@@ -39,40 +40,49 @@ function StatCard({ href, label, tone, value }: StatCardProps) {
   );
 }
 
+const quickPanelClass =
+  "flex min-h-24 flex-col justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm font-semibold text-[var(--foreground)] shadow-card transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2";
+
 export default async function SupervisorDashboardPage() {
   await requireRole(["supervisor", "manager"]);
-  const stats = await getSupervisorDashboardStats();
+  const [stats, operations] = await Promise.all([getSupervisorDashboardStats(), getOperationTasks()]);
+  const backlogQueueTotal = operations.totals.pendingReports + operations.totals.staleStations;
 
   return (
-    <DashboardShell role="supervisor">
-        <PageHeader
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-                href="/dashboard/supervisor/reports"
-              >
-                عرض التقارير
-              </Link>
-              <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-                href="/dashboard/supervisor/tasks"
-              >
-                مهام اليوم
-              </Link>
-              <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-                href="/dashboard/supervisor/shifts"
-              >
-                شيفتات الفنيين
-              </Link>
-            </div>
-          }
-          description="متابعة التقارير اليومية وحالات المراجعة للمحطات النشطة."
-          title={i18n.dashboard.supervisorTitle}
-        />
+    <DashboardShell role="supervisor" contentClassName="max-w-7xl pb-28">
+      <PageHeader
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+              href="/dashboard/supervisor/reports"
+            >
+              عرض التقارير
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+              href="/dashboard/supervisor/tasks"
+            >
+              مهام اليوم
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--surface-subtle)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+              href="/dashboard/supervisor/shifts"
+            >
+              شيفتات الفنيين
+            </Link>
+          </div>
+        }
+        description="متابعة التقارير اليومية وحالات المراجعة للمحطات النشطة."
+        title={i18n.dashboard.supervisorTitle}
+      />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mt-8 space-y-4">
+        <div>
+          <h2 className="section-heading text-lg">التقارير والمراجعة</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">لمحة مختصرة من النظام — انقر أي بطاقة للانتقال مباشرة.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard href="/dashboard/supervisor/reports" label="إجمالي التقارير" tone="blue" value={stats.totalReports} />
           <StatCard
             href="/dashboard/supervisor/reports"
@@ -94,11 +104,33 @@ export default async function SupervisorDashboardPage() {
           />
           <StatCard
             href="/dashboard/supervisor/tasks"
-            label="مهام اليوم"
+            label="أولويات المتابعة"
             tone="amber"
-            value={stats.pendingReviewReports}
+            value={backlogQueueTotal}
           />
         </div>
+      </section>
+
+      <section className="mt-10 space-y-4">
+        <div>
+          <h2 className="section-heading text-lg">إجراءات سريعة</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">وصول متكرّر لتشغيل اليوم خارج التقارير فقط.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link className={quickPanelClass} href="/dashboard/supervisor/attendance">
+            الحضور والانصراف
+          </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/daily-reports">
+            التقارير اليومية للفنيين
+          </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/client-orders">
+            العملاء والطلبات
+          </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/reports?reviewStatus=pending">
+            مراجعة المعلقة فقط
+          </Link>
+        </div>
+      </section>
     </DashboardShell>
   );
 }

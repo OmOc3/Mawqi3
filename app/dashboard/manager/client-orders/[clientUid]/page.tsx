@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateClientOrderStatusAction } from "@/app/actions/client-orders";
+import {
+  ClientOrderOperationalStatusForm,
+  ClientOrderReviewActions,
+  isOrderAwaitingAdminApproval,
+} from "@/components/client-orders/client-order-review-actions";
 import { ClientProfileForm } from "@/components/client-orders/client-profile-form";
 import { ClientStationAccessForm } from "@/components/client-orders/client-station-access-form";
 import { OrderStatusTimeline } from "@/components/client-orders/order-status-timeline";
@@ -18,7 +22,7 @@ import type { AppTimestamp, ClientOrderStatus, ClientOrderWithStation } from "@/
 interface SerializableOrder {
   orderId: string;
   clientUid: string;
-  stationId: string;
+  stationId?: string | null;
   stationLabel: string;
   clientName: string;
   status: ClientOrderStatus;
@@ -90,6 +94,8 @@ interface AttendanceInfo {
 
 // Find attendance session and convert to serializable data
 function findAttendanceForOrder(order: ClientOrderWithStation, attendanceLogs: Array<{ technicianName: string; clockInAt?: AppTimestamp | null; clockOutAt?: AppTimestamp | null; clockInLocation?: { stationId: string } | null }>): AttendanceInfo | null {
+  if (!order.stationId || order.stationId.length === 0) return null;
+
   const stationAttendance = attendanceLogs.find(
     (log) => log.clockInLocation?.stationId === order.stationId
   );
@@ -117,44 +123,18 @@ function orderStatusBadge(status: ClientOrderStatus) {
 }
 
 function mapsHref(order: ClientOrderWithStation): string | null {
-  if (!order.station?.coordinates) {
-    return null;
-  }
+  const coords = order.station?.coordinates ?? order.coordinates;
+  if (!coords) return null;
 
-  const { lat, lng } = order.station.coordinates;
-  return `https://www.google.com/maps?q=${lat},${lng}`;
+  return `https://www.google.com/maps?q=${coords.lat},${coords.lng}`;
 }
 
 function OrderStatusForm({ order }: { order: ClientOrderWithStation }) {
-  return (
-    <form
-      action={async (formData) => {
-        "use server";
-        await updateClientOrderStatusAction(formData);
-      }}
-      className="flex flex-wrap items-center gap-2"
-    >
-      <input name="orderId" type="hidden" value={order.orderId} />
-      <select
-        aria-label="حالة الطلب"
-        className="min-h-11 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--foreground)] shadow-control focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-        defaultValue={order.status}
-        name="status"
-      >
-        {statuses.map((status) => (
-          <option key={status.value} value={status.value}>
-            {status.label}
-          </option>
-        ))}
-      </select>
-      <button
-        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-all duration-150 hover:bg-[var(--primary-hover)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-        type="submit"
-      >
-        حفظ الحالة
-      </button>
-    </form>
-  );
+  if (isOrderAwaitingAdminApproval(order)) {
+    return <ClientOrderReviewActions orderId={order.orderId} />;
+  }
+
+  return <ClientOrderOperationalStatusForm defaultStatus={order.status} orderId={order.orderId} />;
 }
 
 export default async function ClientProfilePage({ params }: ClientProfilePageProps) {
@@ -228,7 +208,9 @@ export default async function ClientProfilePage({ params }: ClientProfilePagePro
             </div>
             <div>
               <dt className="text-xs font-semibold text-[var(--muted)]">آخر موقع محطة</dt>
-              <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">{latestOrder?.station?.location ?? "غير متاح"}</dd>
+              <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">
+                {latestOrder?.station?.location ?? latestOrder?.proposalLocation ?? "غير متاح"}
+              </dd>
             </div>
           </dl>
         </section>
@@ -259,11 +241,13 @@ export default async function ClientProfilePage({ params }: ClientProfilePagePro
                           <div className="flex flex-wrap items-center gap-2">
                             {orderStatusBadge(order.status)}
                             <span className="text-xs font-semibold text-[var(--muted)]" dir="ltr">
-                              #{order.stationId}
+                              {order.stationId ? `#${order.stationId}` : "لم تُعتمد المحطة بعد"}
                             </span>
                           </div>
                           <h3 className="mt-2 text-lg font-bold text-[var(--foreground)]">{order.stationLabel}</h3>
-                          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{order.station?.location ?? "موقع المحطة غير متاح"}</p>
+                          <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                            {order.station?.location ?? order.proposalLocation ?? "المحطة تظهر بعد موافقة الإدارة"}
+                          </p>
                         </div>
                         <OrderStatusTimeline compact order={toSerializableOrder(order)} attendanceSession={findAttendanceForOrder(order, attendanceLogs)} />
                       </div>
@@ -294,21 +278,31 @@ export default async function ClientProfilePage({ params }: ClientProfilePagePro
                         </div>
                         <div className="md:col-span-3">
                           <dt className="text-xs font-semibold text-[var(--muted)]">بيانات المحطة التي أدخلها العميل</dt>
-                          <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">{order.station?.description ?? "لا توجد بيانات إضافية."}</dd>
+                          <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">
+                            {order.proposalDescription ?? order.station?.description ?? "لا توجد بيانات إضافية."}
+                          </dd>
                         </div>
                         <div className="md:col-span-3">
                           <dt className="text-xs font-semibold text-[var(--muted)]">ملاحظات الطلب</dt>
                           <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">{order.note ?? "لا توجد ملاحظات."}</dd>
                         </div>
+                        {order.decisionNote ? (
+                          <div className="md:col-span-3">
+                            <dt className="text-xs font-semibold text-[var(--muted)]">ملاحظة القرار الإداري</dt>
+                            <dd className="mt-1 text-sm leading-6 text-[var(--foreground)]">{order.decisionNote}</dd>
+                          </div>
+                        ) : null}
                       </dl>
 
                       <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--border-subtle)] pt-4">
-                        <Link
-                          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-control transition-colors hover:bg-[var(--surface-subtle)]"
-                          href={`/dashboard/manager/stations/${order.stationId}`}
-                        >
-                          فتح المحطة
-                        </Link>
+                        {order.stationId ? (
+                          <Link
+                            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-control transition-colors hover:bg-[var(--surface-subtle)]"
+                            href={`/dashboard/manager/stations/${order.stationId}`}
+                          >
+                            فتح المحطة
+                          </Link>
+                        ) : null}
                         {googleMapsHref ? (
                           <a
                             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] shadow-control transition-colors hover:bg-[var(--surface-subtle)]"

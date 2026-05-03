@@ -4,15 +4,19 @@ import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportMobileCard } from "@/components/reports/report-mobile-card";
 import { ReportPhotoLinks } from "@/components/reports/report-photo-links";
-import { ReportsFilterForm, type ReportsFilterValues } from "@/components/reports/reports-filter-form";
-import { EditSubmittedReportForm } from "@/components/reports/edit-submitted-report-form";
+import {
+  buildReportsListingHref,
+  ReportsFilterForm,
+  type ReportsFilterValues,
+} from "@/components/reports/reports-filter-form";
+import { EditSubmittedReportForm, editableSubmittedReportFields } from "@/components/reports/edit-submitted-report-form";
 import { ReviewReportForm } from "@/components/reports/review-report-form";
 import { StatusPills } from "@/components/reports/status-pills";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/server-session";
 import { formatDateTimeRome } from "@/lib/datetime";
 import { formatPestTypesLine } from "@/lib/reports/report-display";
-import { listReports } from "@/lib/db/repositories";
+import { listReports, listStations } from "@/lib/db/repositories";
 import { decodeReportCursor, encodeReportCursor } from "@/lib/pagination/report-cursor";
 import type { AppTimestamp, Report, UserRole } from "@/types";
 
@@ -133,6 +137,12 @@ function canEditReportSubmission(role: UserRole, report: Report): boolean {
   return role === "manager" || (role === "supervisor" && report.reviewStatus === "pending");
 }
 
+const reviewShortcutClasses =
+  "inline-flex min-h-10 items-center justify-center rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2";
+const reviewShortcutInactive =
+  "border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-subtle)]";
+const reviewShortcutActive = "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--foreground)]";
+
 export default async function ManagerReportsPage({ searchParams }: ManagerReportsPageProps) {
   const params = await searchParams;
   const session = await requireRole(["manager"]);
@@ -151,17 +161,23 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
   const dateTo = parseDate(filters.dateTo, true);
   const cursor = params.cursor ? decodeReportCursor(params.cursor) : null;
 
-  const pageReports = await listReports({
-    filters: {
-      stationId: filters.stationId,
-      technicianUid: filters.technicianUid,
-      reviewStatus: filters.reviewStatus,
-      dateFrom,
-      dateTo,
-    },
-    cursor,
-    limit: pageSize + 1,
-  });
+  const [stationRows, pageReports] = await Promise.all([
+    listStations(),
+    listReports({
+      filters: {
+        stationId: filters.stationId,
+        technicianUid: filters.technicianUid,
+        reviewStatus: filters.reviewStatus,
+        dateFrom,
+        dateTo,
+      },
+      cursor,
+      limit: pageSize + 1,
+    }),
+  ]);
+  const stationFilterOptions = [...stationRows]
+    .map((station) => ({ stationId: station.stationId, label: station.label }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ar"));
   const reports = pageReports.slice(0, pageSize);
   const hasNextPage = pageReports.length > pageSize;
   const lastReport = reports.at(-1);
@@ -195,7 +211,26 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
           title="تقارير المدير"
         />
 
-        <ReportsFilterForm basePath="/dashboard/manager/reports" defaultValues={filters} />
+        <div className="mb-3 flex flex-wrap gap-2">
+          <Link
+            className={`${reviewShortcutClasses} ${filters.reviewStatus === "" ? reviewShortcutActive : reviewShortcutInactive}`}
+            href={buildReportsListingHref("/dashboard/manager/reports", filters, "")}
+          >
+            كل حالات المراجعة
+          </Link>
+          <Link
+            className={`${reviewShortcutClasses} ${filters.reviewStatus === "pending" ? reviewShortcutActive : reviewShortcutInactive}`}
+            href={buildReportsListingHref("/dashboard/manager/reports", filters, "pending")}
+          >
+            بانتظار المراجعة
+          </Link>
+        </div>
+
+        <ReportsFilterForm
+          basePath="/dashboard/manager/reports"
+          defaultValues={filters}
+          stations={stationFilterOptions}
+        />
 
         {reports.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-card">
@@ -211,7 +246,7 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                       <EditSubmittedReportForm
                         canEdit={canEditReportSubmission(session.role, report)}
                         instanceId="mobile"
-                        report={report}
+                        report={editableSubmittedReportFields(report)}
                       />
                       <ReviewReportForm
                         instanceId="mobile"
@@ -289,7 +324,7 @@ export default async function ManagerReportsPage({ searchParams }: ManagerReport
                           <ReportPhotoLinks photoCount={photoCount(report)} reportId={report.reportId} />
                           <EditSubmittedReportForm
                             canEdit={canEditReportSubmission(session.role, report)}
-                            report={report}
+                            report={editableSubmittedReportFields(report)}
                           />
                           <ReviewReportForm
                             reportId={report.reportId}

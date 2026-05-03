@@ -37,9 +37,11 @@ const managerItems: NavItem[] = [
 
 const supervisorItems: NavItem[] = [
   { href: "/dashboard/supervisor/attendance", icon: "attendance", label: "الحضور والانصراف" },
+  { href: "/dashboard/supervisor/payroll", icon: "payroll", label: "مراجعة الرواتب" },
   { href: "/dashboard/supervisor/daily-reports", icon: "reports", label: "التقارير اليومية" },
   { href: "/dashboard/supervisor", icon: "dashboard", label: "لوحة المشرف" },
   { href: "/dashboard/supervisor/tasks", icon: "tasks", label: "مهام اليوم" },
+  { href: "/dashboard/supervisor/shifts", icon: "team", label: "شيفتات الفنيين" },
   { href: "/dashboard/supervisor/reports", icon: "reports", label: "التقارير" },
   { href: "/dashboard/supervisor/client-orders", icon: "clients", label: "العملاء والطلبات" },
 ];

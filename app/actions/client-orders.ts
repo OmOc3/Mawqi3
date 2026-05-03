@@ -221,6 +221,7 @@ export async function createClientOrderAction(formData: FormData): Promise<Clien
 export async function updateClientOrderStatusAction(formData: FormData): Promise<ClientOrderActionResult> {
   const session = await requireRole(["manager", "supervisor"]);
   const parsed = updateClientOrderStatusSchema.safeParse({
+    decisionNote: optionalString(formData, "decisionNote"),
     orderId: formData.get("orderId"),
     status: formData.get("status"),
   });
@@ -230,7 +231,13 @@ export async function updateClientOrderStatusAction(formData: FormData): Promise
   }
 
   try {
-    const clientUid = await updateClientOrderStatus(parsed.data.orderId, parsed.data.status, session.uid, session.role);
+    const clientUid = await updateClientOrderStatus(
+      parsed.data.orderId,
+      parsed.data.status,
+      session.uid,
+      session.role,
+      parsed.data.decisionNote,
+    );
     revalidatePath("/dashboard/manager/client-orders");
     revalidatePath(`/dashboard/manager/client-orders/${clientUid}`);
     revalidatePath("/dashboard/supervisor/client-orders");
@@ -239,6 +246,11 @@ export async function updateClientOrderStatusAction(formData: FormData): Promise
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "تعذر تحديث حالة الطلب." };
   }
+}
+
+/** For `<form action={...}>` bindings that expect `Promise<void>` (see client-order-review-actions). */
+export async function runClientOrderStatusFormAction(formData: FormData): Promise<void> {
+  await updateClientOrderStatusAction(formData);
 }
 
 export async function updateClientProfileAction(formData: FormData): Promise<ClientOrderActionResult> {
