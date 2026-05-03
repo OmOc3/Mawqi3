@@ -10,9 +10,14 @@ import {
   type ReactNode,
 } from "react";
 import {
+  getI18nMessages,
   getLocaleDirection,
   getLocaleFromValue,
+  getPestTypeLabels,
+  getRoleLabels,
+  getStatusOptionLabels,
   localeCookieName,
+  type I18nMessages,
   type Locale,
   type LocaleDirection,
 } from "@/lib/i18n";
@@ -21,6 +26,10 @@ import { hasArabicText, translateArabicText } from "@/lib/i18n/dom-translations"
 interface LanguageContextValue {
   direction: LocaleDirection;
   locale: Locale;
+  messages: I18nMessages;
+  pestTypeLabels: ReturnType<typeof getPestTypeLabels>;
+  roleLabels: ReturnType<typeof getRoleLabels>;
+  statusOptionLabels: ReturnType<typeof getStatusOptionLabels>;
   setLocale: (locale: Locale) => void;
   translate: (value: string) => string;
 }
@@ -152,6 +161,14 @@ function writeLocaleCookie(locale: Locale): void {
 export function LanguageProvider({ children, initialLocale }: { children: ReactNode; initialLocale: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(() => getLocaleFromValue(initialLocale));
   const direction = getLocaleDirection(locale);
+  const messages = useMemo(() => getI18nMessages(locale), [locale]);
+  const pestTypeLabels = useMemo(() => getPestTypeLabels(locale), [locale]);
+  const roleLabels = useMemo(() => getRoleLabels(locale), [locale]);
+  const statusOptionLabels = useMemo(() => getStatusOptionLabels(locale), [locale]);
+
+  useEffect(() => {
+    setLocaleState(getLocaleFromValue(initialLocale));
+  }, [initialLocale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
@@ -195,10 +212,14 @@ export function LanguageProvider({ children, initialLocale }: { children: ReactN
     () => ({
       direction,
       locale,
+      messages,
+      pestTypeLabels,
+      roleLabels,
       setLocale,
+      statusOptionLabels,
       translate,
     }),
-    [direction, locale, setLocale, translate],
+    [direction, locale, messages, pestTypeLabels, roleLabels, setLocale, statusOptionLabels, translate],
   );
 
   return <LanguageContext.Provider value={contextValue}>{children}</LanguageContext.Provider>;

@@ -7,13 +7,15 @@ import { StatusPills } from "@/components/reports/status-pills";
 import { ThemeIconToggle } from "@/components/theme/theme-icon-toggle";
 import { requireRole } from "@/lib/auth/server-session";
 import { formatDateTimeRome } from "@/lib/datetime";
-import { i18n } from "@/lib/i18n";
+import { getI18nMessages, getRequestLocale } from "@/lib/i18n/server";
 import { getLatestReports, getManagerDashboardStats } from "@/lib/stats/dashboard-stats";
 import type { AppTimestamp } from "@/types";
 
-export const metadata: Metadata = {
-  title: i18n.dashboard.managerTitle,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const t = getI18nMessages(locale);
+  return { title: t.dashboard.managerTitle };
+}
 
 interface StatCardProps {
   href: string;
@@ -133,6 +135,7 @@ function formatTimestamp(timestamp?: AppTimestamp): string {
 
 export default async function ManagerDashboardPage() {
   await requireRole(["manager"]);
+  const t = getI18nMessages(await getRequestLocale());
   const [stats, latestReports] = await Promise.all([getManagerDashboardStats(), getLatestReports(5)]);
 
   return (
@@ -156,7 +159,7 @@ export default async function ManagerDashboardPage() {
             </>
           }
           description="نظرة تشغيلية على المحطات والتقارير والفنيين."
-          title={i18n.dashboard.managerTitle}
+          title={t.dashboard.managerTitle}
         />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

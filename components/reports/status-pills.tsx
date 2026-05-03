@@ -1,4 +1,6 @@
-import { statusOptionLabels } from "@/lib/i18n";
+"use client";
+
+import { useLanguage } from "@/components/i18n/language-provider";
 import type { StatusOption } from "@/types";
 
 interface StatusPillsProps {
@@ -6,6 +8,8 @@ interface StatusPillsProps {
 }
 
 export function StatusPills({ status }: StatusPillsProps) {
+  const { statusOptionLabels } = useLanguage();
+
   return (
     <div className="flex flex-wrap gap-2">
       {status.map((item) => (

@@ -2,14 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
-import { i18n } from "@/lib/i18n";
 import { isRecord } from "@/lib/utils";
-import { loginFormSchema, type LoginFormValues } from "@/lib/validation/auth";
+import { createLoginFormSchema, type LoginFormValues } from "@/lib/validation/auth";
 import type { ApiErrorResponse, LoginSuccessResponse, UserRole } from "@/types";
 
 function isAuthenticatedUserResponse(value: unknown): boolean {
@@ -51,14 +50,15 @@ interface LoginFormProps {
 
 export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {}) {
   const router = useRouter();
-  const { translate } = useLanguage();
+  const { locale, messages, translate } = useLanguage();
+  const loginSchema = useMemo(() => createLoginFormSchema(messages), [messages]);
   const [formError, setFormError] = useState<string | null>(null);
   const {
     formState: { errors, isSubmitting },
     handleSubmit,
     register,
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -79,43 +79,43 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
 
       if (!response.ok) {
         setFormError(
-          isApiErrorResponse(payload) ? translate(formatApiErrorMessage(payload)) : translate(i18n.auth.genericLoginError),
+          isApiErrorResponse(payload) ? translate(formatApiErrorMessage(payload)) : messages.auth.genericLoginError,
         );
         return;
       }
 
       if (!isLoginSuccessResponse(payload)) {
-        setFormError(translate(i18n.errors.unexpected));
+        setFormError(messages.errors.unexpected);
         return;
       }
 
       router.replace(payload.redirectTo);
       router.refresh();
     } catch (_error: unknown) {
-      setFormError(translate(i18n.errors.unexpected));
+      setFormError(messages.errors.unexpected);
     }
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
+    <form className="space-y-5" key={locale} onSubmit={handleSubmit(onSubmit)} noValidate>
       <TextField
         autoComplete="email"
         dir="ltr"
-        error={errors.email?.message ? translate(errors.email.message) : undefined}
+        error={errors.email?.message}
         id="email"
         inputMode="email"
-        label={translate(i18n.auth.email)}
-        placeholder={i18n.auth.emailPlaceholder}
+        label={messages.auth.email}
+        placeholder={messages.auth.emailPlaceholder}
         type="email"
         {...register("email")}
       />
       <TextField
         autoComplete="current-password"
         dir="ltr"
-        error={errors.password?.message ? translate(errors.password.message) : undefined}
+        error={errors.password?.message}
         id="password"
-        label={translate(i18n.auth.password)}
-        placeholder={translate(i18n.auth.passwordPlaceholder)}
+        label={messages.auth.password}
+        placeholder={messages.auth.passwordPlaceholder}
         type="password"
         {...register("password")}
       />
@@ -128,7 +128,7 @@ export function LoginForm({ expectedRole, staffPortalLogin }: LoginFormProps = {
         </div>
       ) : null}
       <Button isLoading={isSubmitting} type="submit">
-        {isSubmitting ? translate(i18n.auth.signingIn) : translate(i18n.actions.login)}
+        {isSubmitting ? messages.auth.signingIn : messages.actions.login}
       </Button>
     </form>
   );

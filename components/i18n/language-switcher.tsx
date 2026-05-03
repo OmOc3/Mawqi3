@@ -2,31 +2,41 @@
 
 import { useRouter } from "next/navigation";
 import { startTransition } from "react";
+import { setPreferredLocaleAction } from "@/app/actions/locale";
 import { supportedLocales, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "./language-provider";
 
-const localeLabels: Record<Locale, string> = {
+const localeCodes: Record<Locale, string> = {
   ar: "AR",
   en: "EN",
 };
 
-const localeNames: Record<Locale, string> = {
-  ar: "العربية",
-  en: "English",
-};
+function GlobeIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+      <path
+        d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M3.6 9h16.8M3.6 15h16.8M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function LanguageSwitcher() {
   const router = useRouter();
-  const { direction, locale, setLocale } = useLanguage();
-  const positionClassName = direction === "rtl" ? "left-3 sm:left-5" : "right-3 sm:right-5";
+  const { direction, locale, messages, setLocale } = useLanguage();
+  const isRtl = direction === "rtl";
 
-  function handleLocaleChange(nextLocale: Locale): void {
+  async function handleLocaleChange(nextLocale: Locale): Promise<void> {
     if (nextLocale === locale) {
       return;
     }
 
     setLocale(nextLocale);
+    await setPreferredLocaleAction(nextLocale);
     startTransition(() => {
       router.refresh();
     });
@@ -34,36 +44,46 @@ export function LanguageSwitcher() {
 
   return (
     <div
-      aria-label={direction === "rtl" ? "اختيار اللغة" : "Choose language"}
+      aria-label={messages.common.chooseLanguage}
       className={cn(
-        "fixed top-3 z-[80] inline-flex overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 text-xs font-bold shadow-control",
-        positionClassName,
+        "fixed top-3 z-[80] flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)]/95 px-1.5 py-1 shadow-lg shadow-black/5 backdrop-blur-md supports-[backdrop-filter]:bg-[var(--surface)]/80",
+        isRtl ? "left-3 sm:left-5" : "right-3 sm:right-5",
       )}
       data-no-translate
       role="group"
     >
-      {supportedLocales.map((localeOption) => {
-        const isActive = localeOption === locale;
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-subtle)] text-[var(--primary)]">
+        <GlobeIcon className="h-4 w-4" />
+      </span>
+      <div className="flex overflow-hidden rounded-full bg-[var(--surface-subtle)] p-0.5">
+        {supportedLocales.map((localeOption) => {
+          const isActive = localeOption === locale;
 
-        return (
-          <button
-            aria-label={localeNames[localeOption]}
-            aria-pressed={isActive}
-            className={cn(
-              "min-h-8 min-w-10 rounded-md px-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
-              isActive
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                : "text-[var(--muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--foreground)]",
-            )}
-            key={localeOption}
-            onClick={() => handleLocaleChange(localeOption)}
-            title={localeNames[localeOption]}
-            type="button"
-          >
-            {localeLabels[localeOption]}
-          </button>
-        );
-      })}
+          const label =
+            localeOption === "ar" ? messages.common.languageArabic : messages.common.languageEnglish;
+
+          return (
+            <button
+              aria-label={label}
+              aria-pressed={isActive}
+              className={cn(
+                "min-h-8 min-w-[2.75rem] rounded-full px-2.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
+                isActive
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm"
+                  : "text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]",
+              )}
+              key={localeOption}
+              onClick={() => {
+                void handleLocaleChange(localeOption);
+              }}
+              title={label}
+              type="button"
+            >
+              {localeCodes[localeOption]}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

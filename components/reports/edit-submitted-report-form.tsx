@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { editSubmittedReportAction, type EditSubmittedReportActionResult } from "@/app/actions/reports";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { Button } from "@/components/ui/button";
-import { pestTypeLabels, statusOptionLabels } from "@/lib/i18n";
 import type { EditableSubmittedReportFields } from "@/lib/reports/editable-submitted-fields";
 import { editSubmittedReportSchema, type EditSubmittedReportValues } from "@/lib/validation/reports";
 import type { StatusOption } from "@/types";
-import { pestTypeOptions } from "@ecopest/shared/constants";
+import { pestTypeOptions, reportStatusOptions } from "@ecopest/shared/constants";
 
-const statusOptions = Object.keys(statusOptionLabels) as StatusOption[];
+const statusOptions = reportStatusOptions as unknown as StatusOption[];
 
 interface EditSubmittedReportFormProps {
   canEdit: boolean;
@@ -39,6 +39,7 @@ function toFormData(values: EditSubmittedReportValues): FormData {
 
 export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }: EditSubmittedReportFormProps) {
   const router = useRouter();
+  const { pestTypeLabels, statusOptionLabels, translate } = useLanguage();
   const [result, setResult] = useState<EditSubmittedReportActionResult | null>(null);
   const fieldIdPrefix = `${instanceId}-${report.reportId}`;
   const form = useForm<EditSubmittedReportValues>({
@@ -53,7 +54,7 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
   if (!canEdit) {
     return (
       <p className="mt-2 text-xs text-[var(--muted)]">
-        لا يمكن تعديل بيانات التنفيذ بعد اعتماد المراجعة. يمكن للمدير التعديل عند الحاجة.
+        {translate("لا يمكن تعديل بيانات التنفيذ بعد اعتماد المراجعة. يمكن للمدير التعديل عند الحاجة.")}
       </p>
     );
   }
@@ -71,7 +72,9 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
 
   return (
     <form className="mt-3 grid gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
-      <p className="text-sm font-bold text-[var(--foreground)]">تعديل بيانات التنفيذ (قبل الاعتماد النهائي)</p>
+      <p className="text-sm font-bold text-[var(--foreground)]">
+        {translate("تعديل بيانات التنفيذ (قبل الاعتماد النهائي)")}
+      </p>
 
       {result?.error ? (
         <p className="text-sm font-medium text-[var(--danger)]" role="alert">
@@ -80,12 +83,12 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
       ) : null}
       {result?.success ? (
         <p className="text-sm font-medium text-[var(--success)]" role="status">
-          تم حفظ التعديلات.
+          {translate("تم حفظ التعديلات.")}
         </p>
       ) : null}
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-[var(--foreground)]">حالة المحطة</legend>
+        <legend className="text-sm font-medium text-[var(--foreground)]">{translate("حالة المحطة")}</legend>
         {statusOptions.map((status) => (
           <label className="flex cursor-pointer items-center gap-2 text-sm" key={status}>
             <input className="h-4 w-4 rounded accent-teal-600" type="checkbox" value={status} {...form.register("status")} />
@@ -98,7 +101,9 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
       </fieldset>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-[var(--foreground)]">برنامج التنفيذ — أنواع الآفات</legend>
+        <legend className="text-sm font-medium text-[var(--foreground)]">
+          {translate("برنامج التنفيذ — أنواع الآفات")}
+        </legend>
         {pestTypeOptions.map((pest) => (
           <label className="flex cursor-pointer items-center gap-2 text-sm" key={pest}>
             <input className="h-4 w-4 rounded accent-teal-600" type="checkbox" value={pest} {...form.register("pestTypes")} />
@@ -112,7 +117,7 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
 
       <div className="space-y-1">
         <label className="text-sm font-medium text-[var(--foreground)]" htmlFor={`edit-notes-${fieldIdPrefix}`}>
-          ملاحظات الفني
+          {translate("ملاحظات الفني")}
         </label>
         <textarea
           className="min-h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
@@ -123,7 +128,7 @@ export function EditSubmittedReportForm({ canEdit, instanceId = "edit", report }
       </div>
 
       <Button className="sm:w-fit" disabled={form.formState.isSubmitting} isLoading={form.formState.isSubmitting} type="submit">
-        حفظ تعديلات التنفيذ
+        {translate("حفظ تعديلات التنفيذ")}
       </Button>
     </form>
   );

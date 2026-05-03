@@ -3,13 +3,15 @@ import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireRole } from "@/lib/auth/server-session";
-import { i18n } from "@/lib/i18n";
+import { getI18nMessages, getRequestLocale } from "@/lib/i18n/server";
 import { getOperationTasks } from "@/lib/operations-tasks";
 import { getSupervisorDashboardStats } from "@/lib/stats/dashboard-stats";
 
-export const metadata: Metadata = {
-  title: i18n.dashboard.supervisorTitle,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const t = getI18nMessages(locale);
+  return { title: t.dashboard.supervisorTitle };
+}
 
 interface StatCardProps {
   href: string;
@@ -45,6 +47,7 @@ const quickPanelClass =
 
 export default async function SupervisorDashboardPage() {
   await requireRole(["supervisor", "manager"]);
+  const t = getI18nMessages(await getRequestLocale());
   const [stats, operations] = await Promise.all([getSupervisorDashboardStats(), getOperationTasks()]);
   const backlogQueueTotal = operations.totals.pendingReports + operations.totals.staleStations;
 
@@ -74,7 +77,7 @@ export default async function SupervisorDashboardPage() {
           </div>
         }
         description="متابعة التقارير اليومية وحالات المراجعة للمحطات النشطة."
-        title={i18n.dashboard.supervisorTitle}
+        title={t.dashboard.supervisorTitle}
       />
 
       <section className="mt-8 space-y-4">

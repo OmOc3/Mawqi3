@@ -1,6 +1,7 @@
 import { BRAND } from "@/lib/brand";
 import {
   pestTypeLabels as sharedPestTypeLabels,
+  pestTypeLabelsEnglish as sharedPestTypeLabelsEnglish,
   roleLabels as sharedRoleLabels,
   roleLabelsEnglish as sharedRoleLabelsEnglish,
   statusOptionLabels as sharedStatusOptionLabels,
@@ -8,6 +9,7 @@ import {
 } from "@ecopest/shared/constants";
 
 export const pestTypeLabels = sharedPestTypeLabels;
+export const pestTypeLabelsEnglish = sharedPestTypeLabelsEnglish;
 export const statusOptionLabels = sharedStatusOptionLabels;
 export const statusOptionLabelsEnglish = sharedStatusOptionLabelsEnglish;
 export const roleLabels = sharedRoleLabels;
@@ -16,6 +18,18 @@ export const roleLabelsEnglish = sharedRoleLabelsEnglish;
 export const supportedLocales = ["ar", "en"] as const;
 export type Locale = (typeof supportedLocales)[number];
 export type LocaleDirection = "ltr" | "rtl";
+
+export function getPestTypeLabels(locale: Locale): typeof sharedPestTypeLabels {
+  return locale === "en" ? sharedPestTypeLabelsEnglish : sharedPestTypeLabels;
+}
+
+export function getStatusOptionLabels(locale: Locale): typeof sharedStatusOptionLabels {
+  return locale === "en" ? sharedStatusOptionLabelsEnglish : sharedStatusOptionLabels;
+}
+
+export function getRoleLabels(locale: Locale): typeof sharedRoleLabels {
+  return locale === "en" ? sharedRoleLabelsEnglish : sharedRoleLabels;
+}
 
 export const defaultLocale: Locale = "ar";
 export const localeCookieName = "ecopest_locale";
@@ -65,6 +79,17 @@ const ar = {
     sessionExpired: "انتهت الجلسة. سجل الدخول مرة أخرى.",
     signingIn: "جار تسجيل الدخول...",
     logoutError: "تعذر تسجيل الخروج. حاول مرة أخرى.",
+    staffClientNoticeLead: "لو حسابك عميل، استخدم ",
+    staffClientNoticeLink: "صفحة دخول العملاء",
+    staffClientNoticeTrail: ".",
+    portalRoleMismatch:
+      "هذا الحساب غير مسموح له بالدخول من هذه الصفحة. تم إنهاء الجلسة الحالية، سجل الدخول بالحساب الصحيح.",
+  },
+  common: {
+    language: "اللغة",
+    chooseLanguage: "اختيار اللغة",
+    languageArabic: "العربية",
+    languageEnglish: "الإنجليزية",
   },
   dashboard: {
     managerTitle: "لوحة المدير",
@@ -90,6 +115,7 @@ const ar = {
     sourceGemini: "مدعوم بواسطة Gemini",
     sourceFallback: "تقرير محلي احتياطي",
     missingKey: "المفتاح GEMINI_API_KEY غير مضبوط، لذلك تم عرض تقرير محلي بدل Gemini.",
+    dataTruncated: "تم تقليم البيانات",
   },
   errors: {
     accessDenied: "ليست لديك صلاحية للوصول إلى هذه الصفحة.",
@@ -119,6 +145,30 @@ const ar = {
   },
   validation: {
     requiredEmail: "البريد الإلكتروني مطلوب.",
+  },
+  stations: {
+    coordinates: "إحداثيات المحطات",
+    coordinatesDescription: "عرض إحداثيات GPS للمحطات وفتح الموقع في تطبيق خرائط خارجي عند الحاجة.",
+    withCoordinates: "لديها إحداثيات",
+    withoutCoordinates: "بدون إحداثيات",
+    stationsWithCoords: "المحطات ذات الإحداثيات",
+    openInGoogleMaps: "فتح في خرائط Google",
+    openLocationInGoogleMaps: "فتح الموقع في خرائط Google",
+    googleMapsExternalHint: "يفتح رابطًا خارجيًا في المتصفح أو تطبيق الخرائط على الجهاز.",
+    noGpsSaved: "لا توجد إحداثيات GPS",
+    coordinatesPageError: "تعذر تحميل صفحة إحداثيات المحطات",
+    manualLatLngHint:
+      "يمكن إدخال خط العرض والطول يدويًا (مثلًا من تطبيق خرائط على الهاتف) أو تركهما فارغين إن لم تكن الإحداثيات متاحة.",
+    managerAddsGpsLater: "يمكن للمدير لاحقًا إضافة إحداثيات GPS من نموذج المحطة عند الحاجة.",
+    needsCoordinates: "محطات تحتاج تحديد إحداثيات",
+    setCoordinates: "تحديد الإحداثيات",
+    details: "التفاصيل",
+    emptyCoordinatesStateTitle: "لا توجد محطات بإحداثيات محفوظة",
+    emptyCoordinatesStateBody:
+      "أضف خط العرض والطول من نموذج المحطة حتى تظهر هنا ويمكن فتحها في خرائط Google.",
+    coordinatesTableHint: "انقر «فتح في خرائط Google» للعرض في المتصفح أو التطبيق.",
+    stationDetailNoGpsBody:
+      "يمكنك إضافتها من «تعديل المحطة» ثم فتح الموقع من هنا في خرائط Google. وصف الموقع النصي الحالي:",
   },
 } as const;
 
@@ -155,6 +205,17 @@ const en = {
     sessionExpired: "Your session has expired. Sign in again.",
     signingIn: "Signing in...",
     logoutError: "Unable to sign out. Try again.",
+    staffClientNoticeLead: "If you have a client account, use the ",
+    staffClientNoticeLink: "client sign-in page",
+    staffClientNoticeTrail: ".",
+    portalRoleMismatch:
+      "This account is not allowed to sign in from this page. Your session was ended—sign in with the correct account.",
+  },
+  common: {
+    language: "Language",
+    chooseLanguage: "Choose language",
+    languageArabic: "Arabic",
+    languageEnglish: "English",
   },
   dashboard: {
     managerTitle: "Manager dashboard",
@@ -180,6 +241,7 @@ const en = {
     sourceGemini: "Powered by Gemini",
     sourceFallback: "Local fallback report",
     missingKey: "GEMINI_API_KEY is not configured, so a local report is shown instead of Gemini.",
+    dataTruncated: "Data was truncated",
   },
   errors: {
     accessDenied: "You do not have permission to access this page.",
@@ -209,6 +271,30 @@ const en = {
   },
   validation: {
     requiredEmail: "Email is required.",
+  },
+  stations: {
+    coordinates: "Station coordinates",
+    coordinatesDescription: "View saved GPS coordinates and open a location in an external maps app when needed.",
+    withCoordinates: "Has coordinates",
+    withoutCoordinates: "Missing coordinates",
+    stationsWithCoords: "Stations with coordinates",
+    openInGoogleMaps: "Open in Google Maps",
+    openLocationInGoogleMaps: "Open location in Google Maps",
+    googleMapsExternalHint: "Opens an external link in the browser or your device maps app.",
+    noGpsSaved: "No GPS coordinates on file",
+    coordinatesPageError: "Unable to load the station coordinates page",
+    manualLatLngHint:
+      "Enter latitude and longitude manually (for example from a phone maps app) or leave both empty if unavailable.",
+    managerAddsGpsLater: "A manager can add GPS coordinates later from the station form when needed.",
+    needsCoordinates: "Stations that need coordinates",
+    setCoordinates: "Set coordinates",
+    details: "Details",
+    emptyCoordinatesStateTitle: "No stations with saved coordinates",
+    emptyCoordinatesStateBody:
+      "Add latitude and longitude from the station form so they appear here and can be opened in Google Maps.",
+    coordinatesTableHint: "Use “Open in Google Maps” to view it in the browser or app.",
+    stationDetailNoGpsBody:
+      "Add them from “Edit station”, then open the location here in Google Maps. Current text location:",
   },
 } as const;
 

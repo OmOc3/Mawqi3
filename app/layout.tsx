@@ -6,8 +6,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/components/i18n/language-provider";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { RegisterServiceWorker } from "@/components/pwa/register-service-worker";
-import { getRequestLocale } from "@/lib/i18n/server";
-import { i18n } from "@/lib/i18n";
+import { getI18nMessages, getRequestLocale } from "@/lib/i18n/server";
 
 export const viewport: Viewport = {
   themeColor: "#0f766e",
@@ -17,13 +16,24 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export const metadata: Metadata = {
-  title: {
-    default: `${i18n.appNameArabic} | ${i18n.appTitle}`,
-    template: `%s | ${i18n.appName}`,
-  },
-  description: `${i18n.en.appName} manages bait stations, QR inspections, field reports, and review workflows. ${i18n.appNameArabic} لإدارة المحطات وتقارير الفحص الميدانية.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const t = getI18nMessages(locale);
+
+  const defaultTitle =
+    locale === "ar" ? `${t.appNameArabic} | ${t.appTitle}` : `${t.appName} | ${t.appTitle}`;
+
+  return {
+    title: {
+      default: defaultTitle,
+      template: `%s | ${t.appName}`,
+    },
+    description:
+      locale === "ar"
+        ? `${t.appNameArabic} — ${t.appTitle}.`
+        : `${t.appName} manages bait stations, QR inspections, field reports, and review workflows.`,
+  };
+}
 
 export default async function RootLayout({
   children,

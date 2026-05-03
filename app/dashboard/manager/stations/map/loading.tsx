@@ -8,7 +8,7 @@ export default function StationsMapLoading() {
           <div className="h-28 rounded-xl bg-[var(--border-subtle)]" />
           <div className="h-28 rounded-xl bg-[var(--border-subtle)]" />
         </div>
-        <div className="h-[520px] rounded-2xl bg-[var(--border-subtle)]" />
+        <div className="h-72 rounded-2xl bg-[var(--border-subtle)]" />
       </section>
     </main>
   );

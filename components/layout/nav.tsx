@@ -27,7 +27,7 @@ const managerItems: NavItem[] = [
   { href: "/dashboard/manager", icon: "dashboard", label: "لوحة القيادة" },
   { href: "/dashboard/manager/tasks", icon: "tasks", label: "مهام اليوم" },
   { href: "/dashboard/manager/stations", icon: "stations", label: "المحطات" },
-  { href: "/dashboard/manager/stations/map", icon: "map", label: "خريطة المحطات" },
+  { href: "/dashboard/manager/stations/map", icon: "map", label: "إحداثيات المحطات" },
   { href: "/dashboard/manager/reports", icon: "reports", label: "التقارير" },
   { href: "/dashboard/manager/client-orders", icon: "clients", label: "العملاء والطلبات" },
   { href: "/dashboard/manager/analytics", icon: "analytics", label: "التحليلات" },

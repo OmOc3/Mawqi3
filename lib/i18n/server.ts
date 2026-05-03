@@ -1,7 +1,16 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { getLocaleDirection, getLocaleFromValue, localeCookieName, type Locale, type LocaleDirection } from "@/lib/i18n";
+import {
+  getI18nMessages,
+  getLocaleDirection,
+  getLocaleFromValue,
+  localeCookieName,
+  type Locale,
+  type LocaleDirection,
+} from "@/lib/i18n";
+
+export { getI18nMessages };
 
 export async function getRequestLocale(): Promise<Locale> {
   const cookieStore = await cookies();

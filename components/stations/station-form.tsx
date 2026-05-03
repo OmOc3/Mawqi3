@@ -2,10 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { createStationAction, deleteStationImageAction, updateStationAction, type DeleteStationImageResult, type StationActionResult } from "@/app/actions/stations";
-import { StationMap } from "@/components/maps/station-map";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { stationFormSchema, type StationFormValues } from "@/lib/validation/stations";
@@ -59,21 +58,6 @@ function getFieldError(
   return actionResult?.fieldErrors?.[fieldName]?.[0];
 }
 
-function parseCoordinateValues(lat?: string, lng?: string): Coordinates | undefined {
-  const latNumber = Number(lat);
-  const lngNumber = Number(lng);
-
-  if (!lat || !lng || !Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
-    return undefined;
-  }
-
-  return { lat: latNumber, lng: lngNumber };
-}
-
-function formatCoordinateInput(value: number): string {
-  return value.toFixed(6);
-}
-
 export function StationForm({ mode, station }: StationFormProps) {
   const [actionResult, setActionResult] = useState<StationActionResult | null>(null);
   const [existingPhotoUrls, setExistingPhotoUrls] = useState<string[]>(station?.photoUrls ?? []);
@@ -124,17 +108,6 @@ export function StationForm({ mode, station }: StationFormProps) {
   }
 
   const descriptionError = form.formState.errors.description?.message ?? getFieldError(actionResult, "description");
-  const watchedLat = form.watch("lat");
-  const watchedLng = form.watch("lng");
-  const selectedCoordinates = useMemo(
-    () => parseCoordinateValues(watchedLat, watchedLng),
-    [watchedLat, watchedLng],
-  );
-
-  function handleMapSelect(coordinates: Coordinates): void {
-    form.setValue("lat", formatCoordinateInput(coordinates.lat), { shouldDirty: true, shouldValidate: true });
-    form.setValue("lng", formatCoordinateInput(coordinates.lng), { shouldDirty: true, shouldValidate: true });
-  }
 
   return (
     <form className="space-y-4" dir="rtl" onSubmit={form.handleSubmit(onSubmit)}>
@@ -219,13 +192,9 @@ export function StationForm({ mode, station }: StationFormProps) {
         />
       </div>
 
-      <div className="space-y-2">
-        <div>
-          <p className="text-sm font-semibold text-[var(--foreground)]">تحديد الموقع على الخريطة</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">اضغط على موقع المحطة لتعبئة الإحداثيات تلقائيا.</p>
-        </div>
-        <StationMap onSelect={handleMapSelect} selected={selectedCoordinates} />
-      </div>
+      <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-xs leading-6 text-[var(--muted)]">
+        يمكن إدخال خط العرض والطول يدويًا (مثلًا من تطبيق خرائط على الهاتف) أو تركهما فارغين إن لم تكن الإحداثيات متاحة.
+      </p>
 
       <label className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3">
         <input

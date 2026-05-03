@@ -138,7 +138,7 @@ function createContentSecurityPolicy(nonce: string): string {
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    "img-src 'self' data: blob: https://res.cloudinary.com https://tile.openstreetmap.org",
+    "img-src 'self' data: blob: https://res.cloudinary.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     scriptSrc,

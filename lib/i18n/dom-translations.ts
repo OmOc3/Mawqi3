@@ -86,8 +86,10 @@ const exactArabicToEnglishEntries = [
   ["الصلاحيات تعمل حسب الدور", "Permissions follow the user role"],
   ["المرحلة الأولى", "Phase one"],
   ["مهام اليوم", "Today tasks"],
+  ["المهام اليومية للمناطق", "Daily area tasks"],
   ["المحطات", "Stations"],
   ["خريطة المحطات", "Station map"],
+  ["إحداثيات المحطات", "Station coordinates"],
   ["التقارير", "Reports"],
   ["تقارير المدير", "Manager reports"],
   ["تقارير المشرف", "Supervisor reports"],
@@ -281,6 +283,56 @@ const exactArabicToEnglishEntries = [
   ["أربعاء", "Wed"],
   ["خميس", "Thu"],
   ["جمعة", "Fri"],
+
+  ["لديها إحداثيات", "Has coordinates"],
+  ["المحطات ذات الإحداثيات", "Stations with coordinates"],
+  [
+    "عرض إحداثيات GPS للمحطات وفتح الموقع في تطبيق خرائط خارجي عند الحاجة.",
+    "View saved GPS coordinates and open a location in an external maps app when needed.",
+  ],
+  [
+    "انقر «فتح في خرائط Google» للعرض في المتصفح أو التطبيق.",
+    "Use “Open in Google Maps” to view it in the browser or app.",
+  ],
+  ["فتح في خرائط Google", "Open in Google Maps"],
+  ["فتح الموقع في خرائط Google", "Open location in Google Maps"],
+  [
+    "يفتح رابطًا خارجيًا في المتصفح أو تطبيق الخرائط على الجهاز.",
+    "Opens an external link in the browser or your device maps app.",
+  ],
+  ["لا توجد إحداثيات GPS", "No GPS coordinates on file"],
+  [
+    "يمكنك إضافتها من «تعديل المحطة» ثم فتح الموقع من هنا في خرائط Google. وصف الموقع النصي الحالي:",
+    "Add them from “Edit station”, then open the location here in Google Maps. Current text location:",
+  ],
+  ["تعذر تحميل صفحة إحداثيات المحطات", "Unable to load the station coordinates page"],
+  [
+    "يمكن إدخال خط العرض والطول يدويًا (مثلًا من تطبيق خرائط على الهاتف) أو تركهما فارغين إن لم تكن الإحداثيات متاحة.",
+    "Enter latitude and longitude manually (for example from a phone maps app) or leave both empty if unavailable.",
+  ],
+  [
+    "يمكن للمدير لاحقًا إضافة إحداثيات GPS من نموذج المحطة عند الحاجة.",
+    "A manager can add GPS coordinates later from the station form when needed.",
+  ],
+  ["محطات تحتاج تحديد إحداثيات", "Stations that need coordinates"],
+  ["تحديد الإحداثيات", "Set coordinates"],
+  ["التفاصيل", "Details"],
+  ["لا توجد محطات بإحداثيات محفوظة", "No stations with saved coordinates"],
+  [
+    "أضف خط العرض والطول من نموذج المحطة حتى تظهر هنا ويمكن فتحها في خرائط Google.",
+    "Add latitude and longitude from the station form so they appear here and can be opened in Google Maps.",
+  ],
+  [
+    "لا يمكن تعديل بيانات التنفيذ بعد اعتماد المراجعة. يمكن للمدير التعديل عند الحاجة.",
+    "Execution details cannot be edited after the review is approved. A manager can edit when needed.",
+  ],
+  ["تعديل بيانات التنفيذ (قبل الاعتماد النهائي)", "Edit execution details (before final approval)"],
+  ["تم حفظ التعديلات.", "Changes saved."],
+  ["حالة المحطة", "Station status"],
+  ["برنامج التنفيذ — أنواع الآفات", "Execution program — pest types"],
+  ["ملاحظات الفني", "Technician notes"],
+  ["حفظ تعديلات التنفيذ", "Save execution changes"],
+  ["إجمالي صور التقرير كبير جدًا. قلل عدد الصور أو حجمها ثم حاول مرة أخرى.", "Total report images are too large. Reduce the number or size of images and try again."],
 ] as const;
 
 export const exactArabicToEnglish = new Map<string, string>(exactArabicToEnglishEntries);

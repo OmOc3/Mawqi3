@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { submitStationReportAction, type SubmitReportActionResult } from "@/app/actions/reports";
+import { useLanguage } from "@/components/i18n/language-provider";
 import { Button } from "@/components/ui/button";
 import { distanceMeters, maxLocationAccuracyMeters, stationAccessRadiusMeters } from "@/lib/geo";
-import { pestTypeLabels, statusOptionLabels } from "@/lib/i18n";
 import { maxReportImageSizeBytes } from "@/lib/reports/image-constraints";
 import { submitReportSchema, type SubmitReportValues } from "@/lib/validation/reports";
 import type { Coordinates, PestTypeOption, StatusOption } from "@/types";
-import { pestTypeOptions } from "@ecopest/shared/constants";
+import { pestTypeOptions, reportStatusOptions } from "@ecopest/shared/constants";
 
-const statusOptions = Object.keys(statusOptionLabels) as StatusOption[];
+const statusOptions = reportStatusOptions as unknown as StatusOption[];
 const maxReportImagePayloadBytes = 11 * 1024 * 1024;
 
 type ReportLocationCheck =
@@ -188,6 +188,7 @@ export function ReportForm({
   stationId,
   stationLabel,
 }: ReportFormProps) {
+  const { pestTypeLabels, statusOptionLabels } = useLanguage();
   const [actionResult, setActionResult] = useState<SubmitReportActionResult | null>(null);
   const [submittedAt, setSubmittedAt] = useState<Date | null>(null);
   const [locationCheck, setLocationCheck] = useState<ReportLocationCheck>({

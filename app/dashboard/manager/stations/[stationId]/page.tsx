@@ -5,7 +5,6 @@ import QRCode from "qrcode";
 import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
-import { StationMap } from "@/components/maps/station-map";
 import { requireRole } from "@/lib/auth/server-session";
 import { getStationById, listStationTechnicianVisits } from "@/lib/db/repositories";
 import { resolveStationQrCodeValue } from "@/lib/stations/qr-export";
@@ -151,24 +150,25 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
             </dl>
             {station.coordinates ? (
               <div className="mt-6 space-y-3">
-                <h3 className="text-base font-semibold text-[var(--foreground)]">موقع المحطة على الخريطة (OpenStreetMap)</h3>
-                <StationMap
-                  markers={[
-                    {
-                      coordinates: station.coordinates,
-                      id: station.stationId,
-                      label: station.label,
-                    },
-                  ]}
-                  zoom={16}
-                />
+                <h3 className="text-base font-semibold text-[var(--foreground)]">فتح الموقع في خرائط Google</h3>
+                <p className="text-sm text-[var(--muted)]">
+                  يفتح رابطًا خارجيًا في المتصفح أو تطبيق الخرائط على الجهاز.
+                </p>
+                <a
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-control transition-colors hover:bg-[var(--primary-hover)]"
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${station.coordinates.lat},${station.coordinates.lng}`)}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  فتح في خرائط Google
+                </a>
               </div>
             ) : (
               <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4 text-sm text-[var(--muted)]">
-                <p className="font-semibold text-[var(--foreground)]">الخريطة غير متاحة</p>
+                <p className="font-semibold text-[var(--foreground)]">لا توجد إحداثيات GPS</p>
                 <p className="mt-2 leading-6">
-                  لم يتم حفظ إحداثيات GPS لهذه المحطة. يمكنك إضافتها من «تعديل المحطة» لعرض الموقع على خريطة OpenStreetMap. وصف
-                  الموقع النصي الحالي: <span className="text-[var(--foreground)]">{station.location}</span>
+                  يمكنك إضافتها من «تعديل المحطة» ثم فتح الموقع من هنا في خرائط Google. وصف الموقع النصي الحالي:{" "}
+                  <span className="text-[var(--foreground)]">{station.location}</span>
                 </p>
               </div>
             )}

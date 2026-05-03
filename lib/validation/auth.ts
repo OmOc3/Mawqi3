@@ -1,6 +1,8 @@
 import { z } from "zod";
-import { i18n } from "../i18n";
+import { getI18nMessages, type I18nMessages } from "../i18n";
 import { clientAddressLinesFromText } from "./client-orders";
+
+const defaultArabicMessages = getI18nMessages("ar");
 
 const disposableEmailDomains = new Set([
   "10minutemail.com",
@@ -30,10 +32,14 @@ const clientSignupDeviceIdSchema = z
   .max(128, "معرف الجهاز غير صالح.")
   .regex(/^[A-Za-z0-9_-]+$/, "معرف الجهاز غير صالح.");
 
-export const loginFormSchema = z.object({
-  email: z.string().trim().min(1, i18n.validation.requiredEmail).email(i18n.auth.invalidEmail),
-  password: z.string().min(1, i18n.auth.passwordRequired),
-});
+export function createLoginFormSchema(messages: Pick<I18nMessages, "auth" | "validation">) {
+  return z.object({
+    email: z.string().trim().min(1, messages.validation.requiredEmail).email(messages.auth.invalidEmail),
+    password: z.string().min(1, messages.auth.passwordRequired),
+  });
+}
+
+export const loginFormSchema = createLoginFormSchema(defaultArabicMessages);
 
 export type LoginFormValues = z.infer<typeof loginFormSchema>;
 
@@ -42,7 +48,7 @@ const clientSignupBaseSchema = z.object({
   confirmAccessCode: accessCodeRules,
   addressesText: z.string().trim().max(1200, "العناوين طويلة جدًا.").optional().or(z.literal("")),
   displayName: z.string().trim().min(2, "اسم العميل يجب ألا يقل عن حرفين.").max(100, "اسم العميل طويل جدًا."),
-  email: z.string().trim().min(1, i18n.validation.requiredEmail).email(i18n.auth.invalidEmail),
+  email: z.string().trim().min(1, defaultArabicMessages.validation.requiredEmail).email(defaultArabicMessages.auth.invalidEmail),
   phone: z
     .string()
     .trim()

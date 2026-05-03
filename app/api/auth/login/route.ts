@@ -11,9 +11,9 @@ import { clearAuthCookies, setRoleCookie } from "@/lib/auth/session";
 import { getSessionMaxAgeMs } from "@/lib/auth/session-config";
 import { isBlockedAccountFlag } from "@/lib/db/boolean";
 import { requiredTimestamp } from "@/lib/db/mappers";
-import { i18n } from "@/lib/i18n";
+import { getI18nMessages, getLocaleFromValue, localeCookieName, type I18nMessages } from "@/lib/i18n";
 import { isRecord } from "@/lib/utils";
-import { loginFormSchema } from "@/lib/validation/auth";
+import { createLoginFormSchema } from "@/lib/validation/auth";
 import type { ApiErrorResponse, AppUser, LoginSuccessResponse, UserRole } from "@/types";
 
 export const runtime = "nodejs";
@@ -25,20 +25,20 @@ interface AuthClassification {
   profile: AppUser | null;
 }
 
-function unauthorizedResponse(): NextResponse<ApiErrorResponse> {
+function unauthorizedResponse(messages: I18nMessages): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
-      message: i18n.auth.genericLoginError,
+      message: messages.auth.genericLoginError,
       code: "AUTH_INVALID_CREDENTIALS",
     },
     { status: 401 },
   );
 }
 
-function disabledAccountResponse(): NextResponse<ApiErrorResponse> {
+function disabledAccountResponse(messages: I18nMessages): NextResponse<ApiErrorResponse> {
   return NextResponse.json(
     {
-      message: i18n.auth.inactiveAccount,
+      message: messages.auth.inactiveAccount,
       code: "AUTH_ACCOUNT_DISABLED",
     },
     { status: 403 },
@@ -63,10 +63,10 @@ function appendAuthCookies(response: NextResponse, headers: Headers): void {
   });
 }
 
-async function roleMismatchResponse(request: NextRequest): Promise<NextResponse<ApiErrorResponse>> {
+async function roleMismatchResponse(request: NextRequest, messages: I18nMessages): Promise<NextResponse<ApiErrorResponse>> {
   const response = NextResponse.json(
     {
-      message: "هذا الحساب غير مسموح له بالدخول من هذه الصفحة. تم إنهاء الجلسة الحالية، سجل الدخول بالحساب الصحيح.",
+      message: messages.auth.portalRoleMismatch,
       code: "AUTH_ROLE_MISMATCH",
     },
     { status: 403 },
@@ -126,6 +126,10 @@ function errorStatus(error: unknown): number | null {
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorResponse | LoginSuccessResponse>> {
   try {
+    const locale = getLocaleFromValue(request.cookies.get(localeCookieName)?.value);
+    const messages = getI18nMessages(locale);
+    const loginFormSchema = createLoginFormSchema(messages);
+
     const body = (await request.json()) as unknown;
     const expectedRole =
       isRecord(body) && typeof body.expectedRole === "string" && validRoles.has(body.expectedRole as UserRole)
@@ -137,7 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
     if (!parsed.success) {
       return NextResponse.json(
         {
-          message: i18n.auth.genericLoginError,
+          message: messages.auth.genericLoginError,
           code: "AUTH_INVALID_REQUEST",
         },
         { status: 400 },
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
-          message: i18n.auth.rateLimited,
+          message: messages.auth.rateLimited,
           code: "AUTH_RATE_LIMITED",
           retryAfterSeconds: rateLimit.retryAfterSeconds,
         },
@@ -181,22 +185,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
 
       if (authClassification.blocked) {
         await recordFailedLogin(email, ipAddress);
-        return disabledAccountResponse();
+        return disabledAccountResponse(messages);
       }
 
       if (!authClassification.profile) {
         await recordFailedLogin(email, ipAddress);
-        return unauthorizedResponse();
+        return unauthorizedResponse(messages);
       }
 
       if (expectedRole && authClassification.profile.role !== expectedRole) {
         await recordFailedLogin(email, ipAddress);
-        return roleMismatchResponse(request);
+        return roleMismatchResponse(request, messages);
       }
 
       if (staffPortalLogin && authClassification.profile.role === "client") {
         await recordFailedLogin(email, ipAddress);
-        return roleMismatchResponse(request);
+        return roleMismatchResponse(request, messages);
       }
 
       await resetLoginRateLimit(email, ipAddress);
@@ -218,12 +222,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
     } catch (error: unknown) {
       if (isDisabledAuthError(error)) {
         await recordFailedLogin(email, ipAddress);
-        return disabledAccountResponse();
+        return disabledAccountResponse(messages);
       }
 
       if (errorStatus(error) === 401 || errorStatus(error) === 403) {
         await recordFailedLogin(email, ipAddress);
-        return unauthorizedResponse();
+        return unauthorizedResponse(messages);
       }
 
       throw error;
@@ -235,7 +239,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorR
 
     return NextResponse.json(
       {
-        message: i18n.errors.unexpected,
+        message: getI18nMessages(getLocaleFromValue(request.cookies.get(localeCookieName)?.value)).errors.unexpected,
         code: "AUTH_LOGIN_FAILED",
         ...(isDev && { debug: error instanceof Error ? error.message : String(error) }),
       },

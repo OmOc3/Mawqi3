@@ -2,19 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { generateManagerInsightsAction } from "@/app/actions/insights";
-import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/components/i18n/language-provider";
+import type { I18nMessages } from "@/lib/i18n";
 import type { AiInsightsResult } from "@/types";
 
-function SourceBadge({ source }: { source: AiInsightsResult["source"] | undefined }) {
+function SourceBadge({ messages, source }: { messages: I18nMessages; source: AiInsightsResult["source"] | undefined }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary)]">
       <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[var(--primary)]" />
-      {source === "gemini" ? i18n.insights.sourceGemini : i18n.insights.sourceFallback}
+      {source === "gemini" ? messages.insights.sourceGemini : messages.insights.sourceFallback}
     </div>
   );
 }
 
 export function AIInsightsCard() {
+  const { messages } = useLanguage();
   const [insights, setInsights] = useState<AiInsightsResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -23,10 +25,10 @@ export function AIInsightsCard() {
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <SourceBadge source={insights?.source} />
+          <SourceBadge messages={messages} source={insights?.source} />
           <div>
-            <h2 className="section-heading text-base">{i18n.insights.title}</h2>
-            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{i18n.insights.subtitle}</p>
+            <h2 className="section-heading text-base">{messages.insights.title}</h2>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{messages.insights.subtitle}</p>
           </div>
         </div>
         <button
@@ -52,7 +54,7 @@ export function AIInsightsCard() {
           {isPending ? (
             <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
           ) : null}
-          {isPending ? i18n.insights.generating : i18n.insights.generate}
+          {isPending ? messages.insights.generating : messages.insights.generate}
         </button>
       </div>
 
@@ -70,14 +72,14 @@ export function AIInsightsCard() {
           <div className="space-y-2">
             <p className="text-sm leading-7 text-[var(--foreground)]">{insights.summary}</p>
             <p className="text-xs font-medium text-[var(--muted)]">
-              {i18n.insights.generatedAt}: {insights.generatedAt}
+              {messages.insights.generatedAt}: {insights.generatedAt}
             </p>
             {insights.note ? <p className="text-xs font-medium text-[var(--warning)]">{insights.note}</p> : null}
           </div>
 
           {insights.dataCoverage?.length ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.dataCoverage}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{messages.insights.dataCoverage}</h3>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {insights.dataCoverage.map((item) => (
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2" key={item.key}>
@@ -85,7 +87,9 @@ export function AIInsightsCard() {
                     <p className="mt-1 text-sm font-bold text-[var(--foreground)]">
                       {item.includedRows} / {item.totalRows}
                     </p>
-                    {item.truncated ? <p className="mt-1 text-xs font-semibold text-[var(--warning)]">تم تقليم البيانات</p> : null}
+                    {item.truncated ? (
+                      <p className="mt-1 text-xs font-semibold text-[var(--warning)]">{messages.insights.dataTruncated}</p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -94,7 +98,7 @@ export function AIInsightsCard() {
 
           {insights.fullReport ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.fullReport}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{messages.insights.fullReport}</h3>
               <p className="whitespace-pre-line rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-4 text-sm leading-7 text-[var(--foreground)]">
                 {insights.fullReport}
               </p>
@@ -124,7 +128,7 @@ export function AIInsightsCard() {
 
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.alerts}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{messages.insights.alerts}</h3>
               <ul className="space-y-3 text-sm leading-6 text-[var(--foreground)]">
                 {insights.alerts.map((item) => (
                   <li className="flex gap-3" key={item}>
@@ -136,7 +140,7 @@ export function AIInsightsCard() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.recommendations}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{messages.insights.recommendations}</h3>
               <ul className="space-y-3 text-sm leading-6 text-[var(--foreground)]">
                 {insights.recommendations.map((item) => (
                   <li className="flex gap-3" key={item}>
@@ -150,7 +154,7 @@ export function AIInsightsCard() {
 
           {insights.dataQualityNotes?.length ? (
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-[var(--foreground)]">{i18n.insights.dataQuality}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)]">{messages.insights.dataQuality}</h3>
               <ul className="space-y-2 text-sm leading-6 text-[var(--muted)]">
                 {insights.dataQualityNotes.map((item) => (
                   <li className="flex gap-3" key={item}>

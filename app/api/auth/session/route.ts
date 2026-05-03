@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/better-auth";
 import { clearAuthCookies } from "@/lib/auth/session";
-import { i18n } from "@/lib/i18n";
+import { getI18nMessages, getLocaleFromValue, localeCookieName } from "@/lib/i18n";
 import type { ApiErrorResponse } from "@/types";
 
 export const runtime = "nodejs";
@@ -24,10 +24,13 @@ function appendAuthCookies(response: NextResponse, headers: Headers): void {
   });
 }
 
-export async function POST(): Promise<NextResponse<ApiErrorResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<ApiErrorResponse>> {
+  const locale = getLocaleFromValue(request.cookies.get(localeCookieName)?.value);
+  const messages = getI18nMessages(locale);
+
   return NextResponse.json(
     {
-      message: i18n.auth.sessionExpired,
+      message: messages.auth.sessionExpired,
       code: "AUTH_LEGACY_SESSION_DISABLED",
     },
     { status: 410 },
