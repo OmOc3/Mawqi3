@@ -11,7 +11,15 @@ function isAllowedProfileImageUrl(value: string): boolean {
   try {
     const url = new URL(value);
 
-    return url.protocol === "https:" && url.hostname === "res.cloudinary.com";
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    if (url.hostname === "res.cloudinary.com") {
+      return url.pathname.includes("/image/upload/");
+    }
+
+    return url.hostname === "api.ecopest.com" && url.pathname.startsWith("/image/upload/");
   } catch {
     return false;
   }

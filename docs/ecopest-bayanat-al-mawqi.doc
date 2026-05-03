@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="EcoPest documentation">
+<title>EcoPest — بيانات الموقع (مرجع كامل)</title>
+<style>
+body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.45; margin: 2cm; color: #111; }
+h1 { font-size: 18pt; border-bottom: 2px solid #2563eb; padding-bottom: 6px; }
+h2 { font-size: 14pt; margin-top: 1.4em; color: #1e40af; }
+h3 { font-size: 12pt; margin-top: 1em; color: #334155; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; page-break-inside: avoid; }
+th, td { border: 1px solid #94a3b8; padding: 6px 8px; text-align: right; vertical-align: top; }
+th { background: #e2e8f0; font-weight: 600; }
+code { font-family: Consolas, monospace; font-size: 10pt; background: #f1f5f9; padding: 1px 4px; }
+.note { background: #fefce8; border-right: 4px solid #eab308; padding: 10px 14px; margin: 12px 0; }
+ul { margin: 6px 0; padding-right: 22px; }
+</style>
+</head>
+<body>
+
+<h1>EcoPest — إيكوبست<br><span style="font-size:13pt;font-weight:normal;color:#64748b">مرجع حرفي لبيانات الموقع والتطبيق (قاعدة البيانات، النماذج، التصدير، البيئة)</span></h1>
+
+<p class="note"><strong>كيفية الاستخدام:</strong> افتح هذا الملف بـ Microsoft Word. يمكنك ثم <strong>ملف → حفظ باسم</strong> واختيار صيغة Word (.docx) إذا رغبت. المصدر البرمجي للحقول: <code>lib/db/schema.ts</code> و<code>packages/shared/src/constants.ts</code>.</p>
+
+<h2>1) ثوابت مشتركة (قيم مسموحة في النظام)</h2>
+
+<h3>1.1 أدوار المستخدمين <code>userRoles</code></h3>
+<table>
+<tr><th>القيمة (مفتاح)</th><th>ملاحظة</th></tr>
+<tr><td><code>client</code></td><td>عميل</td></tr>
+<tr><td><code>technician</code></td><td>فني</td></tr>
+<tr><td><code>supervisor</code></td><td>مشرف</td></tr>
+<tr><td><code>manager</code></td><td>مدير</td></tr>
+</table>
+
+<h3>1.2 حالات تقرير المحطة (متعددة لكل تقرير) <code>reportStatusOptions</code></h3>
+<table>
+<tr><th>القيمة</th><th>التسمية العربية</th><th>English</th></tr>
+<tr><td><code>station_ok</code></td><td>المحطة سليمة</td><td>Station is clear</td></tr>
+<tr><td><code>station_replaced</code></td><td>تم تغيير المحطة</td><td>Station was changed</td></tr>
+<tr><td><code>bait_changed</code></td><td>تم تغيير الطعم</td><td>Bait was changed</td></tr>
+<tr><td><code>bait_ok</code></td><td>الطعم سليم</td><td>Bait is clear</td></tr>
+<tr><td><code>station_excluded</code></td><td>استبعاد المحطة</td><td>Station excluded</td></tr>
+<tr><td><code>station_substituted</code></td><td>استبدال المحطة</td><td>Station substituted</td></tr>
+</table>
+
+<h3>1.3 حالة مراجعة التقرير <code>reviewStatuses</code></h3>
+<table>
+<tr><th>القيمة</th><th>معنى في الواجهة (تصدير CSV)</th></tr>
+<tr><td><code>pending</code></td><td>بانتظار المراجعة</td></tr>
+<tr><td><code>reviewed</code></td><td>موافق</td></tr>
+<tr><td><code>rejected</code></td><td>مرفوض</td></tr>
+</table>
+
+<h3>1.4 برنامج التنفيذ — أنواع الآفات <code>pestTypeOptions</code></h3>
+<table>
+<tr><th>القيمة</th><th>عربي</th><th>English</th></tr>
+<tr><td><code>flying_insects</code></td><td>حشرات طائرة</td><td>Flying insects</td></tr>
+<tr><td><code>crawling_insects</code></td><td>حشرات زاحفة</td><td>Crawling insects</td></tr>
+<tr><td><code>rodents</code></td><td>قوارض</td><td>Rodents</td></tr>
+<tr><td><code>reptiles</code></td><td>زواحف</td><td>Reptiles</td></tr>
+<tr><td><code>others</code></td><td>أخرى</td><td>Others</td></tr>
+</table>
+
+<h3>1.5 تصنيف صور تقرير المحطة <code>ReportPhotoCategory</code></h3>
+<p>القيم الحرفية: <code>after</code>، <code>before</code>، <code>during</code>، <code>other</code>، <code>station</code></p>
+
+<h3>1.6 مسارات صور قديمة في التقرير <code>ReportPhotoPaths</code> (JSON)</h3>
+<p>المفاتيح الاختيارية: <code>after</code>، <code>before</code>، <code>station</code></p>
+
+<h3>1.7 حالة طلب العميل <code>ClientOrderStatus</code></h3>
+<table>
+<tr><th>القيمة</th></tr>
+<tr><td><code>pending</code></td></tr>
+<tr><td><code>in_progress</code></td></tr>
+<tr><td><code>completed</code></td></tr>
+<tr><td><code>cancelled</code></td></tr>
+</table>
+
+<h2>2) قيود نماذج الإدخال (Zod)</h2>
+
+<h3>2.1 إرسال تقرير محطة <code>submitReportSchema</code> — <code>lib/validation/reports.ts</code></h3>
+<table>
+<tr><th>الحقل</th><th>القيود</th></tr>
+<tr><td><code>stationId</code></td><td>نص، غير فارغ بعد trim</td></tr>
+<tr><td><code>status</code></td><td>مصفوفة من <code>reportStatusOptions</code>، عنصر واحد على الأقل</td></tr>
+<tr><td><code>pestTypes</code></td><td>مصفوفة من <code>pestTypeOptions</code>، عنصر واحد على الأقل</td></tr>
+<tr><td><code>notes</code></td><td>اختياري، حتى 500 حرف بعد trim</td></tr>
+<tr><td><code>beforePhoto</code></td><td><code>File</code> اختياري</td></tr>
+<tr><td><code>afterPhoto</code></td><td><code>File</code> اختياري</td></tr>
+<tr><td><code>duringPhotos</code></td><td>مصفوفة <code>File</code>، حتى 6</td></tr>
+<tr><td><code>otherPhotos</code></td><td>مصفوفة <code>File</code>، حتى 6</td></tr>
+<tr><td><code>stationPhoto</code></td><td><code>File</code> اختياري</td></tr>
+</table>
+
+<h3>2.2 مراجعة تقرير <code>reviewReportSchema</code></h3>
+<table>
+<tr><th>الحقل</th><th>القيود</th></tr>
+<tr><td><code>reviewStatus</code></td><td>واحد من <code>reviewStatuses</code></td></tr>
+<tr><td><code>reviewNotes</code></td><td>اختياري، حتى 500 حرف؛ إذا <code>rejected</code> فيجب سبب الرفض 3 أحرف على الأقل</td></tr>
+</table>
+
+<h3>2.3 تعديل تقرير مُرسل <code>editSubmittedReportSchema</code></h3>
+<table>
+<tr><th>الحقل</th><th>القيود</th></tr>
+<tr><td><code>notes</code></td><td>اختياري، حتى 500 حرف</td></tr>
+<tr><td><code>status</code></td><td>مصفوفة حالات، عنصر واحد على الأقل</td></tr>
+<tr><td><code>pestTypes</code></td><td>مصفوفة أنواع آفات، عنصر واحد على الأقل</td></tr>
+</table>
+
+<h3>2.4 تقرير يومي <code>createDailyWorkReportSchema</code> — <code>lib/validation/daily-reports.ts</code></h3>
+<table>
+<tr><th>الحقل</th><th>القيود</th></tr>
+<tr><td><code>notes</code></td><td>اختياري، حتى 800 حرف</td></tr>
+<tr><td><code>reportDate</code></td><td>نص، غير فارغ بعد trim</td></tr>
+<tr><td><code>stationIds</code></td><td>مصفوفة معرفات محطات، حتى 50 عنصراً، كل عنصر غير فارغ</td></tr>
+<tr><td><code>summary</code></td><td>من 10 إلى 1200 حرف بعد trim</td></tr>
+</table>
+
+<h2>3) تصدير CSV لتقارير المحطات — <code>GET /api/reports/export</code></h2>
+<p>فلاتر الاستعلام: <code>from</code> أو <code>dateFrom</code>، <code>to</code> أو <code>dateTo</code>، <code>stationId</code>، <code>technicianUid</code>، <code>reviewStatus</code> (pending | reviewed | rejected). الحد الأقصى للصفوف: <code>5000</code>. النطاق الافتراضي للتاريخ من: آخر 90 يوماً.</p>
+<table>
+<tr><th>ترتيب العمود</th><th>اسم العرض في الملف</th><th>مصدر البيانات</th></tr>
+<tr><td>1</td><td>رقم التقرير</td><td><code>reportId</code></td></tr>
+<tr><td>2</td><td>المحطة</td><td><code>stationLabel</code></td></tr>
+<tr><td>3</td><td>الموقع</td><td><code>stationLocation</code> أو موقع المحطة من قاعدة البيانات</td></tr>
+<tr><td>4</td><td>أنواع الآفات</td><td>تسميات عربية مفصولة بـ <code>؛</code></td></tr>
+<tr><td>5</td><td>الفني</td><td><code>technicianName</code></td></tr>
+<tr><td>6</td><td>الحالة</td><td>تسميات الحالات مفصولة بـ <code> | </code></td></tr>
+<tr><td>7</td><td>ملاحظات</td><td><code>notes</code></td></tr>
+<tr><td>8</td><td>حالة المراجعة</td><td>عربي حسب الجدول 1.3</td></tr>
+<tr><td>9</td><td>التاريخ</td><td>من <code>submittedAt</code></td></tr>
+<tr><td>10</td><td>وقت الإرسال</td><td>من <code>submittedAt</code></td></tr>
+</table>
+
+<h2>4) جداول قاعدة البيانات SQLite — أسماء الأعمدة حرفياً</h2>
+<p>نوع الزمن المستخدم في Drizzle هنا: طوابع زمنية بالميلي ثانية (<code>timestamp_ms</code>) حيث وُجد عمود timestamp. الحقول المنطقية تُخزَّن كعدد صحيح 0/1.</p>
+
+<h3>4.1 <code>app_settings</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>setting_id</code></td><td>مفتاح أساسي نصي</td></tr>
+<tr><td><code>maintenance_mode_enabled</code></td><td>منطقي</td></tr>
+<tr><td><code>client_daily_order_limit</code></td><td>عدد صحيح، افتراضي 5</td></tr>
+<tr><td><code>maintenance_message</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>support_email</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>support_hours</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>support_phone</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>updated_by</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.2 <code>user</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>name</code></td><td>نص</td></tr>
+<tr><td><code>email</code></td><td>نص، فريد</td></tr>
+<tr><td><code>email_verified</code></td><td>منطقي، افتراضي true</td></tr>
+<tr><td><code>image</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>role</code></td><td><code>UserRole</code>، افتراضي technician</td></tr>
+<tr><td><code>banned</code></td><td>منطقي، افتراضي false</td></tr>
+<tr><td><code>ban_reason</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>ban_expires</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>password_changed_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>deactivated_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>deactivated_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>reactivated_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>reactivated_by</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.3 <code>client_signup_devices</code></h3>
+<table>
+<tr><td><code>device_hash</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>client_uid</code></td><td>مرجع إلى user.id</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h3>4.4 <code>session</code></h3>
+<table>
+<tr><td><code>id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>token</code></td><td>نص، فريد</td></tr>
+<tr><td><code>user_id</code></td><td>مرجع إلى user.id</td></tr>
+<tr><td><code>expires_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>ip_address</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>user_agent</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>impersonated_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h3>4.5 <code>account</code></h3>
+<table>
+<tr><td><code>id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>account_id</code></td><td>نص</td></tr>
+<tr><td><code>provider_id</code></td><td>نص</td></tr>
+<tr><td><code>user_id</code></td><td>مرجع إلى user.id</td></tr>
+<tr><td><code>access_token</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>refresh_token</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>id_token</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>access_token_expires_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>refresh_token_expires_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>scope</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>password</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h3>4.6 <code>verification</code></h3>
+<table>
+<tr><td><code>id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>identifier</code></td><td>نص</td></tr>
+<tr><td><code>value</code></td><td>نص</td></tr>
+<tr><td><code>expires_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h3>4.7 <code>rateLimit</code></h3>
+<table>
+<tr><td><code>key</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>count</code></td><td>عدد صحيح</td></tr>
+<tr><td><code>last_request</code></td><td>عدد صحيح</td></tr>
+</table>
+
+<h3>4.8 <code>login_rate_limit</code></h3>
+<table>
+<tr><td><code>key</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>attempts</code></td><td>عدد صحيح، افتراضي 0</td></tr>
+<tr><td><code>window_start_at</code></td><td>عدد صحيح</td></tr>
+<tr><td><code>updated_at</code></td><td>عدد صحيح</td></tr>
+<tr><td><code>locked_until</code></td><td>عدد صحيح، اختياري</td></tr>
+</table>
+
+<h3>4.9 <code>stations</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>station_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>label</code></td><td>نص</td></tr>
+<tr><td><code>location</code></td><td>نص</td></tr>
+<tr><td><code>description</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>zone</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>photo_urls</code></td><td>JSON: مصفوفة نصوص</td></tr>
+<tr><td><code>lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>qr_code_value</code></td><td>نص</td></tr>
+<tr><td><code>is_active</code></td><td>منطقي، افتراضي true</td></tr>
+<tr><td><code>requires_immediate_supervision</code></td><td>منطقي، افتراضي false</td></tr>
+<tr><td><code>total_reports</code></td><td>عدد صحيح، افتراضي 0</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>created_by</code></td><td>نص</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>updated_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>last_visited_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>last_visited_by</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.10 <code>reports</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>report_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>station_id</code></td><td>مرجع stations</td></tr>
+<tr><td><code>station_label</code></td><td>نص (لقطة وقت الإرسال)</td></tr>
+<tr><td><code>station_location</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>pest_types</code></td><td>JSON: PestTypeOption[]</td></tr>
+<tr><td><code>technician_uid</code></td><td>نص</td></tr>
+<tr><td><code>technician_name</code></td><td>نص</td></tr>
+<tr><td><code>client_report_id</code></td><td>نص، اختياري؛ فريد مع technician_uid</td></tr>
+<tr><td><code>notes</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>photo_paths</code></td><td>JSON ReportPhotoPaths، اختياري</td></tr>
+<tr><td><code>submitted_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>review_status</code></td><td>افتراضي pending</td></tr>
+<tr><td><code>edited_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>edited_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>reviewed_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>reviewed_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>review_notes</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.11 <code>report_statuses</code></h3>
+<table>
+<tr><td><code>report_id</code></td><td>مرجع reports</td></tr>
+<tr><td><code>status</code></td><td>StatusOption</td></tr>
+</table>
+
+<h3>4.12 <code>report_photos</code></h3>
+<table>
+<tr><td><code>photo_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>report_id</code></td><td>مرجع reports</td></tr>
+<tr><td><code>category</code></td><td>ReportPhotoCategory</td></tr>
+<tr><td><code>url</code></td><td>نص</td></tr>
+<tr><td><code>uploaded_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>uploaded_by</code></td><td>نص</td></tr>
+<tr><td><code>sort_order</code></td><td>عدد صحيح، افتراضي 0</td></tr>
+</table>
+
+<h3>4.13 <code>audit_logs</code></h3>
+<table>
+<tr><td><code>log_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>actor_uid</code></td><td>نص</td></tr>
+<tr><td><code>actor_role</code></td><td>UserRole</td></tr>
+<tr><td><code>action</code></td><td>نص</td></tr>
+<tr><td><code>entity_type</code></td><td>نص</td></tr>
+<tr><td><code>entity_id</code></td><td>نص</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>metadata</code></td><td>JSON Record، اختياري</td></tr>
+</table>
+
+<h3>4.14 <code>technician_work_schedules</code></h3>
+<table>
+<tr><td><code>schedule_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>technician_uid</code></td><td>مرجع user.id</td></tr>
+<tr><td><code>work_days</code></td><td>نص، أيام مفصولة بفواصل 0–6 (الأحد–السبت)، افتراضي كل الأيام</td></tr>
+<tr><td><code>shift_start_time</code></td><td>نص HH:MM</td></tr>
+<tr><td><code>shift_end_time</code></td><td>نص HH:MM</td></tr>
+<tr><td><code>expected_duration_minutes</code></td><td>عدد صحيح، افتراضي 480</td></tr>
+<tr><td><code>hourly_rate</code></td><td>real، اختياري</td></tr>
+<tr><td><code>is_active</code></td><td>منطقي، افتراضي true</td></tr>
+<tr><td><code>notes</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>created_by</code></td><td>نص</td></tr>
+<tr><td><code>updated_by</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.15 <code>technician_shifts</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>shift_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>technician_uid</code></td><td>مرجع user</td></tr>
+<tr><td><code>technician_name</code></td><td>نص</td></tr>
+<tr><td><code>schedule_id</code></td><td>مرجع اختياري لجدول الجداول</td></tr>
+<tr><td><code>started_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>start_lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>start_lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>start_station_id</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>start_station_label</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>ended_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>end_lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>end_lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>end_station_id</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>end_station_label</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>status</code></td><td>نص، افتراضي active (active, completed)</td></tr>
+<tr><td><code>total_hours</code></td><td>real، اختياري</td></tr>
+<tr><td><code>total_minutes</code></td><td>عدد صحيح، اختياري</td></tr>
+<tr><td><code>expected_duration_minutes</code></td><td>عدد صحيح، اختياري</td></tr>
+<tr><td><code>early_exit</code></td><td>منطقي، افتراضي false</td></tr>
+<tr><td><code>base_salary</code></td><td>real، اختياري</td></tr>
+<tr><td><code>salary_amount</code></td><td>real، اختياري</td></tr>
+<tr><td><code>salary_status</code></td><td>نص، افتراضي pending (pending, paid, unpaid)</td></tr>
+<tr><td><code>notes</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+</table>
+
+<h3>4.16 <code>attendance_sessions</code></h3>
+<table>
+<tr><th>عمود SQL</th><th>ملاحظات</th></tr>
+<tr><td><code>attendance_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>shift_id</code></td><td>مرجع اختياري لـ technician_shifts</td></tr>
+<tr><td><code>technician_uid</code></td><td>مرجع user</td></tr>
+<tr><td><code>technician_name</code></td><td>نص</td></tr>
+<tr><td><code>clock_in_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>clock_in_lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_in_lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_in_accuracy_meters</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_in_station_id</code></td><td>مرجع اختياري stations</td></tr>
+<tr><td><code>clock_in_station_label</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>clock_in_client_uid</code></td><td>مرجع اختياري user</td></tr>
+<tr><td><code>clock_in_client_name</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>clock_in_distance_meters</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_out_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>clock_out_lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_out_lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_out_accuracy_meters</code></td><td>real، اختياري</td></tr>
+<tr><td><code>clock_out_station_id</code></td><td>مرجع اختياري stations</td></tr>
+<tr><td><code>clock_out_station_label</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>clock_out_client_uid</code></td><td>مرجع اختياري user</td></tr>
+<tr><td><code>clock_out_client_name</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>clock_out_distance_meters</code></td><td>real، اختياري</td></tr>
+<tr><td><code>notes</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h3>4.17 <code>client_orders</code></h3>
+<table>
+<tr><td><code>order_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>client_uid</code></td><td>مرجع user</td></tr>
+<tr><td><code>client_name</code></td><td>نص</td></tr>
+<tr><td><code>station_id</code></td><td>مرجع اختياري stations</td></tr>
+<tr><td><code>station_label</code></td><td>نص</td></tr>
+<tr><td><code>proposal_location</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>proposal_description</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>proposal_lat</code></td><td>real، اختياري</td></tr>
+<tr><td><code>proposal_lng</code></td><td>real، اختياري</td></tr>
+<tr><td><code>note</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>photo_url</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>status</code></td><td>ClientOrderStatus، افتراضي pending</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>reviewed_at</code></td><td>طابع زمني، اختياري</td></tr>
+<tr><td><code>reviewed_by</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>decision_note</code></td><td>نص، اختياري</td></tr>
+</table>
+
+<h3>4.18 <code>client_profiles</code></h3>
+<table>
+<tr><td><code>client_uid</code></td><td>مفتاح أساسي، مرجع user</td></tr>
+<tr><td><code>phone</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>addresses</code></td><td>JSON: مصفوفة نصوص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+</table>
+
+<h3>4.19 <code>client_station_access</code></h3>
+<table>
+<tr><td><code>access_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>client_uid</code></td><td>مرجع user</td></tr>
+<tr><td><code>station_id</code></td><td>مرجع stations</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>created_by</code></td><td>نص</td></tr>
+</table>
+
+<h3>4.20 <code>daily_work_reports</code></h3>
+<table>
+<tr><td><code>daily_report_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>technician_uid</code></td><td>مرجع user</td></tr>
+<tr><td><code>technician_name</code></td><td>نص</td></tr>
+<tr><td><code>report_date</code></td><td>طابع زمني</td></tr>
+<tr><td><code>summary</code></td><td>نص</td></tr>
+<tr><td><code>notes</code></td><td>نص، اختياري</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>updated_at</code></td><td>طابع زمني، اختياري</td></tr>
+</table>
+
+<h3>4.21 <code>daily_work_report_stations</code></h3>
+<table>
+<tr><td><code>daily_report_id</code></td><td>مرجع daily_work_reports</td></tr>
+<tr><td><code>station_id</code></td><td>مرجع stations</td></tr>
+</table>
+
+<h3>4.22 <code>daily_report_photos</code></h3>
+<table>
+<tr><td><code>photo_id</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>daily_report_id</code></td><td>مرجع daily_work_reports</td></tr>
+<tr><td><code>url</code></td><td>نص</td></tr>
+<tr><td><code>uploaded_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>uploaded_by</code></td><td>نص</td></tr>
+<tr><td><code>sort_order</code></td><td>عدد صحيح، افتراضي 0</td></tr>
+</table>
+
+<h3>4.23 <code>mobile_web_sessions</code></h3>
+<table>
+<tr><td><code>token_hash</code></td><td>مفتاح أساسي</td></tr>
+<tr><td><code>uid</code></td><td>نص</td></tr>
+<tr><td><code>role</code></td><td>UserRole</td></tr>
+<tr><td><code>redirect_to</code></td><td>نص</td></tr>
+<tr><td><code>cookie_header</code></td><td>نص</td></tr>
+<tr><td><code>created_at</code></td><td>طابع زمني</td></tr>
+<tr><td><code>expires_at</code></td><td>طابع زمني</td></tr>
+</table>
+
+<h2>5) متغيرات البيئة — نص <code>.env.example</code> حرفياً (أسماء المتغيرات والقيم الافتراضية/العينات)</h2>
+<pre style="background:#f8fafc;border:1px solid #cbd5e1;padding:12px;font-size:9.5pt;white-space:pre-wrap;direction:ltr;text-align:left;">
+# Local SQLite database. Use hosted libSQL/Turso with DATABASE_AUTH_TOKEN in production/Vercel.
+DATABASE_URL=file:./data/ecopest.db
+DATABASE_AUTH_TOKEN=
+
+# Better Auth
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:3000
+AUTH_ROLE_COOKIE_SECRET=
+SESSION_MAX_AGE_SECONDS=432000
+
+# Required in production. Must be a valid https URL in production.
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# First local manager seed. Used only by npm run db:seed.
+SEED_MANAGER_EMAIL=manager@example.com
+SEED_MANAGER_PASSWORD=change-this-password
+SEED_MANAGER_NAME=مدير النظام
+
+GEMINI_API_KEY=
+# Optional. Defaults to gemini-2.5-flash.
+GEMINI_MODEL=
+
+# Cloudinary station photos
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+CLOUDINARY_STATION_FOLDER=ecopest/stations
+CLOUDINARY_REPORT_FOLDER=ecopest/reports
+CLOUDINARY_PROFILE_FOLDER=ecopest/profiles
+# Optional. Defaults to https://api.ecopest.com and requires this app to serve /image/upload/*.
+CLOUDINARY_CUSTOM_DOMAIN=https://api.ecopest.com
+# When Cloudinary is not configured, report photos are stored as data URLs in SQLite (see store-report-image).
+
+# Optional. If set, used to sign station QR links instead of deriving from BETTER_AUTH_SECRET only.
+ECOPEST_QR_SECRET=
+
+EXPO_PUBLIC_ECOPEST_WEB_BASE_URL=https://ecopest-production.vercel.app/
+
+# Technician support links
+NEXT_PUBLIC_SUPPORT_EMAIL=support@example.com
+NEXT_PUBLIC_SUPPORT_PHONE=
+
+# Maintenance mode (blocks client + technician without logging them out)
+# Set to 1/true/on to enable.
+MAINTENANCE_MODE=0
+# Optional. Middleware status cache TTL in seconds. Defaults to 60 in dev and 0 in production.
+MAINTENANCE_STATUS_CACHE_SECONDS=
+</pre>
+
+<p style="margin-top:2em;font-size:10pt;color:#64748b">آخر تحديث للمرجع وفق المستودع الحالي — الجداول والثوابت من الكود المصدري. إذا أُضيفت أعمدة لاحقاً عبر ترحيلات Drizzle، حدّث هذا الملف أو أعد استخراجه من <code>lib/db/schema.ts</code>.</p>
+
+</body>
+</html>
