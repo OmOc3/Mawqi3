@@ -1,5 +1,6 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { router } from 'expo-router';
+import { extractStationIdFromQrValue } from '@ecopest/shared/qr';
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,13 +19,9 @@ import { getDistanceMeters, maxLocationAccuracyMeters, stationAccessRadiusMeters
 import * as Location from 'expo-location';
 
 function normalizeStationId(value: string): string {
-  return value.trim().replace(/^\/+|\/+$/g, '');
-}
+  const fromQr = extractStationIdFromQrValue(value);
 
-function extractStationIdFromQr(value: string): string | null {
-  const match = value.match(/\/station\/([^/?#]+)\/report/);
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
+  return (fromQr ?? value).trim().replace(/^\/+|\/+$/g, '');
 }
 
 function timestampToDate(timestamp?: string): Date | null {
@@ -144,7 +141,7 @@ export default function ScanScreen() {
     }
 
     setLastScannedValue(result.data);
-    const scannedStationId = extractStationIdFromQr(result.data);
+    const scannedStationId = extractStationIdFromQrValue(result.data);
 
     if (scannedStationId) {
       setStationId(scannedStationId);

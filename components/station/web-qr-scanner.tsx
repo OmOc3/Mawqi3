@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { extractStationIdFromQrValue } from "@ecopest/shared/qr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface BarcodeDetectorResult {
@@ -22,12 +23,6 @@ declare global {
 }
 
 const scannerFrameIntervalMs = 250;
-
-function extractStationIdFromQr(value: string): string | null {
-  const match = value.match(/\/station\/([^/?#]+)\/report/);
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
 
 export function WebQrScanner() {
   const router = useRouter();
@@ -216,7 +211,7 @@ export function WebQrScanner() {
           const rawValue = results[0]?.rawValue;
 
           if (rawValue) {
-            const stationId = extractStationIdFromQr(rawValue);
+            const stationId = extractStationIdFromQrValue(rawValue);
             if (stationId) {
               stopScanner();
               router.push(`/station/${encodeURIComponent(stationId)}/report`);

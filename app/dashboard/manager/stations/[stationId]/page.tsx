@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StationMap } from "@/components/maps/station-map";
 import { requireRole } from "@/lib/auth/server-session";
 import { getStationById, listStationTechnicianVisits } from "@/lib/db/repositories";
+import { resolveStationQrCodeValue } from "@/lib/stations/qr-export";
 import { buildStationReportUrl } from "@/lib/url/base-url";
 import type { AppTimestamp } from "@/types";
 
@@ -51,7 +52,7 @@ export default async function StationDetailPage({ params }: StationDetailPagePro
     notFound();
   }
 
-  const qrCodeValue = station.qrCodeValue || (await buildStationReportUrl(station.stationId));
+  const qrCodeValue = await resolveStationQrCodeValue(station, buildStationReportUrl);
   const qrDataUrl = await QRCode.toDataURL(qrCodeValue, {
     margin: 2,
     width: 320,

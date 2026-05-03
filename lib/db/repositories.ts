@@ -35,6 +35,7 @@ import { normalizeCloudinaryDeliveryUrl } from "@/lib/cloudinary/utils";
 import { appUserFromAuthUser, auditLogFromRow, reportFromRow, requiredTimestamp, stationFromRow } from "@/lib/db/mappers";
 import { AppError } from "@/lib/errors";
 import { stationClientNamesByStationId } from "@/lib/stations/qr-export";
+import { buildStationReportUrl } from "@/lib/url/base-url";
 import {
   isShiftSalaryStatus,
   isValidShiftTime,
@@ -1883,7 +1884,7 @@ export async function approveClientOrder(orderId: string, reviewerUid: string, a
     }
 
     const stationIdGenerated = await generateNextStationId();
-    const qrCodeValue = `client-station:${stationIdGenerated}:${crypto.randomUUID()}`;
+    const qrCodeValue = await buildStationReportUrl(stationIdGenerated);
     const timestamp = now();
     const locationText =
       typeof order.proposalLocation === "string" && order.proposalLocation.trim().length > 0
