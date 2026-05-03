@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Fragment } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-page";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CreateUserForm } from "@/components/users/create-user-form";
-import { UserAccessCodeForm } from "@/components/users/user-access-code-form";
-import { UserProfileForm } from "@/components/users/user-profile-form";
-import { UserActivateToggle } from "@/components/users/user-activate-toggle";
-import { UserRoleForm } from "@/components/users/user-role-form";
 import { requireRole } from "@/lib/auth/server-session";
 import { formatDateTimeRome } from "@/lib/datetime";
 import { roleLabels } from "@/lib/i18n";
@@ -17,10 +12,10 @@ import { listAppUsers } from "@/lib/db/repositories";
 import type { AppTimestamp, AppUser, UserRole } from "@/types";
 
 export const metadata: Metadata = {
-  title: "الفريق",
+  title: "الفريق - المشرف",
 };
 
-interface ManagerUsersPageProps {
+interface SupervisorTeamPageProps {
   searchParams: Promise<{
     q?: string;
     role?: string;
@@ -141,47 +136,6 @@ function StatTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-function UserTools({ disabled, user }: { disabled: boolean; user: AppUser }) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_minmax(220px,0.8fr)_minmax(240px,0.9fr)]">
-      <UserProfileForm embedded user={{ uid: user.uid, displayName: user.displayName, image: user.image }} disabled={disabled} />
-      <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h3 className="text-sm font-bold text-[var(--foreground)]">الدور والحالة</h3>
-        <UserRoleForm disabled={disabled} targetUid={user.uid} value={user.role} />
-        <UserActivateToggle disabled={disabled} displayName={user.displayName} isActive={user.isActive} targetUid={user.uid} />
-        {!user.isActive && user.deactivatedAt ? (
-          <p className="text-xs text-[var(--muted)]">
-            آخر تعطيل: {formatTimestamp(user.deactivatedAt)}
-            {user.deactivatedBy ? ` · بواسطة: ${user.deactivatedBy}` : null}
-          </p>
-        ) : null}
-        {disabled ? <p className="text-xs leading-5 text-[var(--muted)]">لا يمكنك تعطيل حسابك أو تغيير دورك الحالي.</p> : null}
-      </div>
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h3 className="text-sm font-bold text-[var(--foreground)]">كود الدخول</h3>
-        <UserAccessCodeForm targetUid={user.uid} />
-        <p className="mt-3 text-xs text-[var(--muted)]">
-          آخر تغيير: {user.passwordChangedAt ? formatTimestamp(user.passwordChangedAt) : "غير متاح"}
-        </p>
-      </div>
-      {user.role === "technician" ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 lg:col-span-3">
-          <h3 className="text-sm font-bold text-[var(--foreground)]">جدول العمل</h3>
-          <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
-            تحديد أوقات عمل الفني والساعات المسموح له بتسجيل حضوره فيها.
-          </p>
-          <Link
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface)] disabled:opacity-60"
-            href={`/dashboard/manager/team/${user.uid}/schedule`}
-          >
-            إدارة جدول العمل
-          </Link>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function RoleGroupSummary({ activeCount, totalCount }: { activeCount: number; totalCount: number }) {
   const inactiveCount = totalCount - activeCount;
 
@@ -202,61 +156,34 @@ function RoleGroupSummary({ activeCount, totalCount }: { activeCount: number; to
   );
 }
 
-function UserManagementDetails({ currentUid, user }: { currentUid: string; user: AppUser }) {
-  const isCurrentUser = user.uid === currentUid;
-
-  return (
-    <details className="group rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm transition-colors">
-      <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-5 py-3 text-sm font-bold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)] [&[open]]:rounded-b-none">
-        إدارة حساب {user.displayName}
-        <span className="text-[var(--muted)] transition-transform duration-150 group-open:-rotate-180">
-          <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </span>
-      </summary>
-      <div className="border-t border-[var(--border-subtle)] p-5">
-        <UserTools disabled={isCurrentUser} user={user} />
-      </div>
-    </details>
-  );
-}
-
-function UsersTable({ currentUid, users }: { currentUid: string; users: AppUser[] }) {
+function UsersTable({ users }: { users: AppUser[] }) {
   return (
     <div className="hidden overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] lg:block">
-      <table className="w-full min-w-[920px]">
+      <table className="w-full min-w-[760px]">
         <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
           <tr>
             <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">المستخدم</th>
+            <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">الدور</th>
             <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">الحالة</th>
             <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">تاريخ الإنشاء</th>
-            <th className="px-4 py-3 text-right text-xs font-semibold text-[var(--muted)]">UID</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border-subtle)]">
           {users.map((user) => (
-            <Fragment key={user.uid}>
-              <tr className="align-top transition-colors hover:bg-[var(--surface-subtle)]">
-                <td className="px-4 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <UserAvatar user={user} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-[var(--foreground)]">{user.displayName}</p>
-                      <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
-                    </div>
+            <tr className="align-top transition-colors hover:bg-[var(--surface-subtle)]" key={user.uid}>
+              <td className="px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <UserAvatar user={user} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-[var(--foreground)]">{user.displayName}</p>
+                    <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
                   </div>
-                </td>
-                <td className="px-4 py-3"><UserStatus isActive={user.isActive} /></td>
-                <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(user.createdAt)}</td>
-                <td className="px-4 py-3 text-xs text-[var(--muted)]" dir="ltr">{user.uid}</td>
-              </tr>
-              <tr className="bg-[var(--surface-subtle)]/50">
-                <td className="px-5 py-3" colSpan={4}>
-                  <UserManagementDetails currentUid={currentUid} user={user} />
-                </td>
-              </tr>
-            </Fragment>
+                </div>
+              </td>
+              <td className="px-4 py-3"><RoleBadge role={user.role} /></td>
+              <td className="px-4 py-3"><UserStatus isActive={user.isActive} /></td>
+              <td className="px-4 py-3 text-sm text-[var(--muted)]">{formatTimestamp(user.createdAt)}</td>
+            </tr>
           ))}
         </tbody>
       </table>
@@ -264,7 +191,7 @@ function UsersTable({ currentUid, users }: { currentUid: string; users: AppUser[
   );
 }
 
-function MobileUserCard({ currentUid, user }: { currentUid: string; user: AppUser }) {
+function MobileUserCard({ user }: { user: AppUser }) {
   return (
     <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm" key={user.uid}>
       <div className="flex items-start justify-between gap-4">
@@ -281,14 +208,11 @@ function MobileUserCard({ currentUid, user }: { currentUid: string; user: AppUse
         <RoleBadge role={user.role} />
         <span>إنشاء: {formatTimestamp(user.createdAt)}</span>
       </div>
-      <div className="mt-5">
-        <UserManagementDetails currentUid={currentUid} user={user} />
-      </div>
     </article>
   );
 }
 
-function RoleSection({ currentUid, group, users }: { currentUid: string; group: RoleGroupConfig; users: AppUser[] }) {
+function RoleSection({ group, users }: { group: RoleGroupConfig; users: AppUser[] }) {
   const activeCount = users.filter((user) => user.isActive).length;
 
   return (
@@ -300,18 +224,18 @@ function RoleSection({ currentUid, group, users }: { currentUid: string; group: 
         </div>
         <RoleGroupSummary activeCount={activeCount} totalCount={users.length} />
       </div>
-      <UsersTable currentUid={currentUid} users={users} />
+      <UsersTable users={users} />
       <div className="grid gap-3 lg:hidden">
         {users.map((user) => (
-          <MobileUserCard currentUid={currentUid} key={user.uid} user={user} />
+          <MobileUserCard key={user.uid} user={user} />
         ))}
       </div>
     </section>
   );
 }
 
-export default async function ManagerUsersPage({ searchParams }: ManagerUsersPageProps) {
-  const session = await requireRole(["manager"]);
+export default async function SupervisorTeamPage({ searchParams }: SupervisorTeamPageProps) {
+  await requireRole(["supervisor", "manager"]);
   const params = await searchParams;
   const allUsers = await listAppUsers();
   const users = allUsers.filter((user) => user.role !== "client");
@@ -338,20 +262,18 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
     .filter((group) => group.users.length > 0);
 
   return (
-    <DashboardShell role="manager">
+    <DashboardShell role="supervisor">
       <PageHeader
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              href="/dashboard/manager"
-            >
-              لوحة المدير
-            </Link>
-          </div>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+            href="/dashboard/supervisor"
+          >
+            لوحة المشرف
+          </Link>
         }
-        backHref="/dashboard/manager"
-        description="إدارة الفريق مقسمة حسب الدور مع البحث والتصفية وتحديث الحسابات من نفس المكان."
+        backHref="/dashboard/supervisor"
+        description="عرض أعضاء الفريق مقسمين حسب الدور مع البحث والتصفية وإنشاء حسابات جديدة."
         title="الفريق"
       />
 
@@ -374,11 +296,11 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
           </span>
         </summary>
         <div className="border-t border-[var(--border-subtle)] p-5">
-          <CreateUserForm embedded />
+          <CreateUserForm allowedRoles={["technician"]} embedded />
         </div>
       </details>
 
-      <form action="/dashboard/manager/team" className="grid gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
+      <form action="/dashboard/supervisor/team" className="grid gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
         <div>
           <label className="mb-1.5 block text-xs font-semibold text-[var(--muted)]" htmlFor="users-search">
             البحث
@@ -428,7 +350,7 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
           <button className="min-h-11 rounded-lg bg-[var(--primary)] px-6 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-sm transition-colors hover:bg-[var(--primary-hover)]" type="submit">
             تطبيق
           </button>
-          <Link className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)]" href="/dashboard/manager/team">
+          <Link className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-subtle)]" href="/dashboard/supervisor/team">
             مسح
           </Link>
         </div>
@@ -441,7 +363,7 @@ export default async function ManagerUsersPage({ searchParams }: ManagerUsersPag
       ) : (
         <div className="space-y-5">
           {visibleGroups.map((group) => (
-            <RoleSection currentUid={session.uid} group={group} key={group.role} users={group.users} />
+            <RoleSection group={group} key={group.role} users={group.users} />
           ))}
         </div>
       )}

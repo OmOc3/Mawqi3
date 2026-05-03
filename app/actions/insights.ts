@@ -40,7 +40,7 @@ function buildUnavailableFallback(note: string): AiInsightsResult {
 }
 
 async function writeAiReportAuditLog(input: {
-  actorRole: "manager";
+  actorRole: "manager" | "supervisor";
   actorUid: string;
   coverage: AiDataCoverageItem[];
   error?: string;
@@ -66,7 +66,7 @@ async function writeAiReportAuditLog(input: {
 }
 
 export async function generateManagerInsightsAction(): Promise<GenerateManagerInsightsActionResult> {
-  const session = await requireRole(["manager"]);
+  const session = await requireRole(["manager", "supervisor"]);
 
   try {
     const reportData = await buildManagerAiReportData({ requestedBy: session.user });
@@ -75,7 +75,7 @@ export async function generateManagerInsightsAction(): Promise<GenerateManagerIn
     if (!hasGeminiConfigured()) {
       await writeAiReportAuditLog({
         actorUid: session.uid,
-        actorRole: "manager",
+        actorRole: session.role as "manager" | "supervisor",
         coverage: reportData.coverage,
         source: "fallback",
       });
@@ -102,7 +102,7 @@ export async function generateManagerInsightsAction(): Promise<GenerateManagerIn
 
       await writeAiReportAuditLog({
         actorUid: session.uid,
-        actorRole: "manager",
+        actorRole: session.role as "manager" | "supervisor",
         coverage: reportData.coverage,
         source: insights.source,
       });
@@ -117,7 +117,7 @@ export async function generateManagerInsightsAction(): Promise<GenerateManagerIn
 
       await writeAiReportAuditLog({
         actorUid: session.uid,
-        actorRole: "manager",
+        actorRole: session.role as "manager" | "supervisor",
         coverage: reportData.coverage,
         error: note,
         source: "fallback",

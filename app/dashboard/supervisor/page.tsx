@@ -129,6 +129,15 @@ export default async function SupervisorDashboardPage() {
           <Link className={quickPanelClass} href="/dashboard/supervisor/reports?reviewStatus=pending">
             مراجعة المعلقة فقط
           </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/stations">
+            عرض المحطات
+          </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/analytics">
+            التحليلات
+          </Link>
+          <Link className={quickPanelClass} href="/dashboard/supervisor/team">
+            الفريق
+          </Link>
         </div>
       </section>
     </DashboardShell>

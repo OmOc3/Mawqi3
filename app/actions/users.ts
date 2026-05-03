@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { createUserSchema, updateUserAccessCodeSchema, updateUserRoleSchema, updateUserProfileSchema } from "@/lib/validation/users";
 import { writeAuditLog } from "@/lib/audit";
 import { recordUserLifecycleAfterActiveChange } from "@/lib/users/user-lifecycle";
+import type { UserRole } from "@/types";
 
 export interface UserActionResult {
   createdUid?: string;
@@ -26,8 +27,12 @@ function requiredString(formData: FormData, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function canSupervisorManageRole(role: UserRole): boolean {
+  return role === "client" || role === "technician";
+}
+
 export async function createUserAccountAction(formData: FormData): Promise<UserActionResult> {
-  const session = await requireRole(["manager"]);
+  const session = await requireRole(["manager", "supervisor"]);
   const parsed = createUserSchema.safeParse({
     displayName: requiredString(formData, "displayName"),
     email: requiredString(formData, "email"),
@@ -40,6 +45,15 @@ export async function createUserAccountAction(formData: FormData): Promise<UserA
     return {
       error: "تحقق من بيانات المستخدم وحاول مرة أخرى.",
       fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  if (session.role === "supervisor" && !canSupervisorManageRole(parsed.data.role)) {
+    return {
+      error: "ليس لدى المشرف صلاحية إنشاء مدير أو مشرف آخر.",
+      fieldErrors: {
+        role: ["اختر دور عميل أو فني."],
+      },
     };
   }
 
@@ -80,6 +94,8 @@ export async function createUserAccountAction(formData: FormData): Promise<UserA
     revalidatePath("/dashboard/manager/team");
     revalidatePath("/dashboard/manager/client-orders");
     revalidatePath("/dashboard/manager");
+    revalidatePath("/dashboard/supervisor/client-orders");
+    revalidatePath("/dashboard/supervisor/team");
 
     return {
       createdUid,
@@ -155,6 +171,7 @@ export async function toggleUserActiveAction(
 
   revalidatePath("/dashboard/manager/team");
   revalidatePath("/dashboard/manager");
+  revalidatePath("/dashboard/supervisor/team");
 
   return { success: true };
 }
@@ -209,6 +226,7 @@ export async function updateUserRoleAction(targetUid: string, formData: FormData
 
   revalidatePath("/dashboard/manager/team");
   revalidatePath("/dashboard/manager");
+  revalidatePath("/dashboard/supervisor/team");
 
   return { success: true };
 }
@@ -262,6 +280,7 @@ export async function updateUserAccessCodeAction(targetUid: string, formData: Fo
 
   revalidatePath("/dashboard/manager/team");
   revalidatePath("/dashboard/manager");
+  revalidatePath("/dashboard/supervisor/team");
 
   return { success: true };
 }
@@ -292,6 +311,10 @@ export async function updateUserProfileAction(targetUid: string, formData: FormD
     return { error: "المستخدم غير موجود" };
   }
 
+  if (targetUid !== session.uid && session.role === "supervisor" && !canSupervisorManageRole(targetAppUser.role)) {
+    return { error: "ليس لدى المشرف صلاحية تعديل حساب مدير أو مشرف آخر." };
+  }
+
   try {
     await db.update(usersTable).set({
       name: parsed.data.displayName,
@@ -314,6 +337,7 @@ export async function updateUserProfileAction(targetUid: string, formData: FormD
   });
 
   revalidatePath("/dashboard/manager/team");
+  revalidatePath("/dashboard/supervisor/team");
   revalidatePath("/(tabs)/settings");
 
   return { success: true };

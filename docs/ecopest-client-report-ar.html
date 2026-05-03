@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>تقرير مشروع إيكوبست - EcoPest</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+
+      * {
+        box-sizing: border-box;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      body {
+        margin: 0;
+        background: #eef3f2;
+        color: #14213d;
+        direction: rtl;
+        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.85;
+      }
+
+      .document {
+        width: 210mm;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+
+      .page {
+        min-height: 297mm;
+        padding: 18mm 16mm;
+        page-break-after: always;
+        position: relative;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      .cover {
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 12% 22%, rgba(20, 184, 166, 0.2), transparent 32%),
+          linear-gradient(135deg, #042f2e 0%, #0f172a 55%, #111827 100%);
+        color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .cover::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: -32mm;
+        inset-block-start: -32mm;
+        width: 92mm;
+        height: 92mm;
+        border: 1px solid rgba(94, 234, 212, 0.34);
+        transform: rotate(16deg);
+      }
+
+      .cover::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: -24mm;
+        inset-block-end: -24mm;
+        width: 86mm;
+        height: 86mm;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        transform: rotate(-18deg);
+      }
+
+      .cover-content,
+      .cover-footer {
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand-row {
+        align-items: center;
+        display: flex;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: #0f766e;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 18px;
+        display: inline-flex;
+        font-size: 32px;
+        font-weight: 800;
+        height: 62px;
+        justify-content: center;
+        width: 62px;
+      }
+
+      .brand-text {
+        display: grid;
+        gap: 0;
+      }
+
+      .brand-text strong {
+        color: #ffffff;
+        font-size: 25px;
+      }
+
+      .brand-text span {
+        color: #99f6e4;
+        font-size: 13px;
+      }
+
+      .kicker {
+        color: #5eead4;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0;
+        margin: 54px 0 12px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        line-height: 1.35;
+        margin: 0;
+      }
+
+      h1 {
+        color: #ffffff;
+        font-size: 43px;
+        max-width: 145mm;
+      }
+
+      .cover-subtitle {
+        color: #d1fae5;
+        font-size: 20px;
+        margin: 18px 0 0;
+        max-width: 145mm;
+      }
+
+      .cover-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 36px;
+      }
+
+      .cover-card {
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 14px;
+        padding: 14px;
+      }
+
+      .cover-card strong {
+        color: #ffffff;
+        display: block;
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+
+      .cover-card span {
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+
+      .cover-footer {
+        border-top: 1px solid rgba(148, 163, 184, 0.26);
+        color: #cbd5e1;
+        display: flex;
+        justify-content: space-between;
+        padding-top: 18px;
+      }
+
+      .section-header {
+        align-items: flex-start;
+        border-bottom: 2px solid #ccfbf1;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+      }
+
+      .section-number {
+        background: #0f766e;
+        border-radius: 999px;
+        color: #ffffff;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 13px;
+        font-weight: 800;
+        height: 34px;
+        justify-content: center;
+        line-height: 34px;
+        width: 34px;
+      }
+
+      .section-title {
+        flex: 1;
+      }
+
+      .section-title h2 {
+        color: #0f172a;
+        font-size: 26px;
+      }
+
+      .section-title p {
+        color: #64748b;
+        margin: 4px 0 0;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      .lead {
+        color: #334155;
+        font-size: 17px;
+        line-height: 1.95;
+      }
+
+      .highlight {
+        background: #f0fdfa;
+        border: 1px solid #99f6e4;
+        border-radius: 14px;
+        margin: 18px 0;
+        padding: 16px 18px;
+      }
+
+      .highlight strong {
+        color: #115e59;
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 12px;
+        margin: 14px 0 18px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .tile {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .tile h3 {
+        color: #0f172a;
+        font-size: 16px;
+        margin-bottom: 7px;
+      }
+
+      .tile p {
+        color: #475569;
+        font-size: 13px;
+        margin: 0;
+      }
+
+      .metric {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+      }
+
+      .metric .icon {
+        align-items: center;
+        background: #ccfbf1;
+        border-radius: 12px;
+        color: #0f766e;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 20px;
+        font-weight: 800;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .flow {
+        counter-reset: flow;
+        display: grid;
+        gap: 10px;
+        margin: 16px 0;
+      }
+
+      .flow-step {
+        align-items: start;
+        background: #ffffff;
+        border: 1px solid #dbe7e6;
+        border-radius: 12px;
+        display: grid;
+        gap: 9px;
+        grid-template-columns: 38px 1fr;
+        padding: 12px;
+      }
+
+      .flow-step::before {
+        align-items: center;
+        background: #0f172a;
+        border-radius: 999px;
+        color: #ffffff;
+        content: counter(flow);
+        counter-increment: flow;
+        display: inline-flex;
+        font-weight: 800;
+        height: 30px;
+        justify-content: center;
+        width: 30px;
+      }
+
+      .flow-step strong {
+        color: #0f172a;
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .flow-step span {
+        color: #475569;
+        font-size: 13px;
+      }
+
+      table {
+        border-collapse: collapse;
+        margin: 16px 0 20px;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        text-align: right;
+        vertical-align: top;
+      }
+
+      th {
+        background: #0f172a;
+        color: #ffffff;
+        font-size: 13px;
+      }
+
+      td {
+        color: #334155;
+        font-size: 13px;
+      }
+
+      .badge {
+        background: #dcfce7;
+        border-radius: 999px;
+        color: #166534;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 10px;
+        white-space: nowrap;
+      }
+
+      .badge.warning {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .badge.info {
+        background: #dbeafe;
+        color: #1e40af;
+      }
+
+      .list {
+        display: grid;
+        gap: 7px;
+        margin: 12px 0 18px;
+        padding: 0;
+      }
+
+      .list li {
+        color: #334155;
+        list-style: none;
+        padding-inline-start: 22px;
+        position: relative;
+      }
+
+      .list li::before {
+        background: #14b8a6;
+        border-radius: 999px;
+        content: "";
+        height: 7px;
+        inset-block-start: 13px;
+        inset-inline-start: 3px;
+        position: absolute;
+        width: 7px;
+      }
+
+      .tech-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .tech-stack span {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 5px 11px;
+      }
+
+      .footer-note {
+        border-top: 1px solid #e2e8f0;
+        bottom: 10mm;
+        color: #94a3b8;
+        font-size: 11px;
+        inset-inline: 16mm;
+        padding-top: 8px;
+        position: absolute;
+      }
+
+      .avoid-break {
+        break-inside: avoid;
+      }
+
+      .compact h3 {
+        font-size: 15px;
+      }
+
+      .compact p,
+      .compact li,
+      .compact td {
+        font-size: 12.4px;
+      }
+
+      .toc {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .toc-row {
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 34px 1fr auto;
+        padding: 10px 0;
+      }
+
+      .toc-row strong {
+        color: #0f172a;
+      }
+
+      .toc-row span:first-child {
+        align-items: center;
+        background: #f0fdfa;
+        border-radius: 999px;
+        color: #0f766e;
+        display: inline-flex;
+        font-weight: 800;
+        height: 28px;
+        justify-content: center;
+        width: 28px;
+      }
+
+      .signature {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        margin-top: 24px;
+        padding: 16px;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .document {
+          width: auto;
+        }
+
+        .page {
+          min-height: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="document">
+      <section class="page cover">
+        <div class="cover-content">
+          <div class="brand-row">
+            <div class="brand-mark">E</div>
+            <div class="brand-text">
+              <strong>إيكوبست EcoPest</strong>
+              <span>إدارة محطات الطعوم والفحص الميداني</span>
+            </div>
+          </div>
+
+          <div class="kicker">تقرير تعريفي تنفيذي للعميل</div>
+          <h1>منصة عربية احترافية لإدارة محطات الطعوم، الزيارات، التقارير، والمراجعة التشغيلية</h1>
+          <p class="cover-subtitle">
+            هذا التقرير يوضح نطاق المشروع الحالي، قيمته التشغيلية، البنية الفنية، مستوى الأمان،
+            وخطة التسليم المقترحة بشكل مناسب للعرض على العميل.
+          </p>
+
+          <div class="cover-grid">
+            <div class="cover-card">
+              <strong>RTL عربي بالكامل</strong>
+              <span>واجهة تشغيلية مناسبة للفرق العربية من أول شاشة حتى التقارير.</span>
+            </div>
+            <div class="cover-card">
+              <strong>صلاحيات واضحة</strong>
+              <span>مدير، مشرف، فني، وعميل؛ كل دور يرى ما يخصه فقط.</span>
+            </div>
+            <div class="cover-card">
+              <strong>تتبع قابل للمراجعة</strong>
+              <span>تقارير، حالات، مراجعات، وتاريخ تدقيق لكل حركة مهمة.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cover-footer">
+          <span>إصدار التقرير: 03 مايو 2026</span>
+          <span>حالة المشروع: جاهز للعرض والمراجعة التشغيلية</span>
+        </div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">1</span>
+          <div class="section-title">
+            <h2>الملخص التنفيذي</h2>
+            <p>صورة مختصرة لما يقدمه المشروع ولماذا هو مهم للعميل.</p>
+          </div>
+        </div>
+
+        <p class="lead">
+          إيكوبست هو نظام ويب عربي مخصص لشركات مكافحة الآفات التي تدير محطات الطعوم وتحتاج إلى
+          ربط العمل الميداني بالإدارة والمتابعة. المنصة تحول زيارة المحطة من إجراء ورقي متفرق إلى
+          دورة عمل رقمية واضحة: تعريف المحطة، الوصول لها عبر QR، تسجيل حالة الفحص، مراجعة التقرير،
+          متابعة الاستثناءات، ثم تصدير البيانات وتحليلها.
+        </p>
+
+        <div class="highlight">
+          <strong>القيمة الأساسية:</strong>
+          النظام يقلل فقدان البيانات، يرفع التزام الفريق بإجراءات الفحص، ويمنح الإدارة رؤية فورية
+          عن المحطات النشطة، التقارير المنتظرة، أداء الفنيين، وطلبات العملاء.
+        </div>
+
+        <div class="grid-3">
+          <div class="tile metric">
+            <span class="icon">1</span>
+            <div>
+              <h3>توحيد دورة العمل</h3>
+              <p>كل محطة، زيارة، تقرير، ومراجعة داخل مسار واحد قابل للتتبع.</p>
+            </div>
+          </div>
+          <div class="tile metric">
+            <span class="icon">2</span>
+            <div>
+              <h3>تقليل الأخطاء</h3>
+              <p>نماذج محكومة، تحقق من الإدخال، وصلاحيات تمنع التعديل غير المصرح.</p>
+            </div>
+          </div>
+          <div class="tile metric">
+            <span class="icon">3</span>
+            <div>
+              <h3>قرارات أسرع</h3>
+              <p>لوحات تحكم، فلاتر، مؤشرات صحة، وتصدير CSV للمتابعة والتحليل.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header" style="margin-top: 24px">
+          <span class="section-number">2</span>
+          <div class="section-title">
+            <h2>فهرس التقرير</h2>
+            <p>الأقسام الرئيسية المخصصة لعرض المشروع على العميل.</p>
+          </div>
+        </div>
+
+        <div class="toc">
+          <div class="toc-row"><span>1</span><strong>الملخص التنفيذي</strong><span>القيمة ونطاق الاستخدام</span></div>
+          <div class="toc-row"><span>2</span><strong>دورة العمل</strong><span>من المحطة إلى المراجعة</span></div>
+          <div class="toc-row"><span>3</span><strong>الوظائف الرئيسية</strong><span>لوحات، تقارير، عملاء، وحضور</span></div>
+          <div class="toc-row"><span>4</span><strong>الأدوار والصلاحيات</strong><span>فصل واضح للمسؤوليات</span></div>
+          <div class="toc-row"><span>5</span><strong>البنية الفنية</strong><span>تقنيات حديثة وقابلة للنشر</span></div>
+          <div class="toc-row"><span>6</span><strong>الأمان والجودة</strong><span>جلسات، تدقيق، واختبارات</span></div>
+          <div class="toc-row"><span>7</span><strong>التسليم والخطوات التالية</strong><span>تشغيل إنتاجي وتوسعات مقترحة</span></div>
+        </div>
+
+        <div class="footer-note">EcoPest Client Report - Arabic RTL</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">3</span>
+          <div class="section-title">
+            <h2>دورة العمل التشغيلية</h2>
+            <p>الطريقة التي يستخدم بها الفريق النظام يوميًا.</p>
+          </div>
+        </div>
+
+        <div class="flow">
+          <div class="flow-step">
+            <div>
+              <strong>إنشاء المحطة وتحديد بياناتها</strong>
+              <span>المدير ينشئ محطة برقم واضح، اسم، موقع، منطقة، وصف، وإحداثيات اختيارية.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>توليد QR لكل محطة</strong>
+              <span>كل محطة لها رابط QR مستقل يفتح مسار التقرير الخاص بها ويقلل إدخال البيانات يدويًا.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>الفني يسجل نتيجة الزيارة</strong>
+              <span>الفني يحدد نوع الآفة، حالة المحطة والطعم، الملاحظات، وبيانات الصور عند تفعيل التخزين.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>تحديث بيانات المحطة تلقائيًا</strong>
+              <span>بعد إرسال التقرير يتم تحديث آخر زيارة، عدد التقارير، والفني المسؤول ضمن معاملة قاعدة بيانات واحدة.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>المشرف أو المدير يراجع التقرير</strong>
+              <span>التقارير تنتقل بين بانتظار المراجعة، تمت المراجعة، أو مرفوض مع ملاحظات واضحة.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>متابعة وتشغيل وتحليل</strong>
+              <span>لوحات التحكم تعرض الاستثناءات، الفلاتر، الحضور، الشيفتات، الرواتب، وملفات التصدير.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="highlight">
+          <strong>نقطة قوة مهمة:</strong>
+          إرسال التقرير ليس مجرد حفظ صف في قاعدة البيانات؛ العملية تشمل إنشاء التقرير، حفظ الحالات،
+          تحديث المحطة، وكتابة سجل تدقيق داخل Transaction واحدة لضمان اتساق البيانات.
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>المرحلة</th>
+              <th>المسؤول</th>
+              <th>مخرجات المرحلة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>تجهيز المحطات</td>
+              <td>المدير</td>
+              <td>محطات نشطة، QR جاهز، بيانات موقع ومنطقة.</td>
+            </tr>
+            <tr>
+              <td>الفحص الميداني</td>
+              <td>الفني</td>
+              <td>تقرير زيارة مرتبط بالمحطة والفني والوقت.</td>
+            </tr>
+            <tr>
+              <td>المراجعة</td>
+              <td>المشرف أو المدير</td>
+              <td>اعتماد، رفض، أو ملاحظات متابعة.</td>
+            </tr>
+            <tr>
+              <td>الإدارة</td>
+              <td>المدير</td>
+              <td>تحليلات، تصدير، إدارة فريق، ومراجعة سجل التدقيق.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer-note">دورة العمل مبنية على المسارات والـ Server Actions الموجودة في المشروع الحالي.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">4</span>
+          <div class="section-title">
+            <h2>الوظائف الرئيسية</h2>
+            <p>نطاق المنتج من منظور العميل والمستخدمين.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="tile avoid-break">
+            <h3>إدارة محطات الطعوم</h3>
+            <p>
+              إنشاء وتعديل وتعطيل المحطات، توليد أرقام تلقائية، تحديد المنطقة والموقع، إضافة
+              إحداثيات، وتصدير QR للطباعة والاستخدام الميداني.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>تسجيل تقارير الفحص</h3>
+            <p>
+              نموذج عربي واضح للفنيين يشمل حالة المحطة، حالة الطعم، أنواع الآفات، الملاحظات،
+              والربط المباشر بمحطة محددة.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>مراجعة واعتماد التقارير</h3>
+            <p>
+              المشرفون والمديرون يراجعون التقارير، يضيفون ملاحظات، ويحولون حالة التقرير إلى
+              معتمد أو مرفوض أو قيد المراجعة.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>لوحات تحكم للإدارة والإشراف</h3>
+            <p>
+              صفحات منفصلة للمدير والمشرف تعرض التقارير، المحطات، النشاط، الطلبات، الحضور،
+              الشيفتات، المهام، والتحليلات.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>بوابة العملاء وطلبات الخدمة</h3>
+            <p>
+              إنشاء حسابات عملاء، تسجيل طلبات محطة أو متابعة، مراجعة الطلبات من الإدارة،
+              وربط العميل بالمحطات المصرح له بمشاهدتها.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>الحضور والانصراف والشيفتات</h3>
+            <p>
+              تسجيل بداية ونهاية الشيفت، التحقق من القرب من المحطات، متابعة الحضور، ربط
+              الشيفت بالمدة المتوقعة، ودعم مراجعة الرواتب.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>التقارير اليومية</h3>
+            <p>
+              توثيق ملخص يومي للفني، المحطات التي تمت تغطيتها، الصور عند اعتماد التخزين،
+              والملاحظات المرتبطة بالعمل اليومي.
+            </p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>التصدير والتحليلات</h3>
+            <p>
+              تصدير CSV للتقارير والحضور، مؤشرات تشغيلية، وملخصات تساعد الإدارة على معرفة
+              المحطات المتأخرة أو التقارير التي تحتاج مراجعة.
+            </p>
+          </div>
+        </div>
+
+        <div class="highlight">
+          <strong>تجربة استخدام عربية:</strong>
+          الواجهة مبنية باتجاه RTL، نصوص عربية، أسلوب تشغيلي مختصر، وألوان حالات واضحة
+          مثل بانتظار المراجعة، تمت المراجعة، مرفوض، نشط، وغير نشط.
+        </div>
+
+        <div class="footer-note">نطاق الوظائف يعرض منصة الويب ولوحات التشغيل الحالية للعميل.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">5</span>
+          <div class="section-title">
+            <h2>الأدوار والصلاحيات</h2>
+            <p>فصل المسؤوليات يمنع التداخل ويحمي بيانات التشغيل.</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>الدور</th>
+              <th>نطاق الاستخدام</th>
+              <th>أهم الصلاحيات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge info">مدير</span></td>
+              <td>الإدارة الكاملة للنظام.</td>
+              <td>إدارة المحطات، المستخدمين، المراجعات، العملاء، الشيفتات، الرواتب، الإعدادات، وسجل التدقيق.</td>
+            </tr>
+            <tr>
+              <td><span class="badge">مشرف</span></td>
+              <td>متابعة العمليات اليومية ومراجعة التقارير.</td>
+              <td>عرض لوحات الإشراف، مراجعة التقارير، متابعة المحطات والطلبات، وتصدير بيانات محددة.</td>
+            </tr>
+            <tr>
+              <td><span class="badge warning">فني</span></td>
+              <td>تنفيذ الفحص الميداني وتسجيل الزيارات.</td>
+              <td>فتح صفحة المسح، إدخال تقارير المحطات، تسجيل الحضور والشيفتات، والتقارير اليومية.</td>
+            </tr>
+            <tr>
+              <td><span class="badge info">عميل</span></td>
+              <td>متابعة الطلبات والمحطات المصرح بها.</td>
+              <td>تسجيل الطلبات، عرض بيانات الحساب، ومتابعة المحطات المرتبطة بحسابه حسب الإتاحة.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid-2">
+          <div class="tile">
+            <h3>حماية صفحات النظام</h3>
+            <p>
+              الصفحات المحمية تمر عبر جلسة موثقة، ثم يتم التحقق من الدور المطلوب قبل عرض البيانات
+              أو تنفيذ أي تعديل.
+            </p>
+          </div>
+          <div class="tile">
+            <h3>حماية العمليات الحساسة</h3>
+            <p>
+              عمليات الإنشاء والتعديل والاعتماد لا تعتمد على بيانات الدور القادمة من المتصفح، بل
+              تقرأ المستخدم الحالي من الجلسة.
+            </p>
+          </div>
+          <div class="tile">
+            <h3>حسابات قابلة للإيقاف</h3>
+            <p>
+              يوجد مسار واضح للتعامل مع الحسابات المعطلة، وإلغاء الجلسة عند تعطيل المستخدم.
+            </p>
+          </div>
+          <div class="tile">
+            <h3>صلاحيات العميل منفصلة</h3>
+            <p>
+              العميل لا يدخل لوحات الإدارة أو مسارات الفنيين؛ يتم توجيهه إلى بوابته المخصصة.
+            </p>
+          </div>
+        </div>
+
+        <div class="footer-note">الصلاحيات مبنية على Better Auth وجلسات محمية ودوال requireRole داخل الخادم.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">6</span>
+          <div class="section-title">
+            <h2>البنية الفنية</h2>
+            <p>تقنيات حديثة ومناسبة للنشر على بيئات إنتاجية.</p>
+          </div>
+        </div>
+
+        <p class="lead">
+          المشروع مبني بتقنيات ويب حديثة تركز على الأداء، الأمان، سهولة التطوير، وقابلية التوسع.
+          البيانات الحساسة والمنطق التشغيلي موجودان على الخادم، بينما الواجهة تقدم تجربة عربية
+          سريعة وواضحة للمستخدم النهائي.
+        </p>
+
+        <div class="tech-stack">
+          <span>Next.js 15 App Router</span>
+          <span>React 19</span>
+          <span>TypeScript Strict</span>
+          <span>Better Auth</span>
+          <span>Drizzle ORM</span>
+          <span>SQLite / libSQL</span>
+          <span>Zod</span>
+          <span>React Hook Form</span>
+          <span>Tailwind CSS</span>
+          <span>QR Code</span>
+          <span>تصدير CSV</span>
+        </div>
+
+        <div class="grid-2" style="margin-top: 22px">
+          <div class="tile avoid-break">
+            <h3>Next.js Server Components</h3>
+            <p>قراءة البيانات والتحقق من الجلسات تتم على الخادم لتقليل كشف البيانات غير الضرورية.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>Server Actions و API Routes</h3>
+            <p>كل عملية محمية تمر عبر طبقة خادم تتحقق من الدور وتكتب سجل تدقيق عند الحاجة.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>Drizzle Repositories</h3>
+            <p>الوصول لقاعدة البيانات متمركز في Repository Layer، ما يسهل الاختبار والصيانة.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>قاعدة بيانات مرنة</h3>
+            <p>التطوير المحلي يستخدم SQLite، والنشر الإنتاجي يمكنه استخدام libSQL/Turso حسب البنية المختارة.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>نماذج تحقق قوية</h3>
+            <p>Zod و React Hook Form يقللان الأخطاء ويضمنان إدخال بيانات متوقعة قبل تنفيذ العمليات.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>جاهزية نشر</h3>
+            <p>الإعدادات الحساسة عبر Environment Variables، مع أوامر migration و seed وفحوصات جودة.</p>
+          </div>
+        </div>
+
+        <div class="highlight">
+          <strong>ملاحظة نشر:</strong>
+          لا يتم تضمين أسرار أو روابط إنتاجية داخل الكود. يتم ضبط مفاتيح الجلسات، رابط النظام،
+          وقاعدة البيانات من متغيرات البيئة وقت النشر.
+        </div>
+
+        <div class="footer-note">البنية الفنية موثقة في README و ARCHITECTURE وملفات schema/repositories.</div>
+      </section>
+
+      <section class="page compact">
+        <div class="section-header">
+          <span class="section-number">7</span>
+          <div class="section-title">
+            <h2>نموذج البيانات</h2>
+            <p>الجداول الأساسية التي يعتمد عليها النظام.</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>المجال</th>
+              <th>الجداول / البيانات</th>
+              <th>الغرض</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>المستخدمون والجلسات</td>
+              <td>user, session, account, verification, rateLimit</td>
+              <td>تسجيل الدخول، الجلسات، الأدوار، وحماية الحسابات.</td>
+            </tr>
+            <tr>
+              <td>المحطات</td>
+              <td>stations</td>
+              <td>بيانات المحطة، QR، النشاط، الإحداثيات، وآخر زيارة.</td>
+            </tr>
+            <tr>
+              <td>تقارير الفحص</td>
+              <td>reports, report_statuses, report_photos</td>
+              <td>حالة الفحص، أنواع الآفات، الصور، الملاحظات، وحالة المراجعة.</td>
+            </tr>
+            <tr>
+              <td>العملاء والطلبات</td>
+              <td>client_profiles, client_orders, client_station_access</td>
+              <td>حسابات العملاء، طلباتهم، والمحطات المتاحة لكل عميل.</td>
+            </tr>
+            <tr>
+              <td>الحضور والشيفتات</td>
+              <td>attendance_sessions, technician_shifts, technician_work_schedules</td>
+              <td>تسجيل الحضور، بداية ونهاية الشيفت، الجداول، وحسابات الرواتب.</td>
+            </tr>
+            <tr>
+              <td>التقارير اليومية</td>
+              <td>daily_work_reports, daily_work_report_stations, daily_report_photos</td>
+              <td>ملخص عمل الفني اليومي وربطه بالمحطات والصور.</td>
+            </tr>
+            <tr>
+              <td>الإعدادات والتدقيق</td>
+              <td>app_settings, audit_logs</td>
+              <td>إعدادات التشغيل، وضع الصيانة، وسجل الحركات الحساسة.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid-2">
+          <div class="tile">
+            <h3>فهرسة لتحسين القراءة</h3>
+            <p>الجداول تحتوي على Indexes للحقول كثيرة الاستخدام مثل تاريخ الإرسال، حالة المراجعة، المستخدم، والمحطة.</p>
+          </div>
+          <div class="tile">
+            <h3>علاقات واضحة</h3>
+            <p>التقارير مرتبطة بالمحطات، الصور مرتبطة بالتقارير، والعملاء مرتبطون بالمحطات المصرح بها.</p>
+          </div>
+        </div>
+
+        <div class="footer-note">هذا العرض مخصص للعميل؛ التفاصيل الداخلية الكاملة موجودة في lib/db/schema.ts.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">8</span>
+          <div class="section-title">
+            <h2>الأمان والاعتمادية</h2>
+            <p>نقاط حماية مهمة تجعل المشروع مناسبًا للتشغيل الحقيقي.</p>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="tile avoid-break">
+            <h3>جلسات آمنة</h3>
+            <p>تسجيل الدخول يعتمد على Better Auth مع جلسات Cookies، مدة صلاحية قابلة للضبط، وسر جلسة من متغيرات البيئة.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>صلاحيات من الخادم</h3>
+            <p>النظام لا يثق في role أو uid القادم من الواجهة؛ الدور يقرأ من الجلسة الحالية داخل الخادم.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>سجل تدقيق</h3>
+            <p>العمليات الحساسة مثل إنشاء محطة، تعديل مستخدم، مراجعة تقرير، أو تحديث إعدادات تكتب Audit Log.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>معاملات قاعدة بيانات</h3>
+            <p>العمليات المركبة، خصوصًا إرسال التقرير، تتم داخل Transaction لتجنب حفظ نصف العملية فقط.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>حماية من الاستخدام الخاطئ</h3>
+            <p>يوجد تحقق من المدخلات، حدود لطول النصوص، حالات مراجعة محددة، وفلاتر تاريخية للتصدير.</p>
+          </div>
+          <div class="tile avoid-break">
+            <h3>سياسات متصفح</h3>
+            <p>Middleware يضيف Content Security Policy ويفصل المسارات العامة عن المحمية ووضع الصيانة.</p>
+          </div>
+        </div>
+
+        <div class="highlight">
+          <strong>حالة فحص حالية:</strong>
+          تم تشغيل أمر <span dir="ltr">npm run typecheck</span> أثناء إعداد هذا التقرير ونجح بدون أخطاء TypeScript.
+        </div>
+
+        <ul class="list">
+          <li>توجد اختبارات للتحقق من الحسابات المعطلة، إعدادات البيئة، الإحداثيات، تصدير التقارير، QR، وجدولة الشيفتات.</li>
+          <li>توجد أوامر جاهزة للفحص: Typecheck، Lint، Test، Build، و Check شامل.</li>
+          <li>مسارات التحميل والخطأ موجودة للصفحات التشغيلية الرئيسية، ما يحسن تجربة المستخدم عند بطء البيانات أو حدوث خطأ.</li>
+        </ul>
+
+        <div class="footer-note">تم فحص TypeScript بتاريخ 03 مايو 2026 على نسخة المشروع الحالية.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">9</span>
+          <div class="section-title">
+            <h2>تجربة المستخدم والهوية</h2>
+            <p>واجهة عملية تناسب فرق التشغيل بدل الطابع التسويقي.</p>
+          </div>
+        </div>
+
+        <p class="lead">
+          واجهة إيكوبست مصممة كأداة تشغيل يومية: قراءة سريعة، كثافة معلومات مناسبة، ألوان حالات
+          واضحة، وتدفق استخدام مباشر للفني والمشرف والمدير. التصميم يعتمد على العربية أولًا ويدعم
+          RTL في الصفحات الأساسية.
+        </p>
+
+        <div class="grid-2">
+          <div class="tile">
+            <h3>لغة عربية مختصرة</h3>
+            <p>النصوص تركز على الفعل المطلوب والحالة التشغيلية، بدون شرح زائد داخل الواجهة.</p>
+          </div>
+          <div class="tile">
+            <h3>ألوان حالات مفهومة</h3>
+            <p>الأخضر للنشط والمعتمد، الأصفر للانتظار، الأحمر للرفض أو الخطر، والرمادي للحالات غير النشطة.</p>
+          </div>
+          <div class="tile">
+            <h3>تنقل حسب الدور</h3>
+            <p>كل مستخدم يرى لوحة ووجهات تتناسب مع مسؤولياته، ما يقلل التشتيت ويمنع الوصول الخاطئ.</p>
+          </div>
+          <div class="tile">
+            <h3>دعم الوضع الداكن</h3>
+            <p>يوجد نظام Theme مناسب لبيئات التشغيل المختلفة، مع الحفاظ على التباين ووضوح النص.</p>
+          </div>
+          <div class="tile">
+            <h3>خرائط وإحداثيات</h3>
+            <p>تدعم المحطات الإحداثيات، وتوجد صفحة خريطة للمحطات ذات المواقع المسجلة.</p>
+          </div>
+          <div class="tile">
+            <h3>تجربة QR مباشرة</h3>
+            <p>المسار العام للمسح يسهل الوصول السريع إلى محطة محددة من غير خطوات إدارية طويلة.</p>
+          </div>
+        </div>
+
+        <div class="footer-note">الهوية البصرية تعتمد على Slate و Teal ونمط واجهات تشغيلية هادئة.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">10</span>
+          <div class="section-title">
+            <h2>متطلبات التشغيل والنشر</h2>
+            <p>ما يحتاجه العميل أو فريق النشر لتشغيل النظام في بيئة إنتاجية.</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>البند</th>
+              <th>المطلوب</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>قاعدة البيانات</td>
+              <td>SQLite محليًا أو libSQL/Turso إنتاجيًا</td>
+              <td>يتم تشغيل migrations قبل فتح النظام للمستخدمين.</td>
+            </tr>
+            <tr>
+              <td>أسرار المصادقة</td>
+              <td>BETTER_AUTH_SECRET و AUTH_ROLE_COOKIE_SECRET</td>
+              <td>قيم عشوائية قوية لا تقل عن 32 حرفًا.</td>
+            </tr>
+            <tr>
+              <td>رابط النظام</td>
+              <td>BETTER_AUTH_URL و NEXT_PUBLIC_BASE_URL</td>
+              <td>في الإنتاج يجب استخدام HTTPS ودومين ثابت.</td>
+            </tr>
+            <tr>
+              <td>مدير أول</td>
+              <td>SEED_MANAGER_EMAIL / PASSWORD / NAME</td>
+              <td>يتم إنشاء حساب المدير مرة واحدة ثم إزالة بيانات seed من البيئة.</td>
+            </tr>
+            <tr>
+              <td>التخزين الخارجي</td>
+              <td>Adapter للصور عند اعتماد رفع الصور إنتاجيًا</td>
+              <td>يمكن ربط S3 أو Cloudinary أو تخزين داخلي حسب سياسة العميل.</td>
+            </tr>
+            <tr>
+              <td>الفحص قبل التسليم</td>
+              <td>Typecheck, Lint, Tests, Build</td>
+              <td>يوجد أمر check شامل لتشغيل سلسلة الفحوصات.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="highlight">
+          <strong>نقطة تشغيلية:</strong>
+          المشروع لا يحتاج إلى أسرار ثابتة داخل الكود. كل بيئة يمكن ضبطها بشكل مستقل، وهذا يسهل
+          النقل من التطوير إلى staging ثم الإنتاج.
+        </div>
+
+        <div class="footer-note">المتغيرات موثقة في .env.example، ولا يتم تضمين أي أسرار فعلية في التقرير.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">11</span>
+          <div class="section-title">
+            <h2>خطة التسليم المقترحة</h2>
+            <p>مسار عملي لتحويل النسخة الحالية إلى تشغيل إنتاجي مطمئن.</p>
+          </div>
+        </div>
+
+        <div class="flow">
+          <div class="flow-step">
+            <div>
+              <strong>جلسة مراجعة مع العميل</strong>
+              <span>تأكيد أسماء الأدوار، نماذج التقارير، الحالات المطلوبة، وصلاحيات كل مستخدم.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>تجهيز بيئة Staging</strong>
+              <span>نشر نسخة اختبار بدومين مؤقت، قاعدة بيانات منفصلة، وحسابات تجريبية.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>اختبار دورة عمل كاملة</strong>
+              <span>إنشاء محطة، طباعة QR، إرسال تقرير، مراجعته، تصديره، ومراجعة Audit Log.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>ضبط البيانات الأولية</strong>
+              <span>إضافة المناطق والمحطات والفريق والحسابات المطلوبة، ثم مراجعة الصلاحيات.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div>
+              <strong>إطلاق Production</strong>
+              <span>تشغيل HTTPS، قاعدة إنتاجية، نسخ احتياطية، ومراقبة أخطاء الأداء والتشغيل.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="tile">
+            <h3>توسعات قريبة مقترحة</h3>
+            <p>تخزين صور إنتاجي، تحسين اختيار المواقع على الخريطة، تنبيهات داخلية للتقارير المنتظرة، ولوحة مؤشرات أعمق.</p>
+          </div>
+          <div class="tile">
+            <h3>معايير قبول مختصرة</h3>
+            <p>لا توجد أخطاء TypeScript، نجاح إنشاء تقرير كامل، حماية المسارات، تصدير CSV، وظهور Audit Log للعمليات الحساسة.</p>
+          </div>
+        </div>
+
+        <div class="footer-note">الخطة قابلة للتعديل حسب أولويات العميل وجدول الإطلاق.</div>
+      </section>
+
+      <section class="page">
+        <div class="section-header">
+          <span class="section-number">12</span>
+          <div class="section-title">
+            <h2>الخلاصة</h2>
+            <p>رسالة نهائية مناسبة لإرسال التقرير إلى العميل.</p>
+          </div>
+        </div>
+
+        <p class="lead">
+          إيكوبست ليس مجرد لوحة بيانات؛ هو نظام تشغيل ميداني متكامل لمحطات الطعوم. المشروع يغطي
+          المحطات، QR، تقارير الفحص، مراجعة المشرفين، إدارة العملاء، الحضور، الشيفتات، الرواتب،
+          التقارير اليومية، التصدير، وسجل التدقيق. هذا يجعل النظام مناسبًا لشركة تحتاج إلى وضوح
+          تشغيلي ومحاسبة دقيقة لكل زيارة وكل تعديل.
+        </p>
+
+        <div class="highlight">
+          <strong>الانطباع المهني المقترح للعميل:</strong>
+          المشروع جاهز للعرض كمنتج تشغيلي حقيقي، ومع مرحلة ضبط بيانات ونشر منظمة يمكن تحويله إلى
+          بيئة إنتاجية مستقرة تخدم الإدارة والفريق الميداني والعملاء.
+        </div>
+
+        <div class="grid-3">
+          <div class="tile">
+            <h3>واضح</h3>
+            <p>تدفقات استخدام قصيرة وحالات مفهومة لكل دور.</p>
+          </div>
+          <div class="tile">
+            <h3>آمن</h3>
+            <p>صلاحيات، جلسات، تدقيق، ومعاملات قاعدة بيانات.</p>
+          </div>
+          <div class="tile">
+            <h3>قابل للتوسع</h3>
+            <p>بنية Next.js و Drizzle تسمح بإضافة وحدات جديدة بدون إعادة بناء كاملة.</p>
+          </div>
+        </div>
+
+        <div class="signature">
+          <strong>إعداد التقرير:</strong>
+          مراجعة فنية لمشروع EcoPest الحالي، بصياغة عربية RTL مناسبة للإرسال إلى العميل.
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

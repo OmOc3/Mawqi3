@@ -41,9 +41,12 @@ const supervisorItems: NavItem[] = [
   { href: "/dashboard/supervisor/daily-reports", icon: "reports", label: "التقارير اليومية" },
   { href: "/dashboard/supervisor", icon: "dashboard", label: "لوحة المشرف" },
   { href: "/dashboard/supervisor/tasks", icon: "tasks", label: "مهام اليوم" },
+  { href: "/dashboard/supervisor/stations", icon: "stations", label: "المحطات" },
   { href: "/dashboard/supervisor/shifts", icon: "team", label: "شيفتات الفنيين" },
   { href: "/dashboard/supervisor/reports", icon: "reports", label: "التقارير" },
   { href: "/dashboard/supervisor/client-orders", icon: "clients", label: "العملاء والطلبات" },
+  { href: "/dashboard/supervisor/analytics", icon: "analytics", label: "التحليلات" },
+  { href: "/dashboard/supervisor/team", icon: "team", label: "الفريق" },
 ];
 
 type IconName =

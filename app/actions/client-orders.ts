@@ -15,6 +15,7 @@ import {
   upsertClientProfile,
 } from "@/lib/db/repositories";
 import { writeAuditLog } from "@/lib/audit";
+import { storeReportImage } from "@/lib/reports/store-report-image";
 import {
   clientAddressLinesFromText,
   createClientOrderSchema,
@@ -167,20 +168,13 @@ export async function createClientOrderAction(formData: FormData): Promise<Clien
 
   if (photoFile instanceof File && photoFile.size > 0) {
     try {
-      const uploadForm = new FormData();
-      uploadForm.set("image", photoFile);
-      const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/upload-profile-image`, {
-        method: "POST",
-        body: uploadForm,
-      });
-      if (uploadRes.ok) {
-        const { url } = (await uploadRes.json()) as { url?: string };
-        if (typeof url === "string") {
-          photoUrl = url;
-        }
-      }
-    } catch {
-      // Non-fatal: proceed without photo
+      photoUrl = await storeReportImage(
+        photoFile,
+        `client-order-${session.uid}`,
+        `client-order-${crypto.randomUUID()}`,
+      );
+    } catch (error: unknown) {
+      return { error: error instanceof Error ? error.message : "تعذر رفع صورة الطلب. تحقق من الصورة وحاول مرة أخرى." };
     }
   }
 
@@ -254,7 +248,7 @@ export async function runClientOrderStatusFormAction(formData: FormData): Promis
 }
 
 export async function updateClientProfileAction(formData: FormData): Promise<ClientOrderActionResult> {
-  const session = await requireRole(["manager"]);
+  const session = await requireRole(["manager", "supervisor"]);
   const parsed = updateClientProfileSchema.safeParse({
     addressesText: formData.get("addressesText"),
     clientUid: formData.get("clientUid"),
@@ -283,7 +277,7 @@ export async function updateClientProfileAction(formData: FormData): Promise<Cli
 }
 
 export async function updateClientStationAccessAction(formData: FormData): Promise<ClientOrderActionResult> {
-  const session = await requireRole(["manager"]);
+  const session = await requireRole(["manager", "supervisor"]);
   const parsed = updateClientStationAccessSchema.safeParse({
     clientUid: formData.get("clientUid"),
     stationIds: formData.getAll("stationIds").filter((value): value is string => typeof value === "string"),

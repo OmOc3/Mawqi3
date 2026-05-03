@@ -12,6 +12,12 @@ import { createUserSchema, type CreateUserValues } from "@/lib/validation/users"
 import type { UserRole } from "@/types";
 
 const accessCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const defaultStaffRoles = (Object.keys(roleLabels) as UserRole[]).filter((role) => role !== "client");
+
+interface CreateUserFormProps {
+  allowedRoles?: readonly UserRole[];
+  embedded?: boolean;
+}
 
 function toFormData(values: CreateUserValues): FormData {
   const formData = new FormData();
@@ -38,21 +44,29 @@ function generateAccessCode(length = 10): string {
   return Array.from(values, (value) => accessCodeAlphabet[value % accessCodeAlphabet.length]).join("");
 }
 
-export function CreateUserForm({ embedded = false }: { embedded?: boolean } = {}) {
+export function CreateUserForm({ allowedRoles = defaultStaffRoles, embedded = false }: CreateUserFormProps = {}) {
   const [result, setResult] = useState<UserActionResult | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const allowedRoleSet = new Set(allowedRoles);
+  const availableRoles = defaultStaffRoles.filter((role) => allowedRoleSet.has(role));
+  const defaultRole = availableRoles[0] ?? "technician";
   const form = useForm<CreateUserValues>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       displayName: "",
       email: "",
       password: "",
-      role: "technician",
+      role: defaultRole,
     },
   });
 
   async function onSubmit(values: CreateUserValues): Promise<void> {
     setResult(null);
+
+    if (!allowedRoleSet.has(values.role)) {
+      setResult({ error: "ليس لديك صلاحية إنشاء مستخدم بهذا الدور." });
+      return;
+    }
 
     let imageUrl = values.image;
     if (imageFile) {
@@ -80,7 +94,7 @@ export function CreateUserForm({ embedded = false }: { embedded?: boolean } = {}
         displayName: "",
         email: "",
         password: "",
-        role: "technician",
+        role: defaultRole,
       });
       setImageFile(null);
     }
@@ -167,7 +181,7 @@ export function CreateUserForm({ embedded = false }: { embedded?: boolean } = {}
           id="role"
           {...form.register("role")}
         >
-          {(Object.keys(roleLabels) as UserRole[]).filter((role) => role !== "client").map((role) => (
+          {availableRoles.map((role) => (
             <option key={role} value={role}>
               {roleLabels[role]}
             </option>
